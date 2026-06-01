@@ -116,6 +116,42 @@
     .match-hint.ok  { color: #1f7a4d; }
     .match-hint.bad { color: var(--hi); }
 
+    /* Typeahead dropdown — sits under a job input. O*NET-style: ranked candidates
+       from bestMatchJob's scorer, click or Enter to commit. Hidden by default;
+       JS toggles [hidden] as the user types. */
+    .job-suggest {
+      position: absolute;
+      top: calc(14px + 3px + var(--field-h) + 2px);
+      left: 0; right: 0;
+      margin: 0; padding: 2px 0;
+      list-style: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      font-size: 12px;
+      z-index: 40;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .job-suggest[hidden] { display: none; }
+    .job-suggest li {
+      padding: 6px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--ink);
+    }
+    .job-suggest li.active { background: var(--accent); color: #fff; }
+    .job-suggest .alias-hint {
+      color: var(--muted);
+      font-size: 11px;
+      margin-left: 6px;
+      font-style: italic;
+    }
+    .job-suggest li.active .alias-hint { color: rgba(255,255,255,0.78); }
+
     /* Tom Select overrides — pixel-for-pixel match with .field-input. */
     /* Strip the outer wrapper's chrome so .ts-control is the only visible box. */
     .ts-wrapper {
@@ -275,6 +311,17 @@
     .frame:not(.has-cmp) .cmp-controls { display: none; }
     /* Hide the Add button when both jobs are already shown */
     .frame.has-cmp #add-job { display: none; }
+    /* Reset link inside the "Comparison salary" label — visible only when the
+       user has overridden the auto-follow default. */
+    .cmp-salary-reset {
+      background: transparent; border: 0; padding: 0; margin-left: 6px;
+      color: var(--accent); cursor: pointer;
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      vertical-align: baseline; line-height: 14px;
+    }
+    .cmp-salary-reset:hover { text-decoration: underline; }
+    .cmp-salary-reset[hidden] { display: none; }
     .btn {
       font-size: 12px; padding: 7px 14px; border-radius: 4px; font-weight: 500;
       border: 1px solid var(--accent); color: var(--accent); background: #fff; cursor: pointer; font-family: var(--sans);
@@ -425,6 +472,7 @@
           <div class="job-field" data-tip="Type your job title in your own words — e.g. ‘sales associate’, ‘line cook’, ‘RN’. We'll match it to the closest official occupation.">
             <div class="field-label">Current job<span class="info-mark" aria-hidden="true">ⓘ</span></div>
             <input id="cur-job" class="field-input job-input" type="text" placeholder="e.g. sales associate, line cook, RN" autocomplete="off" title="Type your job title in your own words — we'll match it to the closest official occupation." />
+            <ul class="job-suggest" data-for="cur-job" role="listbox" hidden></ul>
             <div class="match-hint" data-for="cur-job"></div>
           </div>
           <div>
@@ -440,13 +488,17 @@
           <div class="job-field" data-tip="Type the job you want to compare against. Use your own words — e.g. ‘data analyst’, ‘project manager’.">
             <div class="field-label">Comparison job<span class="info-mark" aria-hidden="true">ⓘ</span></div>
             <input id="cmp-job" class="field-input job-input" type="text" placeholder="e.g. data analyst, project manager" autocomplete="off" title="Type the comparison job in your own words — we'll match it to the closest official occupation." />
+            <ul class="job-suggest" data-for="cmp-job" role="listbox" hidden></ul>
             <div class="match-hint" data-for="cmp-job"></div>
           </div>
           <div>
             <div class="field-label">Comparison location</div>
             <select id="cmp-area" class="field-select"></select>
           </div>
-          <div></div>
+          <div>
+            <div class="field-label">Comparison salary<button type="button" id="cmp-salary-reset" class="cmp-salary-reset" hidden title="Reset to current salary">reset</button></div>
+            <input id="cmp-salary" class="field-input" type="text" inputmode="numeric" />
+          </div>
         </div>
       </section>
 
@@ -517,7 +569,7 @@
           <li><span class="swatch" style="background:var(--band-outer)"></span><div><b>Outer light blue band</b> — the 10th to 90th percentile of workers in this job. Wages here include early-career, mid-career, and most senior workers.</div></li>
           <li><span class="swatch" style="background:var(--band-inner)"></span><div><b>Inner dark blue band</b> — the 25th to 75th percentile. Most workers in this occupation earn somewhere in this range.</div></li>
           <li><span class="swatch tick" style="background:var(--ink)"></span><div><b>Black tick</b> — the median. Half of workers earn less, half earn more.</div></li>
-          <li><span class="swatch dot" style="background:var(--hi)"></span><div><b>Red dot</b> — your current salary, plotted on the same scale. Use it to see where you'd land in the comparison occupation.</div></li>
+          <li><span class="swatch dot" style="background:var(--hi)"></span><div><b>Red dot</b> — a salary plotted on this row's scale. The current-role dot is your current salary; the comparison-role dot defaults to it too, but you can enter a different value to model a target wage in that occupation.</div></li>
         </ul>
 
         <p class="help-footnote">Sparklines at right show the annual wage trend (last 5 years) and the monthly employment trend. Hover any chart for exact values. Data: BLS Occupational Employment and Wage Statistics.</p>
@@ -668,10 +720,17 @@
     // the comparison job; the × on the comparison row removes it.
     const state = {
       userSalary: 48000,
+      // null = auto-follow userSalary (default). A number = explicit override
+      // so the user can model "what if I targeted $X in the comparison job?".
+      // Persists across remove/re-add of the comparison row, same as cmpDraft.
+      cmpSalaryOverride: null,
       rows: [
         { jobId: initialJobs[0], areaId: initialArea, isYou: true },
       ],
     };
+    function effectiveCmpSalary() {
+      return state.cmpSalaryOverride != null ? state.cmpSalaryOverride : state.userSalary;
+    }
     // The comparison job's prior selection is held here while it's not shown,
     // so re-adding it restores what they had before.
     let cmpDraft = { jobId: initialJobs[1] || initialJobs[0], areaId: initialArea };
@@ -797,49 +856,51 @@
       return Math.round(18 * (sum / qTokens.length));
     }
 
-    function bestMatchJob(query) {
+    // Score every job against the query and return the top N candidates above
+    // the match threshold. The single-best path (bestMatchJob) is a thin wrapper —
+    // both flows share scoring so a "good enough to commit on Enter" match always
+    // appears in the dropdown too.
+    function topMatchJobs(query, n) {
+      n = n || 5;
       const qPhraseRaw = normStr(query);
-      if (!qPhraseRaw) return null;
+      if (!qPhraseRaw) return [];
       const qTokens = qPhraseRaw.split(' ').filter(t => t && !STOP.has(t)).map(depluralize);
-      if (!qTokens.length) return null;
+      if (!qTokens.length) return [];
       const qPhrase = qTokens.join(' ');
 
-      let best = null, bestScore = 0, bestAliasObj = null;
+      const candidates = [];
       for (const ix of JOB_INDEX) {
-        // Label score against the depluralized label
         const labelScore = scoreString(ix.labelDep, qPhrase, qTokens) * 2;
-        // Best per-alias score against the depluralized alias
         let topAlias = null, topAliasScore = 0;
         for (const a of ix.aliasesNorm) {
           const s = scoreString(a.dep, qPhrase, qTokens);
           if (s > topAliasScore) { topAliasScore = s; topAlias = a; }
         }
-        // Penalties for catch-all / niche SOC buckets so the obvious common job wins ties.
         const allOtherPenalty   = /\ball other\b/.test(ix.labelDep) ? 40 : 0;
         const postsecPenalty    = /\bpostsecondary\b/.test(ix.labelDep) ? 25 : 0;
         const supervisorPenalty = /supervisor|first line/.test(ix.labelDep) ? 8 : 0;
-        // Employment-based "common job" boost — log-scaled so the top ~20% of jobs
-        // get most of the lift. Just enough to break ties between an obvious-common
-        // match and a niche label that happens to end with the same word.
         const empBonus = ix.employment > 0
           ? (Math.log10(ix.employment + 1) / Math.log10(MAX_EMP + 1)) * 25
           : 0;
 
-        // Critical: empBonus only applies when there's a real match. Without this
-        // guard, a high-employment job like Fast Food can outscore the 18-pt
-        // threshold on its bonus alone, surfacing as a false match.
         const matchOnly = labelScore + topAliasScore;
         if (matchOnly === 0) continue;
 
         const total = matchOnly + empBonus
                       - allOtherPenalty - postsecPenalty - supervisorPenalty;
-        if (total > bestScore) { bestScore = total; best = ix; bestAliasObj = topAlias; }
+        if (total < 18) continue;
+
+        const matchedAlias = ix.labelDep.includes(qPhrase)
+          ? null
+          : (topAlias && topAlias.raw) || null;
+        candidates.push({ job: ix.job, score: total, matchedAlias });
       }
-      if (!best || bestScore < 18) return null;
-      const matchedAlias =
-        best.labelDep.includes(qPhrase) ? null :
-        (bestAliasObj && bestAliasObj.raw) || null;
-      return { job: best.job, score: bestScore, matchedAlias };
+      candidates.sort((a, b) => b.score - a.score);
+      return candidates.slice(0, n);
+    }
+
+    function bestMatchJob(query) {
+      return topMatchJobs(query, 1)[0] || null;
     }
 
     function mkAreaCombo(id, initialValue, onChange) {
@@ -849,12 +910,24 @@
       });
     }
 
-    // Wire a freeform job text input: show the current job's label, accept free text,
-    // resolve to a SOC code on Enter / blur. Updates state via onChange.
+    // HTML-escape — guard against odd alias strings flowing into innerHTML.
+    function escHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Wire a freeform job text input with O*NET-style typeahead. The user types,
+    // a ranked dropdown of candidates from topMatchJobs surfaces, Enter/Tab/click
+    // commits the active row (or top match when none is highlighted). Single-match
+    // case still renders the dropdown — confirmation beats silent auto-commit.
     function mkJobInput(id, getJobId, setJobId) {
       const el   = document.getElementById(id);
       const hint = document.querySelector('.match-hint[data-for="' + id + '"]');
+      const list = document.querySelector('.job-suggest[data-for="' + id + '"]');
       el.value = (JOB_BY_ID[getJobId()] || {}).label || '';
+
+      let suggestions = [];
+      let activeIdx = -1;
 
       function setHint(cls, msg) {
         hint.className = 'match-hint' + (cls ? ' ' + cls : '');
@@ -865,25 +938,44 @@
         if (cls) el.classList.add(cls);
       }
 
-      function resolve() {
-        const raw = el.value.trim();
-        const current = JOB_BY_ID[getJobId()];
-        // Empty → revert to current selection silently.
-        if (!raw) {
-          el.value = current ? current.label : '';
-          setStatus(''); setHint('', ''); return;
+      function hideList() {
+        list.hidden = true;
+        list.innerHTML = '';
+        suggestions = [];
+        activeIdx = -1;
+      }
+
+      function showList(raw) {
+        suggestions = topMatchJobs(raw, 5);
+        if (!suggestions.length) { hideList(); return; }
+        activeIdx = 0;
+        list.innerHTML = suggestions.map((m, i) => {
+          const aliasHint = m.matchedAlias
+            ? ' <span class="alias-hint">via &ldquo;' + escHtml(m.matchedAlias) + '&rdquo;</span>'
+            : '';
+          return '<li role="option" data-i="' + i + '"'
+            + (i === activeIdx ? ' class="active" aria-selected="true"' : '')
+            + '>' + escHtml(m.job.label) + aliasHint + '</li>';
+        }).join('');
+        list.hidden = false;
+      }
+
+      function setActive(newIdx) {
+        if (!suggestions.length) return;
+        activeIdx = (newIdx + suggestions.length) % suggestions.length;
+        const items = list.children;
+        for (let i = 0; i < items.length; i++) {
+          const on = (i === activeIdx);
+          items[i].classList.toggle('active', on);
+          if (on) items[i].setAttribute('aria-selected', 'true');
+          else    items[i].removeAttribute('aria-selected');
         }
-        // Exactly the current label → no-op.
-        if (current && raw === current.label) {
-          setStatus(''); setHint('', ''); return;
-        }
-        const m = bestMatchJob(raw);
-        if (!m) {
-          setStatus('unmatched');
-          setHint('bad', 'No SOC match — try a more common job title.');
-          return;
-        }
-        // Commit
+        // Keep the active row visible inside the scroll area.
+        const li = items[activeIdx];
+        if (li && li.scrollIntoView) li.scrollIntoView({ block: 'nearest' });
+      }
+
+      function commit(m, raw) {
         setJobId(m.job.id);
         el.value = m.job.label;
         setStatus('matched');
@@ -892,17 +984,77 @@
         } else {
           setHint('ok', 'Matched → ' + m.job.label + ' (' + m.job.soc_code + ')');
         }
+        hideList();
+      }
+
+      function resolve() {
+        const raw = el.value.trim();
+        const current = JOB_BY_ID[getJobId()];
+        // Empty → revert to current selection silently.
+        if (!raw) {
+          el.value = current ? current.label : '';
+          setStatus(''); setHint('', '');
+          hideList();
+          return;
+        }
+        // Exactly the current label → no-op.
+        if (current && raw === current.label) {
+          setStatus(''); setHint('', '');
+          hideList();
+          return;
+        }
+        // Prefer the highlighted suggestion; fall back to top match for the raw text.
+        const chosen = (suggestions.length && activeIdx >= 0)
+          ? suggestions[activeIdx]
+          : bestMatchJob(raw);
+        if (!chosen) {
+          setStatus('unmatched');
+          setHint('bad', 'No SOC match — try a more common job title.');
+          hideList();
+          return;
+        }
+        commit(chosen, raw);
       }
 
       el.addEventListener('focus', () => { el.select(); setHint('', ''); setStatus(''); });
+      el.addEventListener('input', () => {
+        const raw = el.value.trim();
+        const current = JOB_BY_ID[getJobId()];
+        if (raw && (!current || raw !== current.label)) showList(raw);
+        else hideList();
+      });
       el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === 'Tab') { resolve(); if (e.key === 'Enter') el.blur(); }
-        else if (e.key === 'Escape') { el.value = (JOB_BY_ID[getJobId()] || {}).label || ''; setHint('',''); setStatus(''); el.blur(); }
+        if (e.key === 'ArrowDown') {
+          if (suggestions.length) { e.preventDefault(); setActive(activeIdx + 1); }
+        } else if (e.key === 'ArrowUp') {
+          if (suggestions.length) { e.preventDefault(); setActive(activeIdx - 1); }
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          resolve();
+          if (e.key === 'Enter') el.blur();
+        } else if (e.key === 'Escape') {
+          el.value = (JOB_BY_ID[getJobId()] || {}).label || '';
+          setHint('', ''); setStatus('');
+          hideList();
+          el.blur();
+        }
       });
       el.addEventListener('blur', () => { resolve(); });
 
+      // mousedown (not click) fires before the input's blur — by preventDefault
+      // we keep focus on the input long enough to commit, then explicitly blur.
+      list.addEventListener('mousedown', (e) => {
+        const li = e.target.closest('li[data-i]');
+        if (!li) return;
+        e.preventDefault();
+        const i = parseInt(li.getAttribute('data-i'), 10);
+        if (!isNaN(i) && suggestions[i]) {
+          commit(suggestions[i], el.value.trim());
+          el.blur();
+        }
+      });
+
       return {
-        refresh: () => { el.value = (JOB_BY_ID[getJobId()] || {}).label || ''; setStatus(''); setHint('',''); },
+        refresh: () => { el.value = (JOB_BY_ID[getJobId()] || {}).label || ''; setStatus(''); setHint('',''); hideList(); },
       };
     }
 
@@ -981,6 +1133,8 @@
       }
 
       document.getElementById('cur-salary').value = '$' + state.userSalary.toLocaleString();
+      cmpSalaryEl.value = '$' + effectiveCmpSalary().toLocaleString();
+      cmpSalaryResetBtn.hidden = (state.cmpSalaryOverride == null);
       syncCmpFlag();
     }
 
@@ -988,6 +1142,18 @@
       const n = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
       if (!isNaN(n) && n > 0) { state.userSalary = n; render(); }
       else e.target.value = '$' + state.userSalary.toLocaleString();
+    });
+
+    const cmpSalaryEl       = document.getElementById('cmp-salary');
+    const cmpSalaryResetBtn = document.getElementById('cmp-salary-reset');
+    cmpSalaryEl.addEventListener('change', e => {
+      const n = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(n) && n > 0) { state.cmpSalaryOverride = n; render(); }
+      else cmpSalaryEl.value = '$' + effectiveCmpSalary().toLocaleString();
+    });
+    cmpSalaryResetBtn.addEventListener('click', () => {
+      state.cmpSalaryOverride = null;
+      render();
     });
 
     document.getElementById('add-job').addEventListener('click', () => {
@@ -1021,8 +1187,12 @@
     function computeDomain() {
       const entries = state.rows.map(r => getEntry(r.jobId, r.areaId)).filter(Boolean);
       if (!entries.length) return { min: 30000, max: 100000, ticks: [30000, 50000, 70000, 90000] };
-      const lo = Math.min(...entries.map(e => e.p10), state.userSalary);
-      const hi = Math.max(...entries.map(e => e.p90), state.userSalary);
+      // Include any explicit comparison-salary override so the red dot stays on-scale
+      // even when it lies above all p90s (e.g. user models a target wage of $200K).
+      const salaries = [state.userSalary];
+      if (state.cmpSalaryOverride != null && state.rows.length >= 2) salaries.push(state.cmpSalaryOverride);
+      const lo = Math.min(...entries.map(e => e.p10), ...salaries);
+      const hi = Math.max(...entries.map(e => e.p90), ...salaries);
       const step = (hi - lo) > 80000 ? 20000 : 10000;
       const min = Math.max(0, snap(lo - step * 0.4, step, 'down'));
       const max = snap(hi + step * 0.3, step, 'up');
@@ -1110,7 +1280,8 @@
     const PLOT_INSET_L = 4;
     const PLOT_INSET_R = 18;
 
-    function mkPercentileBar(el, entry, domain, salary) {
+    function mkPercentileBar(el, entry, domain, salary, salaryLabel) {
+      salaryLabel = salaryLabel || 'Your salary';
       const c = echarts.init(el);
       charts.push(c);
       c.setOption({
@@ -1128,7 +1299,7 @@
               '<b>Median</b> · ' + fmt(entry.p50),
               '<b>P25–75</b> · ' + fmt(entry.p25) + '–' + fmt(entry.p75),
               '<b>P10–90</b> · ' + fmt(entry.p10) + '–' + fmt(entry.p90),
-              pct != null ? '<b>Your salary</b> · ' + fmt(salary) + ' (~' + pct + 'th pct)' : ''
+              pct != null ? '<b>' + salaryLabel + '</b> · ' + fmt(salary) + ' (~' + pct + 'th pct)' : ''
             ].filter(Boolean).join('<br/>');
           },
         },
@@ -1291,9 +1462,16 @@
         return wrap;
       }
 
+      // Each row plots its own salary dot. The comparison row uses the override
+      // when present so the user can model a target wage in the other occupation.
+      const dotSalary = row.isYou ? state.userSalary : effectiveCmpSalary();
+      const cmpOverridden = !row.isYou
+        && state.cmpSalaryOverride != null
+        && state.cmpSalaryOverride !== state.userSalary;
+
       // Stat values
       const medianStr = '$' + Math.round(entry.p50 / 1000) + 'K';
-      const pctStr   = fmtPctLabel(entry, state.userSalary);
+      const pctStr   = fmtPctLabel(entry, dotSalary);
 
       // Comparison row: Median sub = delta vs YOUR ROLE's median, color-coded green/red.
       let medianSub = 'annual';
@@ -1309,12 +1487,22 @@
         }
       }
 
-      // Percentile-block label/sub: changes wording for comparison row to make the
-      // "if you stayed at $X" framing explicit, like the W3 reference.
-      const pctLabel = row.isYou
-        ? 'Your percentile'
-        : 'If you stayed at $' + Math.round(state.userSalary / 1000) + 'K';
-      const pctSub = row.isYou ? 'within your role' : 'within this role';
+      // Percentile-block label/sub. Three modes:
+      //   • You row → "Your percentile / within your role"
+      //   • Comparison, no override (or override equals current) → "If you stayed at $X / within this role"
+      //   • Comparison with override ≠ current → neutral "At $X / in [role]"
+      //     so the framing matches what the dot now represents (a hypothetical target).
+      let pctLabel, pctSub;
+      if (row.isYou) {
+        pctLabel = 'Your percentile';
+        pctSub = 'within your role';
+      } else if (cmpOverridden) {
+        pctLabel = 'At $' + Math.round(dotSalary / 1000) + 'K';
+        pctSub   = 'in ' + (job ? job.label : 'this role');
+      } else {
+        pctLabel = 'If you stayed at $' + Math.round(state.userSalary / 1000) + 'K';
+        pctSub   = 'within this role';
+      }
 
       wrap.innerHTML =
         '<div class="row-top">' +
@@ -1357,7 +1545,8 @@
       // Defer chart mounting until after row is in the DOM so ECharts can measure containers.
       wrap._mount = () => {
         mkPercentileBar(wrap.querySelector('[data-role=pct-bar]'),
-                        entry, domain, state.userSalary);
+                        entry, domain, dotSalary,
+                        row.isYou ? 'Your salary' : 'Comparison salary');
         mkSparkline(wrap.querySelector('[data-role=wage-spark]'), entry.trend, {
           labels: TREND_YEARS.map(String),
           fmt: (n) => '$' + Math.round(n).toLocaleString(),
