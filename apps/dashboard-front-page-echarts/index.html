@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VA Works — Labor Market Snapshot · ECharts variant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Apache ECharts + topojson-client (the US-Atlas counties layer ships as TopoJSON;
+     topojson.feature() converts it to GeoJSON that echarts.registerMap can consume). -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+
+<style>
+:root {
+  --bg-page: #f5f4ef;
+  --bg-card: #ffffff;
+  --border: #e9e7e0;
+  --border-strong: #d8d5cc;
+  --ink-1: #1a1d1f;
+  --ink-2: #4a4d51;
+  --ink-3: #8a8c8f;
+  --ink-4: #b8b9bc;
+
+  --brand-1: #003595;
+  --brand-2: #1f5fa8;
+  --brand-3: #cfe0f3;
+  --brand-tint: #eaf1f9;
+  --accent:  #c89b3c;
+  --accent-soft: #f4e8c6;
+  --coral:   #b75049;
+  --success: #2f7a4a;
+
+  --shadow-card: 0 0.5px 0 rgba(20,30,50,0.04), 0 1px 2px rgba(20,30,50,0.04), 0 8px 24px rgba(20,30,50,0.04);
+  --radius-card: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg-page);
+  color: var(--ink-1);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.page { max-width: 1360px; margin: 0 auto; padding: 32px 28px 80px; }
+
+.dash-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 22px; gap: 24px;
+}
+.brand-block .eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--brand-2); margin-bottom: 4px;
+}
+.brand-block h1 {
+  margin: 0; font-size: 24px; font-weight: 700;
+  letter-spacing: -0.015em; color: var(--ink-1);
+}
+.brand-block .sub {
+  margin: 4px 0 0; font-size: 13px; color: var(--ink-2); max-width: 640px;
+}
+.head-right { display: flex; align-items: center; gap: 12px; }
+.meta-pill {
+  font-size: 12px; color: var(--ink-3);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.meta-pill::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); box-shadow: 0 0 0 3px rgba(47,122,74,0.18);
+}
+
+.filter-bar {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 16px; min-height: 28px;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.filter-bar .label { color: var(--ink-3); }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 8px 4px 10px;
+  background: var(--brand-tint); color: var(--brand-1);
+  border: 1px solid var(--brand-3); border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+}
+.chip .x {
+  appearance: none; background: rgba(0,53,149,0.1); border: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-size: 12px; line-height: 14px; color: var(--brand-1);
+  cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.chip .x:hover { background: rgba(0,53,149,0.2); }
+.filter-bar.empty .chip { display: none; }
+.filter-bar.empty .label.with-filter { display: none; }
+.filter-bar:not(.empty) .label.no-filter { display: none; }
+
+.dash-grid {
+  display: grid;
+  /* minmax(0, …fr) instead of bare fr — without the 0 floor, grid columns can
+     expand beyond their fr share if content overflows (e.g. an ECharts canvas
+     that measures slightly wider than the cell). That was eating into the
+     third card's width vs. the Highcharts version. */
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 0.85fr);
+  gap: 18px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px 14px;
+  display: flex; flex-direction: column;
+  height: 480px; position: relative;
+}
+
+.card-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 6px; gap: 8px;
+}
+.card-title {
+  margin: 0; font-size: 14.5px; font-weight: 600;
+  letter-spacing: -0.005em; color: var(--ink-1);
+}
+.card-sub {
+  font-size: 11px; color: var(--ink-3);
+  font-weight: 500; font-variant-numeric: tabular-nums;
+}
+
+.kpi-row {
+  display: grid; grid-template-columns: 1fr 1px 1fr;
+  align-items: stretch; gap: 14px;
+  margin: 10px 0 4px; padding: 4px 2px 12px;
+  border-bottom: 1px dashed var(--border);
+}
+.kpi { display: flex; flex-direction: column; gap: 2px; }
+.kpi-divider { background: var(--border); }
+.kpi-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3);
+  line-height: 1.3; min-height: 2.6em;
+}
+.kpi-value {
+  font-size: 30px; font-weight: 700; letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums; color: var(--ink-1);
+  line-height: 1.05; margin: 2px 0;
+}
+.kpi-value .unit { font-size: 18px; font-weight: 600; color: var(--ink-2); }
+.kpi-delta {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--success);
+  font-variant-numeric: tabular-nums; margin-top: 2px;
+}
+.kpi-delta.down { color: var(--coral); }
+.kpi-delta .arrow { font-size: 9px; line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--ink-3); }
+
+.chart-wrap {
+  flex: 1 1 0; min-height: 0; position: relative; overflow: hidden;
+}
+
+.map-legend {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10.5px; color: var(--ink-3); margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.map-legend .swatch-row {
+  display: inline-flex; height: 8px; border-radius: 2px;
+  overflow: hidden; border: 1px solid rgba(0,0,0,0.04);
+}
+.map-legend .swatch-row span { width: 22px; height: 8px; }
+
+.legend {
+  display: flex; gap: 14px; margin: 0 0 4px;
+  font-size: 11.5px; color: var(--ink-2);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+}
+.legend-item.dashed .legend-dot {
+  border-radius: 0; width: 14px; height: 0;
+  border-top: 2px dashed currentColor; background: transparent;
+}
+
+.bar-foot {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-top: 6px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px; color: var(--ink-3);
+}
+.bar-foot strong {
+  color: var(--ink-1); font-weight: 700;
+  font-variant-numeric: tabular-nums; font-size: 13px; margin-left: 4px;
+}
+
+/* Tooltip HTML — same structure the original used (.dh-tip…), reused by
+   ECharts' HTML tooltip formatters. Visual parity comes from ECharts'
+   own tooltip box being styled via tooltip.backgroundColor/borderColor +
+   className/extraCssText, so we wrap our markup in .dh-tip for spacing only. */
+.dh-tip { font: 500 12px/1.4 'Public Sans', sans-serif; padding: 0; min-width: 160px; }
+.dh-tip .t-name { font-weight: 700; font-size: 12.5px; color: var(--ink-1); margin-bottom: 4px; }
+.dh-tip .t-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; font-variant-numeric: tabular-nums; padding: 1px 0; }
+.dh-tip .t-row .lbl { color: var(--ink-2); display: inline-flex; align-items: center; }
+.dh-tip .t-row .val { color: var(--ink-1); font-weight: 600; }
+.dh-tip .t-foot { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); color: var(--ink-3); font-size: 11px; }
+.dh-tip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+.loading {
+  position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  color: var(--ink-3); font-size: 12px;
+}
+
+/* County-trend legend entry only appears once a county is selected. */
+#legend-region { display: none; }
+.has-county-selected #legend-region { display: inline-flex; }
+
+/* Third KPI cell (selected county) — hidden by default, expands the row to
+   3 columns when a county is selected so VA + US stay visible. */
+.kpi-county-cell, .kpi-county-divider { display: none; }
+.has-county-selected .kpi-county-cell { display: flex; }
+.has-county-selected .kpi-county-divider { display: block; }
+.has-county-selected .kpi-row {
+  grid-template-columns: 1fr 1px 1fr 1px 1fr;
+}
+
+/* County picker — alphabetical select for finding small counties without
+   hunting on the map. Behaves identically to a map click. */
+.county-picker { margin: 10px 0 8px; }
+.county-picker select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg-card);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a8c8f' d='M0 0h10L5 6z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 32px 9px 12px;
+  font: 500 13px/1.3 'Public Sans', sans-serif;
+  color: var(--ink-1);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+.county-picker select:focus {
+  outline: none;
+  border-color: var(--brand-1);
+  box-shadow: 0 0 0 3px rgba(0, 53, 149, 0.14);
+}
+.county-picker select:hover { border-color: var(--border-strong); }
+
+/* Small "powered by" badge so it's obvious which variant the page renders. */
+.variant-pill {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--brand-tint); color: var(--brand-1);
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--brand-3);
+  margin-left: 8px;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .page { padding: 24px 18px 56px; }
+  .dash-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .head-right { align-self: stretch; justify-content: space-between; }
+  .dash-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .card {
+    height: auto;
+    min-height: 440px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 16px 12px 48px; }
+  .brand-block h1 { font-size: 20px; letter-spacing: -0.01em; }
+  .brand-block .sub { font-size: 12px; }
+  .brand-block .eyebrow { font-size: 10px; }
+
+  .head-right { flex-wrap: wrap; gap: 8px; }
+
+  .card { min-height: 380px; padding: 14px 14px 12px; }
+  .card-title { font-size: 13.5px; }
+  .card-sub { font-size: 10.5px; }
+
+  .kpi-value { font-size: 24px; }
+  .kpi-value .unit { font-size: 14px; }
+  .kpi-label { font-size: 10px; }
+  .kpi-delta, .kpi-sub { font-size: 11px; }
+
+  .legend { font-size: 11px; gap: 10px; flex-wrap: wrap; }
+
+  .filter-bar { font-size: 12px; flex-wrap: wrap; }
+  .chip { padding: 6px 10px 6px 12px; font-size: 12px; }
+  .chip .x { width: 22px; height: 22px; font-size: 14px; line-height: 18px; }
+}
+
+@media (max-width: 420px) {
+  .kpi-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+  .kpi-divider { display: none; }
+  .kpi { padding: 4px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="dash-head">
+    <div class="brand-block">
+      <div class="eyebrow">Virginia Works · Workforce Insights<span class="variant-pill">ECharts</span></div>
+      <h1>Labor Market Snapshot</h1>
+      <p class="sub">Real-time employment indicators across the Commonwealth, drawn from BLS LAUS and JOLTS feeds.</p>
+    </div>
+    <div class="head-right">
+      <span class="meta-pill" id="as-of-pill">Updated —</span>
+    </div>
+  </header>
+
+  <div class="filter-bar empty" id="filter-bar">
+    <span class="label no-filter">Showing statewide totals · click any county on the map to cross-filter</span>
+    <span class="label with-filter">Filtering by</span>
+    <span class="chip" id="filter-chip">
+      <span id="filter-name">—</span>
+      <button class="x" id="filter-clear" aria-label="Clear filter">×</button>
+    </span>
+  </div>
+
+  <main class="dash-grid" id="dash-grid">
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Unemployment Rate by Locality</h2>
+        <span class="card-sub" id="map-sub">—</span>
+      </div>
+      <div class="county-picker">
+        <select id="county-select" aria-label="Find a county">
+          <option value="">Find a county…</option>
+        </select>
+      </div>
+      <div class="chart-wrap" id="map-cell"><div class="loading">Loading map…</div></div>
+      <div class="map-legend">
+        <span>Lower</span>
+        <span class="swatch-row" id="map-legend-swatches"></span>
+        <span>Higher unemployment</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Unemployment Rate Trending</h2>
+        <span class="card-sub">Monthly, seasonally adjusted (state &amp; US)</span>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi kpi-county-cell">
+          <span class="kpi-label" id="kpi-county-label">County</span>
+          <span class="kpi-value" id="kpi-county-value">—</span>
+          <span class="kpi-delta" id="kpi-county-delta">—</span>
+          <span class="kpi-sub">vs. Virginia</span>
+        </div>
+        <div class="kpi-divider kpi-county-divider"></div>
+        <div class="kpi">
+          <span class="kpi-label">Virginia</span>
+          <span class="kpi-value" id="kpi-va-value">—</span>
+          <span class="kpi-delta" id="kpi-va-delta">—</span>
+          <span class="kpi-sub">vs. last period</span>
+        </div>
+        <div class="kpi-divider"></div>
+        <div class="kpi">
+          <span class="kpi-label">U.S. Average</span>
+          <span class="kpi-value" id="kpi-us-value">—</span>
+          <span class="kpi-delta" id="kpi-us-delta">—</span>
+          <span class="kpi-sub">vs. last period</span>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#c89b3c"></span><span id="legend-region-name">Northern Virginia</span></span>
+        <span class="legend-item"><span class="legend-dot" id="leg-va-dot" style="background:#003595"></span><span>Virginia</span></span>
+        <span class="legend-item dashed" style="color:#8a8c8f"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
+      </div>
+      <div class="chart-wrap" id="line-cell"><div class="loading">Loading trend…</div></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Jobs Added by Industry</h2>
+        <span class="card-sub" id="bar-sub">Net change, latest quarter</span>
+      </div>
+      <div class="chart-wrap" id="bar-cell"><div class="loading">Loading industries…</div></div>
+      <div class="bar-foot">
+        <span id="bar-foot-label">Top 5 sectors</span>
+        <span>Total: <strong id="bar-total">—</strong> jobs</span>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<script>
+// ============================================================================
+// VA Works · Labor Market Snapshot — Apache ECharts variant
+// Mirrors the Highcharts implementation in ../dashboard-front-page-original/
+// Three charts (choropleth, trend, industry bar), KPI row, county cross-filter.
+// ============================================================================
+
+// ------- 1. Constants + state -------
+// Same near-white → brand-blue ramp the original uses for the choropleth.
+const MAP_RAMP = ['#eaf1f9', '#bbcbe5', '#8ca6d1', '#5e80bd', '#2f5ba9', '#003595'];
+const BRAND_PRIMARY = '#003595';
+const BRAND_ACCENT  = '#c89b3c';
+const INK_3 = '#8a8c8f';
+const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// LWDA code -> display name (built from data at load time, same as original).
+let REGION_LABELS = {};
+
+const STATE = {
+  data: null,
+  selectedHcKey: null,
+  selectedRegion: null,
+  selectedCounty: null,
+  periodMonths: 36,
+  // Per-county trend + per-region industry, indexed for O(1) lookup.
+  trendCountyMap: {},
+  industryRegionMap: {},
+  // ECharts instances (parallel to Highcharts' STATE.charts in the original).
+  charts: { map: null, line: null, bar: null },
+  // Cached map series data so click handlers can read attached metadata.
+  mapData: null
+};
+
+// ------- 2. Utilities -------
+function fmtPct(v, digits = 1) {
+  return v == null ? '—' : v.toFixed(digits) + '%';
+}
+
+function formatAsOfMonth(yyyymm) {
+  if (!yyyymm) return '—';
+  const [y, m] = yyyymm.split('-').map(Number);
+  return SHORT_MONTHS[m - 1] + ' ' + y;
+}
+
+// "us-va-001" → "51001". VA state FIPS is 51; the 3-digit county FIPS is the
+// suffix in the original data file (already zero-padded). Used to join data
+// rows to GeoJSON features by GEOID.
+function hcKeyToFips(hcKey) {
+  return '51' + hcKey.replace('us-va-', '');
+}
+
+// ECharts tooltip box styling — matches the soft drop-shadow / brand-tinted
+// border that the Highcharts version used via tooltipBoxOpts().
+const TOOLTIP_BASE = {
+  backgroundColor: 'rgba(255,255,255,0.98)',
+  borderColor: 'rgba(0,53,149,0.12)',
+  borderWidth: 1,
+  textStyle: { color: '#1a1d1f', fontFamily: 'Public Sans, sans-serif', fontSize: 12 },
+  padding: 10,
+  extraCssText: 'border-radius: 8px; box-shadow: 0 4px 8px rgba(15,30,55,0.12);'
+};
+
+function buildRegionLabels(locality, industry) {
+  const map = {};
+  (locality.counties || []).forEach(c => {
+    if (c.region != null && c.lwda_short_name) map[c.region] = c.lwda_short_name;
+  });
+  (industry.regions || []).forEach(r => {
+    if (r.key != null && r.label) map[r.key] = r.label;
+  });
+  return map;
+}
+
+// Several VA localities share a name across the county/city split (Richmond,
+// Fairfax, Franklin, Roanoke). Suffix duplicates with "(City)" or "(County)"
+// based on FIPS — counties are 001–199, independent cities are 500+.
+function disambiguateCountyNames() {
+  if (!STATE.data) return;
+  const counties = STATE.data.locality.counties;
+  const counts = {};
+  counties.forEach(c => { counts[c.areaname] = (counts[c.areaname] || 0) + 1; });
+  counties.forEach(c => {
+    if (counts[c.areaname] > 1) {
+      const fips = parseInt(c.hc_key.replace('us-va-', ''), 10);
+      c.areaname = c.areaname + (fips >= 500 ? ' (City)' : ' (County)');
+    }
+  });
+}
+
+// ------- 3. KPIs -------
+function renderKpis(locality) {
+  const unVa = locality.kpi.virginia.value;
+  const unUs = locality.kpi.us_average.value;
+  const deltaVa = locality.kpi.virginia.delta_pts;
+  const deltaUs = locality.kpi.us_average.delta_pts;
+
+  document.getElementById('kpi-va-value').innerHTML = unVa.toFixed(1) + '<span class="unit">%</span>';
+  document.getElementById('kpi-us-value').innerHTML = unUs.toFixed(1) + '<span class="unit">%</span>';
+
+  const setDelta = (id, delta) => {
+    const el = document.getElementById(id);
+    const sign = delta > 0 ? '+' : '';
+    const arrow = delta >= 0 ? '▲' : '▼';
+    el.innerHTML = '<span class="arrow">' + arrow + '</span>' + sign + delta.toFixed(1) + ' pts';
+    el.classList.toggle('down', delta > 0);  // up = more unemployment = bad
+  };
+  setDelta('kpi-va-delta', deltaVa);
+  setDelta('kpi-us-delta', deltaUs);
+
+  document.getElementById('map-sub').textContent = formatAsOfMonth(locality.as_of);
+  document.getElementById('as-of-pill').textContent = 'Updated ' + formatAsOfMonth(locality.as_of);
+
+  document.getElementById('map-legend-swatches').innerHTML =
+    MAP_RAMP.map(c => '<span style="background:' + c + '"></span>').join('');
+}
+
+// ------- 4. GeoJSON load + register -------
+// Pull US Atlas county TopoJSON, run topojson.feature to convert, filter to
+// Virginia (state FIPS 51). The resulting GeoJSON's features get
+// properties.name = feature.id (the 5-digit FIPS GEOID) so ECharts' name-based
+// join lines up with the data rows produced by buildMapData().
+async function loadVAGeoJson() {
+  const url = 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json';
+  const topo = await fetch(url).then(r => r.json());
+  // counties-10m exposes the counties object as 'counties'
+  const fc = topojson.feature(topo, topo.objects.counties);
+  const vaFeatures = fc.features.filter(f => String(f.id).startsWith('51'));
+  vaFeatures.forEach(f => {
+    f.properties = f.properties || {};
+    // ECharts' map join key — set to FIPS so data items keyed by FIPS line up.
+    f.properties.name = String(f.id);
+  });
+  return { type: 'FeatureCollection', features: vaFeatures };
+}
+
+// ------- 5. Map data: rank-based color, metadata for tooltip + selection -------
+// Each point gets its colorIdx from the empirical-CDF rank of its rate so the
+// 6-shade ramp spans low→high regardless of how tightly VA unemployment
+// clusters around the median (per the original's design note).
+function buildMapData(counties) {
+  const sorted = counties.map(c => c.unemployed_rate).filter(v => v != null).sort((a, b) => a - b);
+  const n = sorted.length;
+  const cdf = (v) => {
+    let lo = 0, hi = n;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; }
+    return n ? lo / n : 0;
+  };
+  // White borders wash out against the two lightest ramp shades (#eaf1f9,
+  // #bbcbe5). Swap to a muted blue-gray for those tiers; counties at idx 2+
+  // keep the crisp white separators that read against the darker blues.
+  const LIGHT_BORDER = '#a8b6c8';
+  return counties.map(c => {
+    const rate = c.unemployed_rate;
+    const cdfVal = rate == null ? null : cdf(rate);
+    const colorIdx = cdfVal == null
+      ? 0
+      : Math.min(MAP_RAMP.length - 1, Math.floor(cdfVal * MAP_RAMP.length));
+    const color = rate == null ? '#f2f1ec' : MAP_RAMP[colorIdx];
+    const borderColor = colorIdx <= 1 ? LIGHT_BORDER : '#ffffff';
+    return {
+      name: hcKeyToFips(c.hc_key),         // join key → GeoJSON feature.properties.name
+      value: rate,                          // displayed in tooltip + visualMap if used
+      itemStyle: { areaColor: color, borderColor: borderColor, borderWidth: 0.5 },
+      emphasis: { itemStyle: { areaColor: color, borderColor: BRAND_PRIMARY, borderWidth: 1 } },
+      select:   { itemStyle: { areaColor: BRAND_ACCENT, borderColor: BRAND_PRIMARY, borderWidth: 1.2 } },
+      // Attached metadata — read in tooltip + selectchanged handlers via params.data
+      hcKey: c.hc_key,
+      countyName: c.areaname,
+      region: c.region,
+      laborForce: c.labor_force,
+      employmentRate: c.employment_rate,
+      employed: c.employed
+    };
+  });
+}
+
+// ------- 6. Map chart -------
+function mapChartOptions(seriesData) {
+  return {
+    tooltip: {
+      ...TOOLTIP_BASE,
+      trigger: 'item',
+      formatter: (params) => {
+        const d = params.data || {};
+        const name = d.countyName || params.name || '';
+        return '<div class="dh-tip">'
+          + '<div class="t-name">' + name + '</div>'
+          + '<div class="t-row"><span class="lbl">Unemployment rate</span><span class="val">' + fmtPct(d.value) + '</span></div>'
+          + '<div class="t-row"><span class="lbl">Labor force</span><span class="val">' + (d.laborForce || 0).toLocaleString() + '</span></div>'
+          + '</div>';
+      }
+    },
+    series: [{
+      type: 'map',
+      map: 'VA-counties',
+      roam: false,
+      selectedMode: 'single',
+      // Fill the card. Default ECharts geo padding leaves the map noticeably
+      // smaller than the Highcharts version; zoom 1.18 + tight layout pulls
+      // it visually in line.
+      zoom: 1.18,
+      layoutCenter: ['50%', '52%'],
+      layoutSize: '100%',
+      top: 0, bottom: 0, left: 0, right: 0,
+      itemStyle: { areaColor: '#f2f1ec', borderColor: '#ffffff', borderWidth: 0.5 },
+      emphasis: { label: { show: false }, itemStyle: { borderColor: BRAND_PRIMARY, borderWidth: 1 } },
+      select:   { label: { show: false }, itemStyle: { areaColor: BRAND_ACCENT, borderColor: BRAND_PRIMARY, borderWidth: 1.2 } },
+      label: { show: false },
+      animationDuration: 240,
+      animationDurationUpdate: 240,
+      data: seriesData
+    }]
+  };
+}
+
+// ------- 7. Trend (line) chart -------
+function sliceWindow(months, series, periodMonths) {
+  const start = Math.max(0, months.length - periodMonths);
+  return {
+    months: months.slice(start),
+    series: Object.fromEntries(
+      Object.entries(series).map(([k, v]) => [k, v.slice(start)])
+    )
+  };
+}
+
+function lineChartOptions(trend, selectedCounty) {
+  const base = sliceWindow(trend.months, trend.series, STATE.periodMonths);
+  const cats = base.months.map(m => {
+    const [y, mo] = m.split('-');
+    return SHORT_MONTHS[Number(mo) - 1] + (STATE.periodMonths >= 24 ? ' ’' + y.slice(2) : '');
+  });
+
+  // Per-county series only when a county is selected. trend.counties is
+  // indexed by hc_key in STATE.trendCountyMap.
+  let countySeries = null;
+  if (selectedCounty) {
+    const countyArr = STATE.trendCountyMap[selectedCounty.hcKey];
+    const sliced = countyArr ? countyArr.slice(Math.max(0, countyArr.length - STATE.periodMonths)) : null;
+    countySeries = { label: selectedCounty.name, data: sliced };
+    document.getElementById('legend-region-name').textContent = countySeries.label;
+  }
+
+  // Thin x-labels in the 36-month window (Jan/Jul markers), show every month
+  // in 6/12-month windows. ECharts' axisLabel.interval is "skip count", so
+  // interval=5 shows label[0], label[6], label[12]... — what we want for 36mo.
+  const interval = STATE.periodMonths >= 24 ? 5 : 0;
+
+  // Match the Highcharts spline marker style: filled colored disc with a thin
+  // white halo. ECharts defaults to 'emptyCircle' (hollow) which read as a
+  // different chart family side-by-side with the original.
+  const series = [];
+  if (countySeries) {
+    series.push({
+      name: countySeries.label,
+      type: 'line', smooth: true, connectNulls: false,
+      data: countySeries.data,
+      lineStyle: { width: 2.4, color: BRAND_ACCENT },
+      symbol: 'circle', symbolSize: 6,
+      itemStyle: { color: BRAND_ACCENT, borderColor: '#ffffff', borderWidth: 1.5 },
+      emphasis: { lineStyle: { width: 2.8 }, scale: 1.3 },
+      z: 3
+    });
+  }
+  series.push({
+    name: 'Virginia',
+    type: 'line', smooth: true,
+    data: base.series.virginia,
+    lineStyle: { width: 2.2, color: BRAND_PRIMARY },
+    symbol: 'circle', symbolSize: 6,
+    itemStyle: { color: BRAND_PRIMARY, borderColor: '#ffffff', borderWidth: 1.5 },
+    emphasis: { lineStyle: { width: 2.6 }, scale: 1.3 },
+    z: 2
+  });
+  series.push({
+    name: 'U.S. National',
+    type: 'line', smooth: true,
+    data: base.series.us_national,
+    lineStyle: { width: 1.8, color: INK_3, type: 'dashed' },
+    itemStyle: { color: INK_3 },
+    symbol: 'none',
+    z: 1
+  });
+
+  return {
+    grid: { left: 52, right: 8, top: 16, bottom: 32 },
+    xAxis: {
+      type: 'category',
+      data: cats,
+      boundaryGap: false,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#e9e7e0' } },
+      axisLabel: {
+        color: INK_3, fontSize: 11, fontWeight: 500,
+        interval: interval,
+        rotate: 0
+      }
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      interval: 1,
+      splitLine: { lineStyle: { color: '#f0eee9', type: 'dashed' } },
+      axisLabel: { formatter: '{value}%', color: INK_3, fontSize: 11, fontWeight: 500 },
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    tooltip: {
+      ...TOOLTIP_BASE,
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: 'rgba(0,53,149,0.18)' } },
+      formatter: (params) => {
+        if (!params.length) return '';
+        const month = params[0].axisValue;
+        const rows = params.map(p => {
+          const v = p.value == null ? '—' : Number(p.value).toFixed(1) + '%';
+          return '<div class="t-row">'
+            + '<span class="lbl"><span class="dot" style="background:' + p.color + '"></span>' + p.seriesName + '</span>'
+            + '<span class="val">' + v + '</span>'
+            + '</div>';
+        }).join('');
+        return '<div class="dh-tip"><div class="t-name">' + month + '</div>' + rows + '</div>';
+      }
+    },
+    series: series
+  };
+}
+
+// ------- 8. Industry (bar) chart -------
+function barChartOptions(industry, regionKey) {
+  const list = regionKey ? (STATE.industryRegionMap[regionKey] || []) : industry.statewide;
+  const sorted = [...list].sort((a, b) => b.jobs_added - a.jobs_added);
+  const total = sorted.reduce((s, d) => s + d.jobs_added, 0);
+
+  document.getElementById('bar-total').textContent = (total >= 0 ? '+' : '') + total.toLocaleString();
+  document.getElementById('bar-foot-label').textContent =
+    regionKey ? 'Top 5 sectors · ' + REGION_LABELS[regionKey] : 'Top 5 sectors · statewide';
+  document.getElementById('bar-sub').textContent =
+    'Net change, ' + industry.as_of_quarter + (regionKey ? ' · ' + REGION_LABELS[regionKey] : '');
+
+  const max = sorted.length ? sorted[0].jobs_added : 0;
+  const min = sorted.length ? sorted[sorted.length - 1].jobs_added : 0;
+  // Tight, data-driven axis: ~10% headroom past the largest bar.
+  const span = Math.max(1, max - Math.min(0, min));
+  const pad = span * 0.1;
+  const yMax = max + pad;
+  const yMin = min < 0 ? min - pad : 0;
+
+  const cats = sorted.map(d => d.sector);
+  // ECharts category axis renders the first entry at the bottom by default.
+  // yAxis.inverse: true flips it so the highest-jobs sector lands at the top
+  // (matches the Highcharts original).
+  const data = sorted.map(d => ({
+    value: d.jobs_added,
+    name: d.sector,
+    itemStyle: {
+      color: d.jobs_added < 0 ? '#b75049' : BRAND_PRIMARY,
+      borderRadius: [0, 4, 4, 0]
+    }
+  }));
+
+  return {
+    // containLabel:true tells ECharts to measure the actual width of the
+    // y-axis category labels and shrink the grid to just-fit, instead of
+    // reserving a fixed 144px regardless of label width. right:56 reserves
+    // room for the data labels on bar ends ("+15,684" etc.) — without it,
+    // labels render past the plot edge and get clipped to "+15".
+    grid: { left: 8, right: 56, top: 10, bottom: 24, containLabel: true },
+    xAxis: {
+      type: 'value',
+      min: yMin, max: yMax,
+      // Bar lengths + data labels already convey magnitude — the numeric
+      // tick scale at the bottom was visual noise and the negative tick
+      // ("-1.9K") collided with "0" at narrow widths. Hide it entirely.
+      splitLine: { show: false },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { show: false }
+    },
+    yAxis: {
+      type: 'category',
+      data: cats,
+      inverse: true,
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#1a1d1f', fontSize: 12, fontWeight: 600 }
+    },
+    tooltip: {
+      ...TOOLTIP_BASE,
+      trigger: 'item',
+      // confine: true keeps the tooltip box inside the chart container so it
+      // doesn't get clipped at the card's right edge for the widest bars.
+      confine: true,
+      formatter: (params) => {
+        const sign = params.value >= 0 ? '+' : '';
+        return '<div class="dh-tip">'
+          + '<div class="t-name">' + params.name + '</div>'
+          + '<div class="t-row"><span class="lbl">Net new jobs</span><span class="val">' + sign + Number(params.value).toLocaleString() + '</span></div>'
+          + '</div>';
+      }
+    },
+    series: [{
+      name: 'Net new jobs',
+      type: 'bar',
+      data: data,
+      barWidth: 22,
+      label: {
+        show: true,
+        position: 'right',
+        color: '#1a1d1f',
+        fontWeight: 600,
+        fontSize: 11.5,
+        formatter: (params) => {
+          const v = Number(params.value);
+          return (v >= 0 ? '+' : '') + v.toLocaleString();
+        }
+      },
+      // Reference line at 0 only when there are negative bars (matches the
+      // original which only emits the plotLine when yMin < 0). silent:true so
+      // the line is purely decorative — without it, hovering across the line
+      // fires a phantom "Net new jobs +0" tooltip in the gap between bars.
+      // ECharts' markLine defaults its lineStyle.type to 'dashed' — set it
+      // explicitly to solid 1px to match what the original Highcharts plotLine
+      // rendered.
+      markLine: yMin < 0 ? {
+        symbol: 'none',
+        silent: true,
+        lineStyle: { color: '#d8d5cc', width: 1, type: 'solid' },
+        label: { show: false },
+        data: [{ xAxis: 0 }]
+      } : undefined
+    }]
+  };
+}
+
+// ------- 9. Chart instantiation -------
+function initBoard() {
+  const d = STATE.data;
+  STATE.mapData = buildMapData(d.locality.counties);
+
+  // Drop loading placeholders.
+  document.querySelectorAll('.loading').forEach(el => el.remove());
+
+  STATE.charts.map  = echarts.init(document.getElementById('map-cell'));
+  STATE.charts.line = echarts.init(document.getElementById('line-cell'));
+  STATE.charts.bar  = echarts.init(document.getElementById('bar-cell'));
+
+  STATE.charts.map.setOption(mapChartOptions(STATE.mapData));
+  STATE.charts.line.setOption(lineChartOptions(d.trend, null));
+  STATE.charts.bar.setOption(barChartOptions(d.industry, null));
+
+  // ECharts' selectchanged fires after a click toggles a feature's select state
+  // (selectedMode: 'single' handles single-select semantics for us). Single
+  // source of truth for STATE — both map clicks and dropdown changes funnel
+  // through dispatchAction → selectchanged.
+  STATE.charts.map.on('selectchanged', (params) => {
+    const sel = params.selected && params.selected[0];
+    const idx = sel && sel.dataIndex && sel.dataIndex.length ? sel.dataIndex[0] : null;
+    if (idx == null) {
+      STATE.selectedHcKey  = null;
+      STATE.selectedRegion = null;
+      STATE.selectedCounty = null;
+    } else {
+      const d = STATE.mapData[idx];
+      STATE.selectedHcKey  = d.hcKey;
+      STATE.selectedRegion = d.region;
+      STATE.selectedCounty = { hcKey: d.hcKey, name: d.countyName, region: d.region, value: d.value };
+    }
+    applyFilter();
+  });
+
+  window.addEventListener('resize', () => {
+    Object.values(STATE.charts).forEach(c => { try { c && c.resize(); } catch(_) {} });
+  });
+}
+
+// ------- 10. Selection helpers -------
+function clearSelection() {
+  if (!STATE.charts.map) return;
+  if (STATE.selectedHcKey == null) return;
+  // Unselect the currently-selected feature. selectchanged handles STATE reset.
+  const idx = STATE.mapData.findIndex(d => d.hcKey === STATE.selectedHcKey);
+  if (idx >= 0) {
+    STATE.charts.map.dispatchAction({ type: 'unselect', seriesIndex: 0, dataIndex: idx });
+  } else {
+    // Stale STATE with no matching point — clean up directly.
+    STATE.selectedHcKey  = null;
+    STATE.selectedRegion = null;
+    STATE.selectedCounty = null;
+    applyFilter();
+  }
+}
+
+function selectCountyByKey(hcKey) {
+  if (!hcKey) { clearSelection(); return; }
+  if (!STATE.charts.map) return;
+  const idx = STATE.mapData.findIndex(d => d.hcKey === hcKey);
+  if (idx < 0) return;
+  STATE.charts.map.dispatchAction({ type: 'select', seriesIndex: 0, dataIndex: idx });
+}
+
+// ------- 11. County dropdown -------
+function populateCountySelect() {
+  const select = document.getElementById('county-select');
+  if (!select || !STATE.data) return;
+  const counties = [...STATE.data.locality.counties].sort((a, b) =>
+    a.areaname.localeCompare(b.areaname)
+  );
+  const frag = document.createDocumentFragment();
+  counties.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.hc_key;
+    opt.textContent = c.areaname;
+    frag.appendChild(opt);
+  });
+  select.appendChild(frag);
+  select.addEventListener('change', (e) => selectCountyByKey(e.target.value));
+}
+
+// ------- 12. Cross-filter + KPI county cell -------
+function applyFilter() {
+  const sel = STATE.selectedHcKey;
+  const bar = document.getElementById('filter-bar');
+
+  renderKpis(STATE.data.locality);
+
+  if (sel && STATE.selectedCounty) {
+    document.getElementById('filter-name').textContent = STATE.selectedCounty.name;
+    bar.classList.remove('empty');
+    document.body.classList.add('has-county-selected');
+
+    // County KPI: unemployment rate + delta vs Virginia.
+    const county = STATE.data.locality.counties.find(c => c.hc_key === sel);
+    const countyUn = county ? county.unemployed_rate : STATE.selectedCounty.value;
+    const stateUn  = STATE.data.locality.kpi.virginia.value;
+    const deltaVsVa = countyUn - stateUn;
+    document.getElementById('kpi-county-label').textContent = STATE.selectedCounty.name;
+    document.getElementById('kpi-county-value').innerHTML =
+      countyUn.toFixed(1) + '<span class="unit">%</span>';
+    const deltaEl = document.getElementById('kpi-county-delta');
+    const sign = deltaVsVa > 0 ? '+' : '';
+    const arrow = deltaVsVa >= 0 ? '▲' : '▼';
+    deltaEl.innerHTML = '<span class="arrow">' + arrow + '</span>' + sign + deltaVsVa.toFixed(1) + ' pts';
+    deltaEl.classList.toggle('down', deltaVsVa > 0);
+  } else {
+    bar.classList.add('empty');
+    document.body.classList.remove('has-county-selected');
+  }
+
+  // Keep the county dropdown in sync — map clicks set/clear it too.
+  const select = document.getElementById('county-select');
+  if (select) select.value = sel || '';
+
+  refreshLine();
+  refreshBar();
+}
+
+// notMerge:true is the ECharts analog of Highcharts' update(..., oneToOne:true).
+// Critical when the series array length changes (e.g. county line shown/hidden).
+function refreshLine() {
+  if (!STATE.charts.line) return;
+  STATE.charts.line.setOption(lineChartOptions(STATE.data.trend, STATE.selectedCounty), true);
+}
+
+function refreshBar() {
+  if (!STATE.charts.bar) return;
+  STATE.charts.bar.setOption(barChartOptions(STATE.data.industry, STATE.selectedRegion), true);
+}
+
+function wireControls() {
+  document.getElementById('filter-clear').addEventListener('click', clearSelection);
+}
+
+// ------- 13. Boot -------
+async function boot() {
+  try {
+    const [locality, trend, industry, vaGeo] = await Promise.all([
+      fetch('data/employment_by_locality.json').then(r => r.json()),
+      fetch('data/unemployment_trend.json').then(r => r.json()),
+      fetch('data/jobs_by_industry.json').then(r => r.json()),
+      loadVAGeoJson()
+    ]);
+    STATE.data = { locality, trend, industry };
+    STATE.trendCountyMap    = Object.fromEntries((trend.counties || []).map(c => [c.hc_key, c.data]));
+    STATE.industryRegionMap = Object.fromEntries((industry.regions || []).map(r => [r.key, r.sectors]));
+    REGION_LABELS = buildRegionLabels(locality, industry);
+    disambiguateCountyNames();
+
+    // Register the VA-counties map once GeoJSON is in hand. Done here (not in
+    // loadVAGeoJson) so registration sits next to chart instantiation; easier
+    // to reason about timing.
+    echarts.registerMap('VA-counties', vaGeo);
+
+    renderKpis(locality);
+    initBoard();
+    wireControls();
+    populateCountySelect();
+  } catch (err) {
+    console.error('Dashboard load failed:', err);
+    document.querySelectorAll('.loading').forEach(el => {
+      el.textContent = 'Failed to load data — check console';
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+
+</body>
+</html>
