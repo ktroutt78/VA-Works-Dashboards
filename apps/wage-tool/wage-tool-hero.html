@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wage Comparison Tool · Virginia Works</title>
+  <title>Wage Comparison Tool · Hero search variant · Virginia Works</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -341,6 +341,97 @@
       transition: background .12s, color .12s;
     }
     .demo-chip:hover { background: var(--accent); color: #fff; }
+
+    /* =========================================================================
+       HERO SEARCH variant — only active while .frame.no-data is true.
+       Transforms the empty state into a centered, single-search experience:
+       hides the location/salary/cmp fields, enlarges the job input, drops in a
+       serif tagline above. Reverts automatically once a job is picked because
+       the .no-data class is removed in syncTopControls.
+       ========================================================================= */
+    .frame.no-data .controls {
+      padding: 56px 24px 32px;
+      background: var(--shell);
+      border-bottom: 0;
+      position: relative;
+    }
+    .frame.no-data .controls::before {
+      content: 'What\27s your job title?';
+      display: block;
+      font-family: var(--serif);
+      font-size: 26px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--ink);
+      margin-bottom: 6px;
+      letter-spacing: -0.2px;
+    }
+    .frame.no-data .controls::after {
+      content: 'Type or pick below to compare wages by occupation and area.';
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .frame.no-data .control-grid {
+      grid-template-columns: 1fr;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    /* Hide every cell except the job field (which is always the first cell). */
+    .frame.no-data .control-grid > div:not(.job-field) { display: none; }
+    /* Hide the secondary controls row entirely while we're in hero mode. */
+    .frame.no-data .cmp-controls { display: none !important; }
+
+    /* Enlarged search field. Geometry intentionally separate from --field-h so
+       the hero state doesn't pollute the main field metrics. */
+    .frame.no-data .field-label {
+      text-align: center; font-size: 11px;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 6px; height: auto; line-height: 1.2;
+    }
+    .frame.no-data .field-input.job-input {
+      height: 48px !important;
+      min-height: 48px !important;
+      max-height: 48px !important;
+      font-size: 14px;
+      line-height: 46px;
+      padding: 0 40px 0 16px;
+      background-position: right 14px center;
+      background-size: 16px 16px;
+    }
+    /* Re-anchor the helper + dropdown so they land below the taller input. */
+    .frame.no-data .job-helper,
+    .frame.no-data .job-suggest {
+      top: calc(11px + 6px + 48px + 4px);
+      font-size: 13px;
+    }
+    .frame.no-data .job-suggest li { padding: 8px 12px; }
+
+    /* Empty card carries only the chips in hero mode — heading + arrow live
+       up top now, so suppress them here to avoid duplicate prompts. */
+    .frame.no-data .empty-card {
+      border: 0; background: transparent;
+      padding: 4px 20px 16px;
+    }
+    .frame.no-data .empty-arrow,
+    .frame.no-data .empty-heading { display: none; }
+    .frame.no-data .empty-sub { margin-bottom: 12px; }
+
+    /* Tighten the bottom action row in hero mode — only the source-note shows. */
+    .frame.no-data .action-row { justify-content: center; }
+
+    /* Mobile tweaks for hero mode — smaller heading, less padding. */
+    @media (max-width: 560px) {
+      .frame.no-data .controls { padding: 32px 16px 20px; }
+      .frame.no-data .controls::before { font-size: 22px; }
+      .frame.no-data .controls::after { font-size: 12px; margin-bottom: 18px; }
+      .frame.no-data .field-input.job-input { height: 44px !important; min-height: 44px !important; max-height: 44px !important; line-height: 42px; font-size: 13px; }
+      .frame.no-data .job-helper,
+      .frame.no-data .job-suggest { top: calc(11px + 6px + 44px + 4px); }
+    }
     /* Reset link inside the "Comparison salary" label — visible only when the
        user has overridden the auto-follow default. */
     .cmp-salary-reset {
