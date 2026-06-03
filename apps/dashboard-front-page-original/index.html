@@ -230,6 +230,25 @@ body {
   color: var(--ink-3); font-size: 12px;
 }
 
+/* Legacy banner — this Highcharts build is the backup; production has moved
+   to the ECharts variant. Sits above .page so it's the very first thing
+   visible. Yellow keeps it visible but not alarming. */
+.legacy-banner {
+  background: #fff4cc;
+  border-bottom: 1px solid #d6b738;
+  color: #5a4400;
+  padding: 10px 18px;
+  font: 500 13px/1.4 'Public Sans', system-ui, sans-serif;
+  text-align: center;
+}
+.legacy-banner strong { color: #3d2e00; font-weight: 700; }
+.legacy-banner a {
+  color: #003595; font-weight: 600;
+  text-decoration: none; border-bottom: 1px solid rgba(0,53,149,0.35);
+}
+.legacy-banner a:hover { border-bottom-color: #003595; }
+.legacy-banner .sep { color: #b59a2b; margin: 0 8px; }
+
 
 /* Hide the Dashboards GUI root — we render into our own cells */
 #board-root { display: none; }
@@ -335,6 +354,12 @@ body {
 </style>
 </head>
 <body>
+
+<div class="legacy-banner">
+  <strong>Legacy version (Highcharts)</strong>
+  <span class="sep">·</span>
+  Current production: <a href="https://dashboard-front-page-echarts.vercel.app">dashboard-front-page-echarts.vercel.app</a>
+</div>
 
 <div class="page">
 
