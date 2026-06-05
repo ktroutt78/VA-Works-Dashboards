@@ -606,12 +606,30 @@
         options: state.areas.map(a => ({ value: a.id, text: a.label })),
       });
 
+      /* Family dropdown — searchable by occupation title + O*NET alias.
+         Each option's `aliases` field carries every job label + alternate
+         title within the family, so typing "nurse" or "RN" surfaces the
+         29-1000 family because "Registered Nurses" + its aliases live in
+         29-1000's search blob. Tom Select displays `text`, but its
+         `searchField` matches across both `text` and `aliases`. */
       window.__familySel = new TomSelect("#family-select", {
         ...tsOpts,
+        searchField: ['text', 'aliases'],
         options: state.families.map(f => ({
           value: f.code,
           text: `${f.code} · ${f.label}`,
+          aliases: f.jobs.flatMap(j => [j.label, ...(j.aliases || [])]).join(' | '),
         })),
+        render: {
+          option: (data, escape) => {
+            return `<div>
+              <div>${escape(data.text)}</div>
+              <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
+                ${escape(data.aliases.split(' | ').slice(0, 6).join(' · '))}${data.aliases.split(' | ').length > 6 ? ' …' : ''}
+              </div>
+            </div>`;
+          },
+        },
       });
 
       /* Defaults: pick a family with the most occupations so the demo
@@ -1050,7 +1068,7 @@
     ────────────────────────────────────────────────────────────────────── */
     (async function boot() {
       try {
-        const [wages, industries, socTitles] = await Promise.all([
+        const [wages, industries, socTitles, socAliases] = await Promise.all([
           fetch('./data/wages.json').then(r => r.json()),
           fetch('./data/industries.json').then(r => r.json()),
           /* SOC-6 occupation-name lookup. WID 3.0 in VA doesn't expose OccName
@@ -1059,12 +1077,18 @@
              docs/client-tickets/WID-LOAD-GAP-OccName.md. Soft-fail if the
              file is missing — labels just stay as SOC codes. */
           fetch('./data/soc-titles.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+          /* O*NET alternate-titles per SOC. Powers the family dropdown's
+             alias-aware search (type "nurse" → find 29-1000 family). 1MB
+             file, lazy-cacheable. Soft-fail leaves the dropdown to its
+             literal-text search behavior. */
+          fetch('./data/soc-aliases.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
         ]);
         /* Apply SOC titles where the label is still a SOC code (i.e. the
-           code looks like the label). */
+           code looks like the label). Attach aliases for the family search. */
         for (const j of wages.jobs) {
           const title = socTitles[j.soc_code];
           if (title && (j.label === j.soc_code || !j.label)) j.label = title;
+          j.aliases = socAliases[j.soc_code] || [];
         }
         const state = buildState(wages, industries);
         window.__STATE = state;
