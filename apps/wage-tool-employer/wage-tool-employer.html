@@ -64,12 +64,60 @@
       padding: 5px 12px; color: #dfe4ec; font-size: 11px;
       letter-spacing: 1.2px; text-transform: uppercase;
       cursor: pointer;
+      background: transparent; font-family: inherit;
+      transition: background .12s, color .12s, border-color .12s;
     }
+    .header-guide:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
+    .header-guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
     .header-guide .q {
       width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5);
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 9px; font-style: italic;
     }
+
+    /* ─── Guide modal ────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(20,25,38,0.55);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+      z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      background: #fff; width: 560px; max-width: 100%; max-height: calc(100vh - 48px);
+      border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      overflow: auto; transform: translateY(8px); transition: transform .18s;
+    }
+    .modal-backdrop.show .modal-card { transform: translateY(0); }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 4px; gap: 12px;
+    }
+    .modal-head h2 { margin: 0; font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--ink); }
+    .modal-close {
+      background: transparent; border: none; cursor: pointer; color: var(--muted);
+      width: 30px; height: 30px; font-size: 22px; line-height: 1; border-radius: 4px;
+    }
+    .modal-close:hover { background: #f1f3f7; color: var(--ink); }
+    .modal-body { padding: 8px 24px 24px; font-size: 13px; line-height: 1.55; color: var(--ink); }
+    .modal-body p { margin: 0 0 10px; color: #3a4153; }
+    .modal-body h3 {
+      margin: 18px 0 6px; font-family: var(--serif); font-size: 14.5px;
+      font-weight: 600; color: var(--ink);
+    }
+    .modal-body h3:first-child { margin-top: 6px; }
+    .help-illustration {
+      display: block; width: 100%; height: auto; margin: 10px 0 4px;
+      background: #f7f5f0; border-radius: 6px; border: 1px solid var(--card-line); padding: 8px 0;
+    }
+    .help-bullets { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+    .help-bullets li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+    .help-bullets .swatch {
+      display: inline-block; width: 18px; height: 12px; border-radius: 2px; margin-top: 3px;
+    }
+    .help-bullets .swatch.tick    { width: 4px; height: 16px; margin-left: 7px; }
+    .help-bullets .swatch.diamond { width: 11px; height: 11px; transform: rotate(45deg); margin: 4px 0 0 4px; box-shadow: 0 0 0 1.5px #fff inset; }
+    .help-bullets b { color: var(--ink); }
+    .help-footnote { font-size: 11px; color: var(--muted); margin-top: 12px !important; font-style: italic; }
 
     /* ─── Controls (two rows) ────────────────────────────────────────── */
     .controls { padding: 14px 20px 12px; display: grid; gap: 14px; }
@@ -392,7 +440,9 @@
           <div class="header-title">Wage Comparison Tool</div>
           <div class="header-sub">Build a competitive pay band · BLS OEWS + QCEW</div>
         </div>
-        <div class="header-guide"><span class="q">?</span>Guide</div>
+        <button id="help-btn" class="header-guide" type="button" aria-haspopup="dialog" aria-controls="help-modal" title="How to read this page">
+          <span class="q">?</span>Guide
+        </button>
       </div>
 
       <!-- Controls row 1: Industry + Region (drive only the summary band below) -->
@@ -511,6 +561,68 @@
 
     </div><!-- /.frame -->
   </div><!-- /.page-wrap -->
+
+  <div id="help-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="help-title">How to read this page</h2>
+        <button class="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p>Three sections work together: the Industry summary band, the pay-band chart for a job family, and a target-percentile slider that anchors what a competitive wage looks like for the role.</p>
+
+        <h3>Industry summary band</h3>
+        <p>Mean wage, employment, and establishment count for the selected <b>NAICS-2 industry</b> in the chosen <b>region</b>. Source: BLS QCEW. The Region selector drives this band's numbers. <b>Industry never filters the pay percentiles below</b> — BLS suppresses industry × occupation detail, so the wage bars are always rolled up across all industries.</p>
+
+        <h3>Pay-band chart</h3>
+        <svg class="help-illustration" viewBox="0 0 480 170" role="img" aria-label="Annotated example of a percentile bar">
+          <g transform="translate(40, 65)">
+            <rect x="0"   y="6" width="400" height="28" rx="3" fill="#aab9d6"/>
+            <rect x="100" y="9" width="200" height="22" rx="2" fill="#34537d"/>
+            <line x1="180" y1="0" x2="180" y2="40" stroke="#11151c" stroke-width="3" stroke-linecap="square"/>
+            <polygon points="260,12 269,20 260,28 251,20" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="60"  y1="65" x2="60"  y2="40" stroke="#5a6376" stroke-width="1"/>
+            <text x="62"  y="32" font-weight="600">10th–90th percentile</text>
+            <text x="62"  y="46" fill="#5a6376">the widest band — 80% of workers</text>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="280" y1="65" x2="280" y2="40" stroke="#5a6376" stroke-width="1"/>
+            <text x="282" y="32" font-weight="600">25th–75th percentile</text>
+            <text x="282" y="46" fill="#5a6376">the middle 50% — most workers</text>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="220" y1="105" x2="220" y2="130" stroke="#5a6376" stroke-width="1"/>
+            <text x="222" y="146" font-weight="600">Median</text>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="300" y1="105" x2="380" y2="130" stroke="#b5392b" stroke-width="1"/>
+            <text x="378" y="146" font-weight="600" fill="#b5392b">Your target</text>
+          </g>
+        </svg>
+
+        <ul class="help-bullets">
+          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Outer light blue band</b> — 10th to 90th percentile. The widest spread of wages for this occupation; covers entry-level through senior workers.</div></li>
+          <li><span class="swatch" style="background:#34537d"></span><div><b>Inner dark blue band</b> — 25th to 75th percentile. Most workers (the middle 50%) earn somewhere in here.</div></li>
+          <li><span class="swatch tick" style="background:#11151c"></span><div><b>Black tick</b> — the median. Half of workers earn less, half earn more.</div></li>
+          <li><span class="swatch diamond" style="background:#b5392b"></span><div><b>Red diamond</b> — your target percentile, set by the slider. Hover any row to see the dollar value and hourly equivalent.</div></li>
+        </ul>
+
+        <h3>How Region affects the page</h3>
+        <p>The Region selector controls two things:</p>
+        <ul class="help-bullets">
+          <li><span class="swatch" style="background:#34537d"></span><div><b>Industry summary numbers</b> — mean wage, employment, and establishments shift to the selected LWDA (or Virginia statewide).</div></li>
+          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Pay-band rows</b> — when BLS publishes OEWS data at the LWDA level for an occupation, the bar reflects that region's wages. For occupations BLS <b>suppresses</b> at the LWDA level (too few employers / privacy), the row falls back to Virginia statewide values, marked with a small <code>*</code> after the title and "VA statewide" sub-label.</div></li>
+        </ul>
+
+        <h3>Target percentile slider</h3>
+        <p>Drag the slider to set where the red diamond sits on each row — your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
+
+        <p class="help-footnote">Data: BLS Occupational Employment and Wage Statistics (OEWS) for the percentile bars; BLS Quarterly Census of Employment and Wages (QCEW) for the industry summary. Virginia LWDAs from the Workforce Information Database (WID).</p>
+      </div>
+    </div>
+  </div>
 
   <script>
     /* ──────────────────────────────────────────────────────────────────
@@ -1096,6 +1208,23 @@
     }
 
     /* ──────────────────────────────────────────────────────────────────
+       Guide modal — open via Guide button, close via X / backdrop / Esc.
+    ────────────────────────────────────────────────────────────────────── */
+    function wireGuideModal() {
+      const modal = document.getElementById('help-modal');
+      const btn   = document.getElementById('help-btn');
+      const close = modal.querySelector('.modal-close');
+      const open  = () => { modal.classList.add('show');    modal.setAttribute('aria-hidden', 'false'); };
+      const hide  = () => { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true');  };
+      btn.addEventListener('click', open);
+      close.addEventListener('click', hide);
+      modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) hide();
+      });
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
        Boot
     ────────────────────────────────────────────────────────────────────── */
     (async function boot() {
@@ -1126,6 +1255,7 @@
         window.__STATE = state;
         populateControls(state);
         wireHandlers(state);
+        wireGuideModal();
         render(state);
         console.log('Loaded:',
           wages.jobs.length, 'jobs in',
