@@ -1050,10 +1050,22 @@
     ────────────────────────────────────────────────────────────────────── */
     (async function boot() {
       try {
-        const [wages, industries] = await Promise.all([
+        const [wages, industries, socTitles] = await Promise.all([
           fetch('./data/wages.json').then(r => r.json()),
           fetch('./data/industries.json').then(r => r.json()),
+          /* SOC-6 occupation-name lookup. WID 3.0 in VA doesn't expose OccName
+             on IOWAGE, so SQL emits soc_code as the label placeholder. Patch
+             those at render time from a static BLS SOC-derived table. See
+             docs/client-tickets/WID-LOAD-GAP-OccName.md. Soft-fail if the
+             file is missing — labels just stay as SOC codes. */
+          fetch('./data/soc-titles.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
         ]);
+        /* Apply SOC titles where the label is still a SOC code (i.e. the
+           code looks like the label). */
+        for (const j of wages.jobs) {
+          const title = socTitles[j.soc_code];
+          if (title && (j.label === j.soc_code || !j.label)) j.label = title;
+        }
         const state = buildState(wages, industries);
         window.__STATE = state;
         populateControls(state);
