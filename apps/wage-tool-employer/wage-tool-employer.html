@@ -790,6 +790,44 @@
 
       chart.setOption({
         animation: false,
+        tooltip: {
+          appendToBody: true,                       /* escape the card's overflow:hidden */
+          trigger: 'item',
+          confine: true,
+          padding: [8, 10],
+          backgroundColor: 'rgba(255,255,255,0.97)',
+          borderColor: C.line,
+          borderWidth: 1,
+          textStyle: { color: C.ink, fontSize: 12, fontFamily: 'Inter, system-ui, sans-serif' },
+          extraCssText: 'box-shadow: 0 6px 18px rgba(0,0,0,0.10); border-radius: 6px;',
+          formatter: (params) => {
+            const idx = params.data[0];
+            const r = rows[idx];
+            const fmt  = v => (v == null || !isFinite(v)) ? '—' : '$' + Math.round(v).toLocaleString();
+            const fmtH = v => (v == null || !isFinite(v)) ? '—' : '$' + v.toFixed(2);
+            const pct  = state.sel.targetPct;
+            const a = r.annual, h = r.hourly;
+            const provLabel = r.provenance === 'statewide_fallback'
+              ? ' · <span style="color:' + C.muted + '">VA statewide</span>'
+              : (r.provenance === 'statewide'
+                  ? ' · <span style="color:' + C.muted + '">VA</span>'
+                  : '');
+            const hourlyLine = (h.p50 != null)
+              ? '<span style="color:' + C.muted + '">' + fmtH(h.p25) + '–' + fmtH(h.p75) + '/hr at P25–75</span>'
+              : '';
+            return [
+              '<div style="font-weight:600; font-size:12.5px; margin-bottom:6px;">'
+                + (r.job.label || r.job.soc_code) + provLabel + '</div>',
+              '<b>Median</b> · ' + fmt(a.p50),
+              '<b>P25–75</b> · ' + fmt(a.p25) + '–' + fmt(a.p75),
+              '<b>P10–90</b> · ' + fmt(a.p10) + '–' + fmt(a.p90),
+              '<b style="color:' + C.you + '">Your target</b> · '
+                + fmt(r.target_annual) + ' &nbsp;<span style="color:' + C.muted + '">('
+                + pct + 'th pct · ' + fmtH(r.target_hourly) + '/hr)</span>',
+              hourlyLine,
+            ].filter(Boolean).join('<br/>');
+          },
+        },
         grid: { left: 230, right: 100, top: TOP_PAD, bottom: BOT_PAD, containLabel: false },
         xAxis: {
           /* Bottom axis treatment ported from apps/wage-tool/wage-tool.html mkAxis()
