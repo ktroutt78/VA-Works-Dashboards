@@ -606,14 +606,15 @@
         options: state.areas.map(a => ({ value: a.id, text: a.label })),
       });
 
-      /* Family dropdown — clean rows showing just "code · label". Searchable
-         by occupation title + O*NET alias under the hood: each option's
-         hidden `aliases` field carries every job label + alternate title
-         within the family, and `searchField` includes it. So typing "nurse"
-         or "RN" still filters to the 29-1000 family without showing the
-         underlying occupation list as visual noise. */
+      /* Family dropdown — combobox with the search input MOVED into the
+         dropdown panel (dropdown_input plugin). The main control shows just
+         the selected family name cleanly; clicking opens the panel where a
+         dedicated search field filters across both family labels and the
+         hidden alias blob (every job title + O*NET alternate name within
+         the family). Type "nurse" → 29-1000 surfaces. */
       window.__familySel = new TomSelect("#family-select", {
         ...tsOpts,
+        plugins: ['dropdown_input'],
         searchField: ['text', 'aliases'],
         options: state.families.map(f => ({
           value: f.code,
