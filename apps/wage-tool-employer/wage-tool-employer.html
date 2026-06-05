@@ -106,8 +106,8 @@
     }
     .modal-body h3:first-child { margin-top: 6px; }
     .help-illustration {
-      display: block; width: 100%; height: auto; margin: 10px 0 4px;
-      background: #f7f5f0; border-radius: 6px; border: 1px solid var(--card-line); padding: 8px 0;
+      display: block; width: 100%; height: auto; margin: 8px 0 4px;
+      background: #f7f5f0; border-radius: 6px; border: 1px solid var(--card-line); padding: 4px 0;
     }
     .help-bullets { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
     .help-bullets li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
@@ -575,30 +575,30 @@
         <p>Mean wage, employment, and establishment count for the selected <b>NAICS-2 industry</b> in the chosen <b>region</b>. Source: BLS QCEW. The Region selector drives this band's numbers. <b>Industry never filters the pay percentiles below</b> — BLS suppresses industry × occupation detail, so the wage bars are always rolled up across all industries.</p>
 
         <h3>Pay-band chart</h3>
-        <svg class="help-illustration" viewBox="0 0 480 170" role="img" aria-label="Annotated example of a percentile bar">
-          <g transform="translate(40, 65)">
+        <svg class="help-illustration" viewBox="0 0 480 108" role="img" aria-label="Annotated example of a percentile bar">
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <text x="40" y="13" font-weight="600">10th–90th percentile</text>
+            <text x="40" y="26" fill="#5a6376">the widest band — 80% of workers</text>
+            <line x1="60" y1="32" x2="60" y2="42" stroke="#5a6376" stroke-width="1"/>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <text x="260" y="13" font-weight="600">25th–75th percentile</text>
+            <text x="260" y="26" fill="#5a6376">the middle 50% — most workers</text>
+            <line x1="280" y1="32" x2="280" y2="42" stroke="#5a6376" stroke-width="1"/>
+          </g>
+          <g transform="translate(40, 42)">
             <rect x="0"   y="6" width="400" height="28" rx="3" fill="#aab9d6"/>
             <rect x="100" y="9" width="200" height="22" rx="2" fill="#34537d"/>
             <line x1="180" y1="0" x2="180" y2="40" stroke="#11151c" stroke-width="3" stroke-linecap="square"/>
             <polygon points="260,12 269,20 260,28 251,20" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
           </g>
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="60"  y1="65" x2="60"  y2="40" stroke="#5a6376" stroke-width="1"/>
-            <text x="62"  y="32" font-weight="600">10th–90th percentile</text>
-            <text x="62"  y="46" fill="#5a6376">the widest band — 80% of workers</text>
+            <line x1="220" y1="82" x2="220" y2="91" stroke="#5a6376" stroke-width="1"/>
+            <text x="222" y="103" font-weight="600">Median</text>
           </g>
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="280" y1="65" x2="280" y2="40" stroke="#5a6376" stroke-width="1"/>
-            <text x="282" y="32" font-weight="600">25th–75th percentile</text>
-            <text x="282" y="46" fill="#5a6376">the middle 50% — most workers</text>
-          </g>
-          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="220" y1="105" x2="220" y2="130" stroke="#5a6376" stroke-width="1"/>
-            <text x="222" y="146" font-weight="600">Median</text>
-          </g>
-          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="300" y1="105" x2="380" y2="130" stroke="#b5392b" stroke-width="1"/>
-            <text x="378" y="146" font-weight="600" fill="#b5392b">Your target</text>
+            <line x1="300" y1="82" x2="368" y2="93" stroke="#b5392b" stroke-width="1"/>
+            <text x="370" y="103" font-weight="600" fill="#b5392b">Your target</text>
           </g>
         </svg>
 
