@@ -123,6 +123,11 @@
     .help-list b { color: var(--ink); }
     .help-footnote { font-size: 11px; color: var(--muted); margin-top: 12px !important; font-style: italic; }
 
+    /* Tom Select dropdown_input — keep the search box within the dropdown's
+       width instead of overflowing past the option rows. */
+    .ts-dropdown .dropdown-input-wrap { padding: 8px; box-sizing: border-box; }
+    .ts-dropdown .dropdown-input { width: 100%; box-sizing: border-box; }
+
     /* ─── Controls (two rows) ────────────────────────────────────────── */
     .controls { padding: 14px 20px 12px; display: grid; gap: 14px; }
     .controls-1, .controls-2 { grid-template-columns: 1.7fr 1fr; }
@@ -576,7 +581,35 @@
         <p>This tool combines four pieces: an Industry summary band, the Region selector that drives both summary and pay bands, a Target percentile slider, and the pay-band chart for a job family.</p>
 
         <h3>Industry summary band</h3>
-        <p>Mean wage, employment, and establishment count for the selected <b>NAICS-2 industry</b> in the chosen <b>region</b>. Source: BLS QCEW. The Region selector drives this band's numbers. <b>Industry never filters the pay percentiles below</b> — BLS suppresses industry × occupation detail, so the wage bars are always rolled up across all industries.</p>
+        <svg class="help-illustration" viewBox="0 0 700 130" role="img" aria-label="Annotated industry summary band">
+          <rect x="2" y="2" width="696" height="64" rx="4" fill="#eef3f9" stroke="#dee5ef" stroke-width="1"/>
+          <text x="20" y="26" font-family="-apple-system, system-ui, sans-serif" font-size="10" fill="#5a6376" letter-spacing="0.8" font-weight="600">NAICS 62</text>
+          <text x="20" y="46" font-family="Source Serif Pro, Georgia, serif" font-size="14" font-weight="600" fill="#11151c">Health Care &amp; Social Assistance</text>
+          <text x="260" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">AVG WAGE</text>
+          <text x="260" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">$69,785</text>
+          <text x="260" y="58" font-family="-apple-system, system-ui, sans-serif" font-size="10" fill="#6b7280" text-anchor="middle">$33.55/hr</text>
+          <text x="425" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">EMPLOYMENT</text>
+          <text x="425" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">451,657</text>
+          <text x="590" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">ESTABLISHMENTS</text>
+          <text x="590" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">42,069</text>
+          <g font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#5a6376">
+            <line x1="120" y1="72" x2="120" y2="88" stroke="#5a6376" stroke-width="1"/>
+            <text x="6" y="102">NAICS-2 sector</text>
+          </g>
+          <g font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#5a6376">
+            <line x1="260" y1="72" x2="260" y2="88" stroke="#5a6376" stroke-width="1"/>
+            <text x="210" y="102">Mean annual + hourly</text>
+          </g>
+          <g font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#5a6376">
+            <line x1="425" y1="72" x2="425" y2="88" stroke="#5a6376" stroke-width="1"/>
+            <text x="380" y="102">Workers in sector</text>
+          </g>
+          <g font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#5a6376">
+            <line x1="590" y1="72" x2="590" y2="88" stroke="#5a6376" stroke-width="1"/>
+            <text x="540" y="102">Number of employers</text>
+          </g>
+        </svg>
+        <p>BLS QCEW data for the selected sector and region. <b>Industry doesn't filter the pay bands below</b> — BLS suppresses industry × occupation detail, so all wage percentiles are rolled up across industries.</p>
 
         <h3>How Region affects the page</h3>
         <p>The Region selector controls two things:</p>
@@ -589,30 +622,45 @@
         <p>Drag the slider to set where the red diamond sits on each row — your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
 
         <h3>Pay-band chart</h3>
-        <svg class="help-illustration" viewBox="0 0 480 108" role="img" aria-label="Annotated example of a percentile bar">
+        <svg class="help-illustration" viewBox="0 0 700 150" role="img" aria-label="Annotated example row matching what appears on the page">
+          <!-- Top callouts: light + dark band labels -->
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <text x="40" y="13" font-weight="600">10th–90th percentile</text>
-            <text x="40" y="26" fill="#5a6376">the widest band — 80% of workers</text>
-            <line x1="60" y1="32" x2="60" y2="42" stroke="#5a6376" stroke-width="1"/>
+            <text x="200" y="14" font-weight="600">10th–90th percentile</text>
+            <text x="200" y="26" fill="#5a6376">80% of workers</text>
+            <line x1="240" y1="32" x2="240" y2="60" stroke="#5a6376" stroke-width="1"/>
           </g>
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <text x="260" y="13" font-weight="600">25th–75th percentile</text>
-            <text x="260" y="26" fill="#5a6376">the middle 50% — most workers</text>
-            <line x1="280" y1="32" x2="280" y2="42" stroke="#5a6376" stroke-width="1"/>
+            <text x="400" y="14" font-weight="600">25th–75th percentile</text>
+            <text x="400" y="26" fill="#5a6376">middle 50%</text>
+            <line x1="430" y1="32" x2="430" y2="60" stroke="#5a6376" stroke-width="1"/>
           </g>
-          <g transform="translate(40, 42)">
-            <rect x="0"   y="6" width="400" height="28" rx="3" fill="#aab9d6"/>
-            <rect x="100" y="9" width="200" height="22" rx="2" fill="#34537d"/>
-            <line x1="180" y1="0" x2="180" y2="40" stroke="#11151c" stroke-width="3" stroke-linecap="square"/>
-            <polygon points="260,12 269,20 260,28 251,20" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
+          <!-- Row: occupation label (left), bar (middle), $ figures (right) -->
+          <text x="14" y="76" font-family="-apple-system, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#11151c">Library Technicians</text>
+          <text x="14" y="89" font-family="-apple-system, system-ui, sans-serif" font-size="10.5" fill="#6b7280">2,580 jobs · Virginia</text>
+          <g transform="translate(170, 58)">
+            <rect x="0"   y="6" width="400" height="20" rx="3" fill="#aab9d6"/>
+            <rect x="100" y="9" width="200" height="14" rx="2" fill="#34537d"/>
+            <line x1="170" y1="0" x2="170" y2="32" stroke="#11151c" stroke-width="2.5" stroke-linecap="square"/>
+            <polygon points="240,9 248,16 240,23 232,16" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
+          </g>
+          <text x="600" y="76" font-family="-apple-system, system-ui, sans-serif" font-size="13" font-weight="600" fill="#b5392b">$48,000</text>
+          <text x="600" y="89" font-family="-apple-system, system-ui, sans-serif" font-size="10.5" fill="#6b7280">$23.19/hr</text>
+          <!-- Bottom callouts -->
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="65" y1="96" x2="65" y2="116" stroke="#5a6376" stroke-width="1"/>
+            <text x="6" y="130" fill="#5a6376">Occupation · jobs · region</text>
           </g>
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="220" y1="82" x2="220" y2="91" stroke="#5a6376" stroke-width="1"/>
-            <text x="222" y="103" font-weight="600">Median</text>
+            <line x1="340" y1="96" x2="340" y2="116" stroke="#5a6376" stroke-width="1"/>
+            <text x="318" y="130" font-weight="600">Median</text>
           </g>
           <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
-            <line x1="300" y1="82" x2="368" y2="93" stroke="#b5392b" stroke-width="1"/>
-            <text x="370" y="103" font-weight="600" fill="#b5392b">Your target</text>
+            <line x1="410" y1="96" x2="455" y2="116" stroke="#b5392b" stroke-width="1"/>
+            <text x="430" y="130" font-weight="600" fill="#b5392b">Your target</text>
+          </g>
+          <g fill="#3a4153" font-family="-apple-system, system-ui, sans-serif" font-size="11">
+            <line x1="625" y1="96" x2="625" y2="116" stroke="#5a6376" stroke-width="1"/>
+            <text x="555" y="130" fill="#5a6376">Annual · native hourly at target %</text>
           </g>
         </svg>
 
