@@ -117,6 +117,10 @@
     .help-bullets .swatch.tick    { width: 4px; height: 16px; margin-left: 7px; }
     .help-bullets .swatch.diamond { width: 11px; height: 11px; transform: rotate(45deg); margin: 4px 0 0 4px; box-shadow: 0 0 0 1.5px #fff inset; }
     .help-bullets b { color: var(--ink); }
+    /* Simple disc-bullet list for non-legend content (Region/Slider). */
+    .help-list { padding: 0 0 0 22px; margin: 6px 0 4px; display: grid; gap: 6px; color: #3a4153; }
+    .help-list li { padding-left: 2px; }
+    .help-list b { color: var(--ink); }
     .help-footnote { font-size: 11px; color: var(--muted); margin-top: 12px !important; font-style: italic; }
 
     /* ─── Controls (two rows) ────────────────────────────────────────── */
@@ -569,10 +573,20 @@
         <button class="modal-close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
-        <p>Three sections work together: the Industry summary band, the pay-band chart for a job family, and a target-percentile slider that anchors what a competitive wage looks like for the role.</p>
+        <p>This tool combines four pieces: an Industry summary band, the Region selector that drives both summary and pay bands, a Target percentile slider, and the pay-band chart for a job family.</p>
 
         <h3>Industry summary band</h3>
         <p>Mean wage, employment, and establishment count for the selected <b>NAICS-2 industry</b> in the chosen <b>region</b>. Source: BLS QCEW. The Region selector drives this band's numbers. <b>Industry never filters the pay percentiles below</b> — BLS suppresses industry × occupation detail, so the wage bars are always rolled up across all industries.</p>
+
+        <h3>How Region affects the page</h3>
+        <p>The Region selector controls two things:</p>
+        <ul class="help-list">
+          <li><b>Industry summary numbers</b> — mean wage, employment, and establishments shift to the selected LWDA (or Virginia statewide).</li>
+          <li><b>Pay-band rows</b> — when BLS publishes OEWS data at the LWDA level for an occupation, the bar reflects that region's wages. For occupations BLS <b>suppresses</b> at the LWDA level (too few employers / privacy), the row falls back to Virginia statewide values, marked with a small <code>*</code> after the title and "VA statewide" sub-label.</li>
+        </ul>
+
+        <h3>Target percentile slider</h3>
+        <p>Drag the slider to set where the red diamond sits on each row — your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
 
         <h3>Pay-band chart</h3>
         <svg class="help-illustration" viewBox="0 0 480 108" role="img" aria-label="Annotated example of a percentile bar">
@@ -608,16 +622,6 @@
           <li><span class="swatch tick" style="background:#11151c"></span><div><b>Black tick</b> — the median. Half of workers earn less, half earn more.</div></li>
           <li><span class="swatch diamond" style="background:#b5392b"></span><div><b>Red diamond</b> — your target percentile, set by the slider. Hover any row to see the dollar value and hourly equivalent.</div></li>
         </ul>
-
-        <h3>How Region affects the page</h3>
-        <p>The Region selector controls two things:</p>
-        <ul class="help-bullets">
-          <li><span class="swatch" style="background:#34537d"></span><div><b>Industry summary numbers</b> — mean wage, employment, and establishments shift to the selected LWDA (or Virginia statewide).</div></li>
-          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Pay-band rows</b> — when BLS publishes OEWS data at the LWDA level for an occupation, the bar reflects that region's wages. For occupations BLS <b>suppresses</b> at the LWDA level (too few employers / privacy), the row falls back to Virginia statewide values, marked with a small <code>*</code> after the title and "VA statewide" sub-label.</div></li>
-        </ul>
-
-        <h3>Target percentile slider</h3>
-        <p>Drag the slider to set where the red diamond sits on each row — your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
 
         <p class="help-footnote">Data: BLS Occupational Employment and Wage Statistics (OEWS) for the percentile bars; BLS Quarterly Census of Employment and Wages (QCEW) for the industry summary. Virginia LWDAs from the Workforce Information Database (WID).</p>
       </div>
