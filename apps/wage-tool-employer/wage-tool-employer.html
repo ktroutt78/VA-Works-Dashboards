@@ -593,8 +593,12 @@
     function populateControls(state) {
       const tsOpts = { allowEmptyOption: false, maxOptions: null };
 
+      /* Industry — browse-only (no typing). Only 20 NAICS-2 sectors, easy
+         to scan visually; the alias-search affordance that makes sense for
+         703 occupations adds friction here. */
       window.__industrySel = new TomSelect("#industry-select", {
         ...tsOpts,
+        controlInput: null,
         options: state.sectors.map(s => ({
           value: s.naics,
           text: `${s.naics} · ${s.label}`,
