@@ -637,10 +637,10 @@
     /* ──────────────────────────────────────────────────────────────────
        Formatters + math helpers (ported from employer-data.jsx)
     ────────────────────────────────────────────────────────────────────── */
-    const fmtK      = v => "$" + Math.round(v / 1000) + "K";
-    const fmtMoney  = v => "$" + Math.round(v).toLocaleString();
-    const fmtEmp    = v => v.toLocaleString();
-    const fmtHourly = v => "$" + v.toFixed(2) + "/hr";
+    const fmtK      = v => (v == null || !isFinite(v)) ? "—" : "$" + Math.round(v / 1000) + "K";
+    const fmtMoney  = v => (v == null || !isFinite(v)) ? "—" : "$" + Math.round(v).toLocaleString();
+    const fmtEmp    = v => (v == null) ? "—" : v.toLocaleString();
+    const fmtHourly = v => (v == null || !isFinite(v)) ? "—" : "$" + v.toFixed(2) + "/hr";
 
     /* Linear interpolation from a 5-point percentile distribution to the
        value at an arbitrary percentile (clamped to [10, 90]). Works for
@@ -701,19 +701,28 @@
     function buildRows(state) {
       const fam = state.families.find(f => f.code === state.sel.familyCode);
       if (!fam) return [];
-      return fam.jobs.map(j => {
-        const cell = j.areas[state.sel.regionId];
-        const annual = { p10: cell.p10, p25: cell.p25, p50: cell.p50, p75: cell.p75, p90: cell.p90 };
-        const hourly = { p10: cell.p10_h, p25: cell.p25_h, p50: cell.p50_h, p75: cell.p75_h, p90: cell.p90_h };
-        return {
-          job: j,
-          annual, hourly,
-          employment: cell.employment,
-          provenance: cell.provenance,
-          target_annual: wageAtPct(annual, state.sel.targetPct),
-          target_hourly: wageAtPct(hourly, state.sel.targetPct),
-        };
-      });
+      return fam.jobs
+        .map(j => {
+          const cell = j.areas[state.sel.regionId];
+          if (!cell) return null;
+          const annual = { p10: cell.p10, p25: cell.p25, p50: cell.p50, p75: cell.p75, p90: cell.p90 };
+          const hourly = { p10: cell.p10_h, p25: cell.p25_h, p50: cell.p50_h, p75: cell.p75_h, p90: cell.p90_h };
+          /* Drop rows where any annual percentile is null — BLS suppresses
+             cells with too few employers and a NaN inside the chart's
+             cartesian coord() blows up the whole series silently. Frontend
+             can't recover from an api.coord([null, idx]) on one row. */
+          if (annual.p10 == null || annual.p25 == null || annual.p50 == null
+              || annual.p75 == null || annual.p90 == null) return null;
+          return {
+            job: j,
+            annual, hourly,
+            employment: cell.employment,
+            provenance: cell.provenance,
+            target_annual: wageAtPct(annual, state.sel.targetPct),
+            target_hourly: wageAtPct(hourly, state.sel.targetPct),
+          };
+        })
+        .filter(r => r !== null);
     }
 
     /* ──────────────────────────────────────────────────────────────────
