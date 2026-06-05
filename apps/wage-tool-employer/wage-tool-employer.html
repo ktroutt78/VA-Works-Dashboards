@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pay-Band Planner · Virginia Works</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
+  <style>
+    :root {
+      /* Design tokens — ported from docs/employer-wage-tool/employer-data.jsx T object. */
+      --header-bg:    #1b2536;
+      --header-sub:   #aab3c4;
+      --paper:        #f3f0e9;
+      --shell:        #ffffff;
+      --card-line:    #dfe2e8;
+      --field-line:   #d2d7df;
+      --ink:          #1b2536;
+      --body:         #27303f;
+      --muted:        #6b7280;
+      --label:        #727a89;
+      --faint:        #edeae1;
+      --range-lt:     #aab9d6;
+      --range-dk:     #34537d;
+      --median:       #11151c;
+      --you:          #b5392b;
+      --accent:       #b5392b;
+      --industry-bg:  #eceff5;
+      --industry-line:#d8dde8;
+      --industry-sub: #5b6577;
+
+      --serif: "Source Serif Pro", Georgia, "Times New Roman", serif;
+      --sans:  "Inter", system-ui, sans-serif;
+
+      --frame-w: 760px;
+    }
+
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--sans); color: var(--ink); }
+    .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
+    .frame {
+      width: var(--frame-w);
+      background: var(--paper);
+      border: 1px solid var(--card-line);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    /* ─── Header band ────────────────────────────────────────────────── */
+    .header {
+      background: var(--header-bg);
+      padding: 15px 20px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .header-title { font-family: var(--serif); font-weight: 600; font-size: 20px; color: #fff; letter-spacing: 0.2px; }
+    .header-sub   { font-size: 12px; color: var(--header-sub); margin-top: 3px; }
+    .header-guide {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
+      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      cursor: pointer;
+    }
+    .header-guide .q {
+      width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-style: italic;
+    }
+
+    /* ─── Controls (two rows) ────────────────────────────────────────── */
+    .controls { padding: 14px 20px 12px; display: grid; gap: 14px; }
+    .controls-1, .controls-2 { grid-template-columns: 1.7fr 1fr; }
+    .controls-2 { padding-top: 0; }
+
+    /* Each field cell is itself a 2-row grid so the label and the control
+       sit in fixed-height tracks. This guarantees the box (Tom Select or
+       slider) starts at exactly the same y on every column, regardless of
+       which label has an (i) icon or which control type fills row 2. */
+    .controls > div {
+      display: grid;
+      grid-template-rows: 16px var(--ctl-h);
+      row-gap: 5px;
+      align-content: start;
+    }
+
+    .field-label {
+      font-size: 10.5px; color: var(--label);
+      text-transform: uppercase; letter-spacing: 1px;
+      /* margin-bottom moved to the parent grid's row-gap so all columns
+         share the same vertical rhythm. */
+      display: flex; align-items: center; gap: 4px;
+      height: 16px; line-height: 14px;
+    }
+    .field-label .info {
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1px solid var(--muted); color: var(--muted);
+      font-size: 8px; font-style: italic;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help;
+    }
+
+    /* Lock the height across all controls (Tom Select dropdowns + slider)
+       so they sit on the same row baseline. */
+    :root { --ctl-h: 38px; }
+
+    .ts-wrapper.single .ts-control {
+      /* Flex + align-items: center on the control vertically centers the
+         selected-text .item and the typing input regardless of their
+         individual line-heights. Resetting line-height to normal here
+         matters — a tall line-height on the parent makes inline content
+         baseline-align (sitting near the bottom of the line) rather than
+         center, which is what made earlier attempts float the text high. */
+      background: #fff !important;
+      border: 1px solid var(--field-line) !important;
+      border-radius: 6px !important;
+      padding: 0 28px 0 12px !important;
+      font-size: 14px;
+      color: var(--body);
+      height: var(--ctl-h) !important;
+      min-height: var(--ctl-h) !important;
+      max-height: var(--ctl-h) !important;
+      line-height: normal !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+      cursor: pointer;
+      position: relative;
+      display: flex !important;
+      align-items: center !important;
+    }
+    .ts-wrapper.single .ts-control .item {
+      display: block;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      line-height: normal;
+    }
+    .ts-wrapper.single .ts-control input {
+      padding: 0 !important;
+      margin: 0 !important;
+      line-height: normal !important;
+      height: auto;
+    }
+    /* Chevron anchored to the control itself (not the wrapper) so it tracks
+       the box exactly. Tom Select's background shorthand can override
+       background-image, so we use a pseudo-element instead. */
+    .ts-wrapper.single .ts-control::after {
+      content: '';
+      position: absolute;
+      right: 12px; top: 50%;
+      width: 12px; height: 12px;
+      transform: translateY(-50%);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%235a6376' d='M3 5 L6 8 L9 5 Z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+    .ts-wrapper.single.dropdown-active .ts-control {
+      border-radius: 6px 6px 0 0 !important;
+    }
+
+    /* Percentile slider control — same height pin as the dropdowns. */
+    .slider-control {
+      background: #fff;
+      border: 1px solid var(--field-line);
+      border-radius: 6px;
+      padding: 0 12px;
+      display: flex; align-items: center; gap: 10px;
+      height: var(--ctl-h);
+      box-sizing: border-box;
+    }
+    .slider-value {
+      font-family: var(--serif); font-weight: 600; font-size: 16px;
+      color: var(--you); min-width: 42px;
+    }
+    .slider-track {
+      flex: 1; height: 5px; background: var(--faint);
+      border-radius: 3px; position: relative;
+    }
+    .slider-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      background: var(--you); border-radius: 3px;
+    }
+    .slider-handle {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--you);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .slider-control input[type="range"] {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer; margin: 0;
+    }
+    .slider-track-wrap { flex: 1; position: relative; height: 14px; display: flex; align-items: center; }
+
+    /* ─── Industry summary band (cool tint) ──────────────────────────── */
+    .industry-band {
+      margin: 0 20px 14px;
+      background: var(--industry-bg);
+      border: 1px solid var(--industry-line);
+      border-radius: 6px;
+      padding: 10px 14px;
+      display: grid;
+      /* Equal-weight stat columns. The NAICS chip stays `auto` so it doesn't
+         steal space; the three QCEW stats divide the remaining width evenly. */
+      grid-template-columns: auto 1fr 1fr 1fr;
+      gap: 18px;
+      /* align-items: start so each column's label sits at the top and each
+         column's big value sits on the same baseline below it, regardless of
+         whether a sub-line (e.g. the avg-wage's hourly) exists in that cell.
+         Was `center`, which vertically centered each block as a whole and
+         pushed the avg-wage value up relative to employment / establishments. */
+      align-items: start;
+    }
+    .ind-naics {
+      display: flex; flex-direction: column; gap: 2px;
+      /* Was 148px; given more room so the industry name fits on fewer wrapped
+         lines (e.g. "Health Care & Social Assistance" lands cleanly). */
+      max-width: 200px;
+    }
+    .ind-naics-code {
+      /* fontSize 10 matches .ind-stat-label so the NAICS code label and the
+         stat labels share a vertical baseline. */
+      font-size: 10px; color: var(--industry-sub);
+      text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
+    }
+    .ind-naics-name {
+      /* Bumped 12 → 14 to match the visual weight of the other column headers
+         (the uppercase letter-spaced labels read heavier than proper-case 12px
+         even though the latter is technically larger). Treats the industry name
+         as a title-tier element rather than a sub-label. */
+      font-size: 14px; color: var(--ink); font-weight: 600; line-height: 1.2;
+    }
+    /* Center the three stat cells (Avg wage / Employment / Establishments).
+       NAICS chip stays left-aligned by virtue of having the .ind-naics class. */
+    .industry-band > div:not(.ind-naics) { text-align: center; }
+    .ind-stat-label {
+      font-size: 10px; color: var(--industry-sub);
+      text-transform: uppercase; letter-spacing: 1px;
+      line-height: 1.3;
+      /* Labels are short now (QCEW mean qualifier moved into the (i) tooltip),
+         so single-line + nowrap reads cleaner than letting them wrap. */
+      white-space: nowrap;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    /* Small (i) help icon, same visual pattern as .field-label .info but sized
+       for the 10px band label. The native `title` attribute renders the long
+       source/QCEW-mean context on hover so the visible label can stay short. */
+    .ind-stat-label .help {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 1px solid var(--industry-sub);
+      color: var(--industry-sub);
+      font-size: 8px; font-style: italic; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+      letter-spacing: 0; text-transform: none;
+    }
+    .ind-stat-value {
+      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      color: var(--ink); line-height: 1.05; margin-top: 2px;
+    }
+    .ind-stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ─── Pay-band card ──────────────────────────────────────────────── */
+    .card {
+      background: var(--shell);
+      border: 1px solid var(--card-line);
+      border-radius: 8px;
+      margin: 0 16px 16px;
+      padding: 16px;
+      border-left: 4px solid var(--accent);
+    }
+
+    .family-header {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--faint);
+      margin-bottom: 14px;
+    }
+    .family-eyebrow {
+      font-size: 10.5px; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
+    }
+    .family-title {
+      font-family: var(--serif); font-weight: 600; font-size: 19px;
+      line-height: 1.15; margin-top: 3px; color: var(--ink);
+    }
+    .family-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+    .family-sub .pct-emph { color: var(--you); font-weight: 600; }
+
+    /* ─── KPI strip ──────────────────────────────────────────────────── */
+    .kpi-strip {
+      display: grid;
+      /* Equal-weight columns. With labels tightened to single-line phrases
+         and tooltips carrying the longer context, four 1fr columns line up
+         the big values on the same baseline (matches the industry band). */
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--faint);
+      margin-bottom: 8px;
+      /* Same as industry band: labels at top, values aligned across the strip
+         regardless of which cells carry a sub-line. */
+      align-items: start;
+    }
+    /* Center each KPI block as a vertical stack (label / value / sub). */
+    .kpi-strip > div { text-align: center; }
+    .kpi-label {
+      font-size: 10.5px; color: var(--label);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 4px;
+      /* Tooltip-bearing (i) icon sits beside the text on a single line,
+         and the flex row is centered within the cell. */
+      white-space: nowrap;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .kpi-label .help {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 1px solid var(--label); color: var(--label);
+      font-size: 8px; font-style: italic; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+      letter-spacing: 0; text-transform: none;
+    }
+    .kpi-value {
+      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      line-height: 1.05; color: var(--ink); white-space: nowrap;
+    }
+    .kpi-value.accent { color: var(--you); }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ─── Chart container ────────────────────────────────────────────── */
+    /* Height is dynamic — task #4 (ECharts) sizes this based on family row count. */
+    .chart {
+      width: 100%;
+      min-height: 320px;
+      margin-top: 6px;
+    }
+
+    /* ─── Legend ─────────────────────────────────────────────────────── */
+    .legend {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-top: 14px; align-items: center;
+    }
+    .legend-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11.5px; color: var(--body);
+    }
+    .sw { display: inline-block; }
+    .sw.bar { width: 18px; height: 11px; border-radius: 2px; }
+    .sw.bar.lt { background: var(--range-lt); }
+    .sw.bar.dk { background: var(--range-dk); }
+    .sw.tick { width: 3px; height: 13px; background: var(--median); }
+    .sw.diamond {
+      width: 11px; height: 11px;
+      background: var(--you); transform: rotate(45deg);
+    }
+    .legend-fallback {
+      font-size: 11.5px; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .legend-fallback .star { color: var(--muted); font-weight: 600; }
+
+    /* ─── Card footer ────────────────────────────────────────────────── */
+    .card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 12px;
+    }
+    .footer-source { font-size: 11px; color: var(--muted); }
+    .footer-export {
+      font-size: 12.5px; padding: 7px 14px; border-radius: 6px;
+      border: 1px solid var(--range-dk); color: var(--range-dk);
+      background: #fff; cursor: pointer;
+      font-family: var(--sans); font-weight: 500;
+    }
+    .footer-export:hover { background: var(--industry-bg); }
+
+    /* ─── Loading state ──────────────────────────────────────────────── */
+    .frame.loading .card,
+    .frame.loading .industry-band { opacity: 0.4; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="frame loading" id="frame">
+
+      <!-- Header band -->
+      <div class="header">
+        <div>
+          <div class="header-title">Wage Comparison Tool</div>
+          <div class="header-sub">Build a competitive pay band · BLS OEWS + QCEW</div>
+        </div>
+        <div class="header-guide"><span class="q">?</span>Guide</div>
+      </div>
+
+      <!-- Controls row 1: Industry + Region (drive only the summary band below) -->
+      <div class="controls controls-1">
+        <div>
+          <div class="field-label">
+            Industry · NAICS
+            <span class="info" title="Industry × occupation data is suppressed by BLS for privacy, so industry never filters the occupation pay bands below.">i</span>
+          </div>
+          <select id="industry-select"></select>
+        </div>
+        <div>
+          <div class="field-label">Region</div>
+          <select id="region-select"></select>
+        </div>
+      </div>
+
+      <!-- Industry summary band -->
+      <div class="industry-band" id="industry-band">
+        <div class="ind-naics">
+          <span class="ind-naics-code" id="ind-naics-code">NAICS —</span>
+          <span class="ind-naics-name" id="ind-naics-name">—</span>
+        </div>
+        <div>
+          <div class="ind-stat-label">Avg wage</div>
+          <div class="ind-stat-value" id="ind-mean">—</div>
+          <div class="ind-stat-sub" id="ind-mean-hourly">—</div>
+        </div>
+        <div>
+          <div class="ind-stat-label">Employment</div>
+          <div class="ind-stat-value" id="ind-emp">—</div>
+        </div>
+        <div>
+          <div class="ind-stat-label">Establishments</div>
+          <div class="ind-stat-value" id="ind-est">—</div>
+        </div>
+      </div>
+
+      <!-- Controls row 2: Job Family + Target Percentile (drive the pay-band card) -->
+      <div class="controls controls-2">
+        <div>
+          <div class="field-label">
+            Job family · SOC-3
+            <span class="info" title="A SOC minor group: the family of related occupations the pay band covers.">i</span>
+          </div>
+          <select id="family-select"></select>
+        </div>
+        <div>
+          <div class="field-label">Target percentile</div>
+          <div class="slider-control">
+            <span class="slider-value" id="target-value">60th</span>
+            <div class="slider-track-wrap">
+              <div class="slider-track">
+                <div class="slider-fill" id="slider-fill" style="width: 62.5%;"></div>
+                <div class="slider-handle" id="slider-handle" style="left: 62.5%;"></div>
+              </div>
+              <input type="range" id="target-slider" min="10" max="90" step="5" value="60" aria-label="Target percentile">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pay-band card -->
+      <div class="card">
+        <!-- Family header -->
+        <div class="family-header">
+          <div class="family-eyebrow" id="family-eyebrow">Job family · SOC —</div>
+          <div class="family-title" id="family-title">—</div>
+          <div class="family-sub">
+            <span id="family-region">—</span> ·
+            <span id="family-count">—</span> occupations ·
+            pay band at the <span class="pct-emph" id="family-pct">60th percentile</span>
+          </div>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="kpi-strip">
+          <div>
+            <div class="kpi-label">Budget at <span id="budget-pct-label">60th</span></div>
+            <div class="kpi-value accent" id="budget-range">—</div>
+            <div class="kpi-sub" id="budget-hourly">—</div>
+          </div>
+          <div>
+            <div class="kpi-label">Median range</div>
+            <div class="kpi-value" id="median-range">—</div>
+          </div>
+          <div>
+            <div class="kpi-label">Market position</div>
+            <div class="kpi-value" id="position-delta">—</div>
+            <div class="kpi-sub" id="position-sub">—</div>
+          </div>
+          <div>
+            <div class="kpi-label">Workforce size</div>
+            <div class="kpi-value" id="hiring-pool">—</div>
+          </div>
+        </div>
+
+        <!-- ECharts chart -->
+        <div class="chart" id="chart"></div>
+
+        <!-- Legend -->
+        <div class="legend">
+          <span class="legend-chip"><span class="sw bar lt"></span>10th–90th percentile</span>
+          <span class="legend-chip"><span class="sw bar dk"></span>25th–75th percentile</span>
+          <span class="legend-chip"><span class="sw tick"></span>Median</span>
+          <span class="legend-chip"><span class="sw diamond"></span>Pay at <span id="legend-pct">60th</span> (target)</span>
+          <span class="legend-fallback"><span class="star">*</span>Statewide fallback (regional cell suppressed)</span>
+        </div>
+
+        <!-- Card footer -->
+        <div class="card-footer">
+          <div class="footer-source">Industry summary: BLS QCEW (mean) · Pay band: BLS OEWS (percentiles)</div>
+          <button class="footer-export">Save this pay band ↓</button>
+        </div>
+      </div>
+
+    </div><!-- /.frame -->
+  </div><!-- /.page-wrap -->
+
+  <script>
+    /* ──────────────────────────────────────────────────────────────────
+       SOC-3 minor-group labels for the families present in the skeleton.
+       Fallback for any code not listed here is the job's major_group.
+       (When real data lands with proper SOC-3 hierarchy, this dict is
+       superseded by a column on each row.)
+    ────────────────────────────────────────────────────────────────────── */
+    const SOC3_LABELS = {
+      "11-2000": "Marketing, Sales, & PR Managers",
+      "11-3000": "Operations Specialties Managers",
+      "13-1000": "Business Operations Specialists",
+      "13-2000": "Financial Specialists",
+      "15-2000": "Mathematical Science Occupations",
+      "17-2000": "Engineers",
+      "17-3000": "Drafters & Engineering Technicians",
+      "19-4000": "Life, Physical & Social Science Technicians",
+      "23-1000": "Lawyers, Judges & Related Workers",
+      "25-1000": "Postsecondary Teachers",
+      "25-3000": "Other Teachers & Instructors",
+      "41-3000": "Sales Representatives, Services",
+      "45-2000": "Agricultural Workers",
+      "49-3000": "Vehicle & Mobile Equipment Mechanics",
+      "51-9000": "Other Production Occupations",
+      "53-1000": "Supervisors of Transportation Workers",
+      "53-2000": "Air Transportation Workers",
+      "53-6000": "Other Transportation Workers",
+      /* Design exemplars (for future skeleton refreshes) */
+      "43-3000": "Financial Clerks",
+      "43-4000": "Information & Record Clerks",
+      "15-1200": "Computer Occupations",
+      "21-1000": "Counselors & Social Workers",
+    };
+
+    /* SOC-3 derivation: "13-2011" → "13-2000" */
+    function soc3of(soc6) { return soc6.substring(0, 4) + "000"; }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Build STATE: groups jobs by SOC-3, builds dropdown option lists.
+       Pure derivation — no DOM access. Called once after load.
+    ────────────────────────────────────────────────────────────────────── */
+    function buildState(wages, industries) {
+      /* Group jobs by SOC-3. Each family = { code, label, jobs[] }. */
+      const familyMap = {};
+      wages.jobs.forEach(j => {
+        const code = soc3of(j.soc_code);
+        if (!familyMap[code]) {
+          familyMap[code] = {
+            code,
+            label: SOC3_LABELS[code] || j.major_group,
+            jobs: [],
+          };
+        }
+        familyMap[code].jobs.push(j);
+      });
+      const families = Object.values(familyMap)
+        .sort((a, b) => a.code.localeCompare(b.code));
+
+      /* Areas: keep the order from the data; statewide last for fallback semantics. */
+      const areas = wages.areas;
+
+      /* Industries: ordered by NAICS code. */
+      const sectors = [...industries.sectors].sort(
+        (a, b) => a.naics.localeCompare(b.naics));
+
+      return {
+        wages, industries,
+        families,
+        areas,
+        sectors,
+        /* current selections — initialized in init() */
+        sel: { industryCode: null, regionId: null, familyCode: null, targetPct: 60 },
+      };
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Populate the four controls (3 Tom Selects + 1 native range).
+       Called once after buildState. Wiring change handlers is task #5.
+    ────────────────────────────────────────────────────────────────────── */
+    function populateControls(state) {
+      const tsOpts = { allowEmptyOption: false, maxOptions: null };
+
+      window.__industrySel = new TomSelect("#industry-select", {
+        ...tsOpts,
+        options: state.sectors.map(s => ({
+          value: s.naics,
+          text: `${s.naics} · ${s.label}`,
+        })),
+      });
+
+      window.__regionSel = new TomSelect("#region-select", {
+        ...tsOpts,
+        options: state.areas.map(a => ({ value: a.id, text: a.label })),
+      });
+
+      window.__familySel = new TomSelect("#family-select", {
+        ...tsOpts,
+        options: state.families.map(f => ({
+          value: f.code,
+          text: `${f.code} · ${f.label}`,
+        })),
+      });
+
+      /* Defaults: pick a family with the most occupations so the demo
+         doesn't open on a 1-row family. Industry → 62 (Health Care) if
+         present else first. Region → virginia (statewide). Percentile → 60. */
+      const defaultFamily = [...state.families]
+        .sort((a, b) => b.jobs.length - a.jobs.length)[0];
+      const defaultIndustry = state.sectors.find(s => s.naics === "62") || state.sectors[0];
+      const defaultRegion = state.areas.find(a => a.id === "virginia") || state.areas[0];
+
+      window.__industrySel.setValue(defaultIndustry.naics, true);  // true = silent
+      window.__regionSel.setValue(defaultRegion.id, true);
+      window.__familySel.setValue(defaultFamily.code, true);
+
+      state.sel.industryCode = defaultIndustry.naics;
+      state.sel.regionId     = defaultRegion.id;
+      state.sel.familyCode   = defaultFamily.code;
+      state.sel.targetPct    = 60;
+
+      document.getElementById("target-slider").value = state.sel.targetPct;
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Formatters + math helpers (ported from employer-data.jsx)
+    ────────────────────────────────────────────────────────────────────── */
+    const fmtK      = v => "$" + Math.round(v / 1000) + "K";
+    const fmtMoney  = v => "$" + Math.round(v).toLocaleString();
+    const fmtEmp    = v => v.toLocaleString();
+    const fmtHourly = v => "$" + v.toFixed(2) + "/hr";
+
+    /* Linear interpolation from a 5-point percentile distribution to the
+       value at an arbitrary percentile (clamped to [10, 90]). Works for
+       both annual ({p10, p25, p50, p75, p90}) and hourly ({p10_h, ...}). */
+    function wageAtPct(p, t) {
+      const pts = [
+        [10, p.p10 ?? p.p10_h], [25, p.p25 ?? p.p25_h],
+        [50, p.p50 ?? p.p50_h], [75, p.p75 ?? p.p75_h],
+        [90, p.p90 ?? p.p90_h],
+      ];
+      if (t <= 10) return pts[0][1];
+      if (t >= 90) return pts[4][1];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [pa, va] = pts[i], [pb, vb] = pts[i + 1];
+        if (t >= pa && t <= pb) return va + (t - pa) / (pb - pa) * (vb - va);
+      }
+      return pts[2][1];
+    }
+
+    /* Domain from min p10 / max p90, padded and snapped to 5K. */
+    function computeDomain(rows) {
+      const lo = Math.min(...rows.map(r => r.annual.p10));
+      const hi = Math.max(...rows.map(r => r.annual.p90));
+      return [
+        Math.floor((lo * 0.92) / 5000) * 5000,
+        Math.ceil((hi * 1.04) / 5000) * 5000,
+      ];
+    }
+
+    /* Word-wrap a title to lines of ~maxChars each. Used to pre-wrap the
+       y-axis occupation label because ECharts 5 rich-text `width`+`overflow`
+       on individual {style|...} blocks doesn't actually trigger a wrap on
+       axisLabel rich text (it only sizes the layout box) — and setting
+       width/overflow on the outer axisLabel re-flows everything as one
+       paragraph and swallows the \n we use to separate title from sub. */
+    function wrapTitle(text, maxChars) {
+      if (text.length <= maxChars) return [text];
+      const words = text.split(' ');
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        if (cur && (cur.length + 1 + w.length) > maxChars) {
+          lines.push(cur);
+          cur = w;
+        } else {
+          cur = cur ? cur + ' ' + w : w;
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines;
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Build per-row data for the chart from current state selections.
+       Reads the family + region selections, applies the provenance
+       stored in each cell (lwda / statewide / statewide_fallback).
+    ────────────────────────────────────────────────────────────────────── */
+    function buildRows(state) {
+      const fam = state.families.find(f => f.code === state.sel.familyCode);
+      if (!fam) return [];
+      return fam.jobs.map(j => {
+        const cell = j.areas[state.sel.regionId];
+        const annual = { p10: cell.p10, p25: cell.p25, p50: cell.p50, p75: cell.p75, p90: cell.p90 };
+        const hourly = { p10: cell.p10_h, p25: cell.p25_h, p50: cell.p50_h, p75: cell.p75_h, p90: cell.p90_h };
+        return {
+          job: j,
+          annual, hourly,
+          employment: cell.employment,
+          provenance: cell.provenance,
+          target_annual: wageAtPct(annual, state.sel.targetPct),
+          target_hourly: wageAtPct(hourly, state.sel.targetPct),
+        };
+      });
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       ECharts: percentile-band chart.
+       One instance, custom series. renderItem draws bar shapes + diamond
+       + right-column $/yr + $/hr text per row. Y-axis labels are rich
+       text (occupation name + sub-line). X-axis is wage $ in K.
+    ────────────────────────────────────────────────────────────────────── */
+    const TOP_PAD       = 14;
+    const BOT_PAD       = 34;   /* x-axis label area */
+    const TITLE_MAX_CHARS = 30; /* chars per wrapped title line at width ~210px */
+    const LINE_H        = 14;   /* per-line height for both name and sub */
+    const ROW_PAD       = 14;   /* breathing room above + below the text block per row */
+    let chart = null;
+
+    function ensureChart() {
+      if (!chart) chart = echarts.init(document.getElementById('chart'));
+      return chart;
+    }
+
+    function renderChart(state) {
+      const chart = ensureChart();
+      const rows = buildRows(state);
+      const region = state.areas.find(a => a.id === state.sel.regionId);
+
+      /* Empty family fallback (shouldn't happen with current data). */
+      if (!rows.length) { chart.clear(); return; }
+
+      const domain = computeDomain(rows);
+
+      /* Pre-wrap titles so we know the tallest row in the family. Each row
+         must accommodate the longest wrapped title across the whole family
+         (ECharts category axis uses one row height for all categories). */
+      const wrapped = rows.map(r => wrapTitle(r.job.label, TITLE_MAX_CHARS));
+      const maxLines = Math.max(...wrapped.map(ls => ls.length));
+      const rowH = Math.max(56, maxLines * LINE_H + LINE_H + ROW_PAD);
+
+      const chartH = TOP_PAD + rows.length * rowH + BOT_PAD;
+      document.getElementById('chart').style.height = chartH + 'px';
+      chart.resize();
+
+      const tokens = getComputedStyle(document.documentElement);
+      const C = {
+        ranLt: tokens.getPropertyValue('--range-lt').trim() || '#aab9d6',
+        ranDk: tokens.getPropertyValue('--range-dk').trim() || '#34537d',
+        med:   tokens.getPropertyValue('--median').trim()   || '#11151c',
+        you:   tokens.getPropertyValue('--you').trim()      || '#b5392b',
+        muted: tokens.getPropertyValue('--muted').trim()    || '#6b7280',
+        line:  tokens.getPropertyValue('--card-line').trim()|| '#dfe2e8',
+        ink:   tokens.getPropertyValue('--ink').trim()      || '#1b2536',
+      };
+
+      chart.setOption({
+        animation: false,
+        grid: { left: 230, right: 100, top: TOP_PAD, bottom: BOT_PAD, containLabel: false },
+        xAxis: {
+          /* Bottom axis treatment ported from apps/wage-tool/wage-tool.html mkAxis()
+             — visible axis line, darker (ink) tick labels, slightly bolder weight,
+             hideOverlap so edge ticks don't crowd. */
+          type: 'value',
+          min: domain[0], max: domain[1],
+          axisLine:  { show: true, lineStyle: { color: C.line } },
+          axisTick:  { show: true, length: 4, lineStyle: { color: C.muted } },
+          axisLabel: {
+            color: C.ink,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: 11,
+            fontWeight: 500,
+            margin: 6,
+            hideOverlap: true,
+            formatter: v => fmtK(v),
+          },
+          splitLine: { show: false },
+        },
+        yAxis: {
+          type: 'category',
+          inverse: true,
+          data: rows.map((r, i) => i),
+          axisLine:  { show: false },
+          axisTick:  { show: false },
+          axisLabel: {
+            align: 'left',
+            margin: 220,
+            formatter: (idx) => {
+              const r = rows[idx];
+              const star = r.provenance === 'statewide_fallback' ? ' *' : '';
+              const sub  = r.provenance === 'statewide_fallback' ? 'VA statewide' : region.label;
+              /* Emit one {name|line} block per pre-wrapped title line, then
+                 the sub on a new line. ECharts treats each \n as a hard
+                 break, and with no outer width/overflow nothing re-flows. */
+              const titleLines = wrapped[idx];
+              const titleBlock = titleLines.map((line, i) => {
+                const text = (i === titleLines.length - 1) ? line + star : line;
+                return `{name|${text}}`;
+              }).join('\n');
+              return `${titleBlock}\n{sub|${fmtEmp(r.employment)} jobs · ${sub}}`;
+            },
+            rich: {
+              name: {
+                color: C.ink, fontSize: 11.5, fontWeight: 600,
+                lineHeight: LINE_H, fontFamily: 'Inter, system-ui, sans-serif',
+              },
+              sub: {
+                color: C.muted, fontSize: 10,
+                lineHeight: LINE_H, fontFamily: 'Inter, system-ui, sans-serif',
+              },
+            },
+          },
+        },
+        series: [{
+          type: 'custom',
+          coordinateSystem: 'cartesian2d',
+          clip: false,        /* allow right-column text outside grid */
+          z: 2,
+          data: rows.map((r, i) => [
+            i, r.annual.p10, r.annual.p25, r.annual.p50, r.annual.p75, r.annual.p90, r.target_annual, r.target_hourly,
+          ]),
+          renderItem: (params, api) => {
+            const idx     = api.value(0);
+            const p10     = api.value(1), p25 = api.value(2), p50 = api.value(3),
+                  p75     = api.value(4), p90 = api.value(5);
+            const target  = api.value(6);
+            const targetH = api.value(7);
+
+            const yc     = api.coord([p50, idx])[1];
+            const xP10   = api.coord([p10, idx])[0];
+            const xP25   = api.coord([p25, idx])[0];
+            const xP50   = api.coord([p50, idx])[0];
+            const xP75   = api.coord([p75, idx])[0];
+            const xP90   = api.coord([p90, idx])[0];
+            const xTgt   = api.coord([target, idx])[0];
+
+            const halfBar = 7.5;
+            const halfDmd = 5.5;
+
+            /* Right column anchor: just past the grid's right edge. */
+            const grid   = params.coordSys;
+            const xRight = grid.x + grid.width + 8;
+
+            return {
+              type: 'group',
+              children: [
+                /* Whisker spine — thin horizontal line spanning the full plot
+                   width, vertically centered on the row. Drawn FIRST so the
+                   band sits on top. The portions visible on either side of the
+                   light band (i.e. outside p10–p90) are the "whiskers" that
+                   make the chart read as box-and-whisker rather than floating
+                   rectangles. Ported from apps/wage-tool/wage-tool.html
+                   renderPercentileItem (same color, same line weight). */
+                { type: 'line',
+                  shape: { x1: grid.x, y1: yc, x2: grid.x + grid.width, y2: yc },
+                  style: { stroke: C.line, lineWidth: 1 } },
+                /* Light range (10–90) */
+                { type: 'rect',
+                  shape: { x: xP10, y: yc - halfBar, width: Math.max(0, xP90 - xP10), height: 15, r: 2.5 },
+                  style: { fill: C.ranLt } },
+                /* Dark range (25–75) */
+                { type: 'rect',
+                  shape: { x: xP25, y: yc - halfBar, width: Math.max(0, xP75 - xP25), height: 15, r: 2 },
+                  style: { fill: C.ranDk } },
+                /* Median tick */
+                { type: 'line',
+                  shape: { x1: xP50, y1: yc - halfBar - 3, x2: xP50, y2: yc + halfBar + 3 },
+                  style: { stroke: C.med, lineWidth: 2 } },
+                /* Red diamond at target percentile */
+                { type: 'polygon',
+                  shape: { points: [
+                    [xTgt, yc - halfDmd],
+                    [xTgt + halfDmd, yc],
+                    [xTgt, yc + halfDmd],
+                    [xTgt - halfDmd, yc],
+                  ] },
+                  style: { fill: C.you, stroke: '#fff', lineWidth: 1.3 } },
+                /* Right column: annual $ */
+                { type: 'text',
+                  style: {
+                    x: xRight, y: yc - 7,
+                    text: fmtMoney(Math.round(target / 500) * 500),
+                    fill: C.you,
+                    font: '600 14.5px "Source Serif Pro", Georgia, serif',
+                    textAlign: 'left', textVerticalAlign: 'middle',
+                  } },
+                /* Right column: native $/hr */
+                { type: 'text',
+                  style: {
+                    x: xRight, y: yc + 10,
+                    text: fmtHourly(targetH),
+                    fill: C.muted,
+                    font: '400 11px Inter, system-ui, sans-serif',
+                    textAlign: 'left', textVerticalAlign: 'middle',
+                  } },
+              ],
+            };
+          },
+        }],
+      }, /* notMerge */ true);
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Dynamic placeholder updates — each updater touches one DOM region
+       so we can call only the ones a given control change requires.
+    ────────────────────────────────────────────────────────────────────── */
+    function $(id) { return document.getElementById(id); }
+
+    /* Industry summary band (top zone) — depends on Industry × Region. */
+    function updateIndustryBand(state) {
+      const sec = state.sectors.find(s => s.naics === state.sel.industryCode);
+      if (!sec) return;
+      const cell = sec.areas[state.sel.regionId];
+      $('ind-naics-code').textContent = 'NAICS ' + sec.naics;
+      $('ind-naics-name').textContent = sec.label;
+      $('ind-mean').textContent       = cell ? fmtMoney(cell.mean_wage) : '—';
+      $('ind-mean-hourly').textContent= cell ? fmtHourly(cell.mean_wage / 2080) : '—';
+      $('ind-emp').textContent        = cell ? fmtEmp(cell.employment)    : '—';
+      $('ind-est').textContent        = cell ? fmtEmp(cell.establishments): '—';
+    }
+
+    /* Family eyebrow + title + sub-line. Depends on Family × Region. */
+    function updateFamilyHeader(state) {
+      const fam    = state.families.find(f => f.code === state.sel.familyCode);
+      const region = state.areas.find(a => a.id === state.sel.regionId);
+      if (!fam) return;
+      $('family-eyebrow').textContent = 'Job family · SOC ' + fam.code;
+      $('family-title').textContent   = fam.label;
+      $('family-region').textContent  = region.label;
+      $('family-count').textContent   = fam.jobs.length;
+      $('family-pct').textContent     = state.sel.targetPct + 'th percentile';
+    }
+
+    /* KPI strip + legend percentile text. Depends on Family × Region × targetPct. */
+    function updateKpiStrip(state) {
+      const rows = buildRows(state);
+      if (!rows.length) return;
+      const tgtA = rows.map(r => r.target_annual);
+      const tgtH = rows.map(r => r.target_hourly);
+      const med  = rows.map(r => r.annual.p50);
+      const emp  = rows.reduce((s, r) => s + r.employment, 0);
+
+      const budgetLo  = Math.min(...tgtA), budgetHi  = Math.max(...tgtA);
+      const budgetLoH = Math.min(...tgtH), budgetHiH = Math.max(...tgtH);
+      const medLo     = Math.min(...med),  medHi     = Math.max(...med);
+      const marketMid = med.reduce((s, m) => s + m, 0) / med.length;
+      const bandMid   = (budgetLo + budgetHi) / 2;
+      const positionDlt = bandMid - marketMid;
+
+      $('budget-pct-label').textContent = state.sel.targetPct + 'th';
+      $('budget-range').textContent     = `${fmtK(budgetLo)}–${fmtK(budgetHi)}`;
+      $('budget-hourly').textContent    = `$${budgetLoH.toFixed(2)}–$${budgetHiH.toFixed(2)}/hr`;
+      $('median-range').textContent     = `${fmtK(medLo)}–${fmtK(medHi)}`;
+      $('position-delta').textContent   = (positionDlt >= 0 ? '+' : '−') + fmtK(Math.abs(positionDlt));
+      $('position-sub').textContent     = `vs. median (${fmtK(marketMid)})`;
+      $('hiring-pool').textContent      = fmtEmp(emp);
+
+      $('legend-pct').textContent       = state.sel.targetPct + 'th';
+    }
+
+    /* Slider visual (fill width + handle position + value label). */
+    function updateSlider(state) {
+      const pct = state.sel.targetPct;
+      const pos = ((pct - 10) / 80) * 100;       /* 10–90 → 0–100% */
+      $('slider-fill').style.width = pos + '%';
+      $('slider-handle').style.left = pos + '%';
+      $('target-value').textContent = pct + 'th';
+    }
+
+    /* Full render — used on initial boot and on selection changes. */
+    function render(state) {
+      updateIndustryBand(state);
+      updateFamilyHeader(state);
+      updateKpiStrip(state);
+      updateSlider(state);
+      renderChart(state);
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Change handlers — Tom Select 'change' fires with the new value.
+       Slider uses native input event.
+    ────────────────────────────────────────────────────────────────────── */
+    function wireHandlers(state) {
+      /* Industry — only affects the summary band. Pay bands are NOT filtered
+         by industry per the README (BLS suppresses industry × occupation). */
+      window.__industrySel.on('change', (val) => {
+        state.sel.industryCode = val;
+        updateIndustryBand(state);
+      });
+
+      /* Region — affects the summary band, family sub-line, KPI strip, and chart. */
+      window.__regionSel.on('change', (val) => {
+        state.sel.regionId = val;
+        updateIndustryBand(state);
+        updateFamilyHeader(state);
+        updateKpiStrip(state);
+        renderChart(state);
+      });
+
+      /* Family — affects header, KPI strip, chart. */
+      window.__familySel.on('change', (val) => {
+        state.sel.familyCode = val;
+        updateFamilyHeader(state);
+        updateKpiStrip(state);
+        renderChart(state);
+      });
+
+      /* Target percentile — affects header, KPI strip, slider visual, chart.
+         Native input fires on every step; rAF-throttle so the chart redraw
+         keeps up while dragging without queuing. */
+      const slider = $('target-slider');
+      let pending = false;
+      slider.addEventListener('input', () => {
+        state.sel.targetPct = +slider.value;
+        if (pending) return;
+        pending = true;
+        requestAnimationFrame(() => {
+          pending = false;
+          updateFamilyHeader(state);
+          updateKpiStrip(state);
+          updateSlider(state);
+          renderChart(state);
+        });
+      });
+    }
+
+    /* ──────────────────────────────────────────────────────────────────
+       Boot
+    ────────────────────────────────────────────────────────────────────── */
+    (async function boot() {
+      try {
+        const [wages, industries] = await Promise.all([
+          fetch('./data/wages.json').then(r => r.json()),
+          fetch('./data/industries.json').then(r => r.json()),
+        ]);
+        const state = buildState(wages, industries);
+        window.__STATE = state;
+        populateControls(state);
+        wireHandlers(state);
+        render(state);
+        console.log('Loaded:',
+          wages.jobs.length, 'jobs in',
+          state.families.length, 'families ·',
+          industries.sectors.length, 'sectors ·',
+          state.areas.length, 'areas');
+        document.getElementById('frame').classList.remove('loading');
+      } catch (err) {
+        console.error('Data load failed:', err);
+      }
+    })();
+
+    /* Keep chart responsive to window resize. */
+    window.addEventListener('resize', () => { if (chart) chart.resize(); });
+  </script>
+</body>
+</html>
