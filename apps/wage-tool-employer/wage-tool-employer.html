@@ -812,9 +812,9 @@
               : (r.provenance === 'statewide'
                   ? ' · <span style="color:' + C.muted + '">VA</span>'
                   : '');
-            return [
-              '<div style="font-weight:600; font-size:12.5px; margin-bottom:2px; line-height:1.3;">'
-                + (r.job.label || r.job.soc_code) + provLabel + '</div>',
+            const header = '<div style="font-weight:600; font-size:12.5px; line-height:1.3;">'
+              + (r.job.label || r.job.soc_code) + provLabel + '</div>';
+            const body = [
               '<b>Median</b> · ' + fmt(a.p50),
               '<b>P25–75</b> · ' + fmt(a.p25) + '–' + fmt(a.p75),
               '<b>P10–90</b> · ' + fmt(a.p10) + '–' + fmt(a.p90),
@@ -822,6 +822,7 @@
                 + fmt(r.target_annual) + ' &nbsp;<span style="color:' + C.muted + '">('
                 + pct + 'th pct · ' + fmtH(r.target_hourly) + '/hr)</span>',
             ].join('<br/>');
+            return header + body;
           },
         },
         grid: { left: 230, right: 100, top: TOP_PAD, bottom: BOT_PAD, containLabel: false },
