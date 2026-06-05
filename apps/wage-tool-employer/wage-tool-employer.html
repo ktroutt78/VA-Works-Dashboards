@@ -606,12 +606,12 @@
         options: state.areas.map(a => ({ value: a.id, text: a.label })),
       });
 
-      /* Family dropdown — searchable by occupation title + O*NET alias.
-         Each option's `aliases` field carries every job label + alternate
-         title within the family, so typing "nurse" or "RN" surfaces the
-         29-1000 family because "Registered Nurses" + its aliases live in
-         29-1000's search blob. Tom Select displays `text`, but its
-         `searchField` matches across both `text` and `aliases`. */
+      /* Family dropdown — clean rows showing just "code · label". Searchable
+         by occupation title + O*NET alias under the hood: each option's
+         hidden `aliases` field carries every job label + alternate title
+         within the family, and `searchField` includes it. So typing "nurse"
+         or "RN" still filters to the 29-1000 family without showing the
+         underlying occupation list as visual noise. */
       window.__familySel = new TomSelect("#family-select", {
         ...tsOpts,
         searchField: ['text', 'aliases'],
@@ -620,16 +620,6 @@
           text: `${f.code} · ${f.label}`,
           aliases: f.jobs.flatMap(j => [j.label, ...(j.aliases || [])]).join(' | '),
         })),
-        render: {
-          option: (data, escape) => {
-            return `<div>
-              <div>${escape(data.text)}</div>
-              <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
-                ${escape(data.aliases.split(' | ').slice(0, 6).join(' · '))}${data.aliases.split(' | ').length > 6 ? ' …' : ''}
-              </div>
-            </div>`;
-          },
-        },
       });
 
       /* Defaults: pick a family with the most occupations so the demo
