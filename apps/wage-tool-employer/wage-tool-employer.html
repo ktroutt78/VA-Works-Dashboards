@@ -975,7 +975,8 @@
               'P25–75: ' + fmt(a.p25) + '–' + fmt(a.p75),
               'P10–90: ' + fmt(a.p10) + '–' + fmt(a.p90),
               '<span style="color:' + C.you + '">Your target</span>: '
-                + fmt(r.target_annual) + ' &nbsp;<span style="color:' + C.muted + '">('
+                + '<span style="color:' + C.you + '; font-weight:600">' + fmt(r.target_annual) + '</span>'
+                + ' &nbsp;<span style="color:' + C.muted + '">('
                 + pct + 'th pct · ' + fmtH(r.target_hourly) + '/hr)</span>',
             ].join('<br/>');
             return header + body;
