@@ -200,6 +200,15 @@
       line-height: normal !important;
       height: auto;
     }
+    /* Match the input's native ::placeholder to the painted ::before placeholder
+       (industry control) so all dropdown placeholders share one visual style. */
+    .ts-wrapper.single .ts-control input::placeholder {
+      color: var(--muted);
+      opacity: 1;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 400;
+    }
     /* Chevron anchored to the control itself (not the wrapper) so it tracks
        the box exactly. Tom Select's background shorthand can override
        background-image, so we use a pseudo-element instead. */
