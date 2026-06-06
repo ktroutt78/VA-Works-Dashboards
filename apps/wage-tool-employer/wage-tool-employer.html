@@ -609,18 +609,17 @@
             <text x="540" y="102">Number of employers</text>
           </g>
         </svg>
-        <p>BLS QCEW data for the selected sector and region. <b>Industry doesn't filter the pay bands below</b> — BLS suppresses industry × occupation detail, so all wage percentiles are rolled up across industries.</p>
+        <p>BLS QCEW data for the selected sector and region. <b>Industry doesn't filter the pay bands below</b>: BLS suppresses industry × occupation detail, so all wage percentiles are rolled up across industries.</p>
 
         <h3>How Region affects the page</h3>
         <p>The Region selector controls two things:</p>
         <ul class="help-list">
-          <li><b>Industry summary numbers</b> — mean wage, employment, and establishments shift to the selected LWDA (or Virginia statewide).</li>
-          <li><b>Pay-band rows</b> — when BLS publishes OEWS data at the LWDA level for an occupation, the bar reflects that region's wages. For occupations BLS <b>suppresses</b> at the LWDA level (too few employers / privacy), the row falls back to Virginia statewide values, marked with a small <code>*</code> after the title and "VA statewide" sub-label.</li>
+          <li><b>Industry summary numbers</b>: mean wage, employment, and establishments shift to the selected LWDA (or Virginia statewide).</li>
+          <li><b>Pay-band rows</b>: when BLS publishes OEWS data at the LWDA level for an occupation, the bar reflects that region's wages. When BLS <b>suppresses</b> the cell at the LWDA level (too few employers / privacy), the row falls back to Virginia statewide values, marked with a small <code>*</code> after the title.</li>
         </ul>
-        <p style="margin-top: 10px;"><b>"Virginia" vs "VA statewide":</b> they're the same underlying data — the BLS statewide aggregate. The difference is context. Picking <b>Virginia</b> in the dropdown shows statewide numbers for every row (no asterisks). The <b>VA statewide</b> sub-label only appears when you've picked a specific LWDA but BLS suppressed that occupation's cell at the LWDA level — other rows in the same family with LWDA data keep showing your LWDA pick.</p>
 
         <h3>Target percentile slider</h3>
-        <p>Drag the slider to set where the red diamond sits on each row — your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
+        <p>Drag the slider to set where the red diamond sits on each row, your competitive pay target. The Budget at percentile, Median spread, and Workforce KPIs at the top of the chart update live as you drag.</p>
 
         <h3>Pay-band chart</h3>
         <svg class="help-illustration" viewBox="0 0 700 150" role="img" aria-label="Annotated example row matching what appears on the page">
@@ -662,10 +661,10 @@
         </svg>
 
         <ul class="help-bullets">
-          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Outer light blue band</b> — 10th to 90th percentile. The widest spread of wages for this occupation; covers entry-level through senior workers.</div></li>
-          <li><span class="swatch" style="background:#34537d"></span><div><b>Inner dark blue band</b> — 25th to 75th percentile. Most workers (the middle 50%) earn somewhere in here.</div></li>
-          <li><span class="swatch tick" style="background:#11151c"></span><div><b>Black tick</b> — the median. Half of workers earn less, half earn more.</div></li>
-          <li><span class="swatch diamond" style="background:#b5392b"></span><div><b>Red diamond</b> — your target percentile, set by the slider. Hover any row to see the dollar value and hourly equivalent.</div></li>
+          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Outer light blue band</b>: 10th to 90th percentile. The widest spread of wages for this occupation; covers entry-level through senior workers.</div></li>
+          <li><span class="swatch" style="background:#34537d"></span><div><b>Inner dark blue band</b>: 25th to 75th percentile. Most workers (the middle 50%) earn somewhere in here.</div></li>
+          <li><span class="swatch tick" style="background:#11151c"></span><div><b>Black tick</b>: the median. Half of workers earn less, half earn more.</div></li>
+          <li><span class="swatch diamond" style="background:#b5392b"></span><div><b>Red diamond</b>: your target percentile, set by the slider. Hover any row to see the dollar value and hourly equivalent.</div></li>
         </ul>
 
         <p class="help-footnote">Data: BLS Occupational Employment and Wage Statistics (OEWS) for the percentile bars; BLS Quarterly Census of Employment and Wages (QCEW) for the industry summary. Virginia LWDAs from the Workforce Information Database (WID).</p>
@@ -969,7 +968,7 @@
             const pct  = state.sel.targetPct;
             const a = r.annual;
             const locationText = r.provenance === 'statewide_fallback'
-              ? 'VA statewide'
+              ? 'Virginia'
               : (r.provenance === 'statewide' ? 'Virginia' : (region ? region.label : ''));
             const header = '<div style="font-weight:600; font-size:14px; line-height:1.3;">'
               + (r.job.label || r.job.soc_code) + '</div>'
@@ -1020,7 +1019,7 @@
             formatter: (idx) => {
               const r = rows[idx];
               const star = r.provenance === 'statewide_fallback' ? ' *' : '';
-              const sub  = r.provenance === 'statewide_fallback' ? 'VA statewide' : region.label;
+              const sub  = r.provenance === 'statewide_fallback' ? 'Virginia' : region.label;
               /* Emit one {name|line} block per pre-wrapped title line, then
                  the sub on a new line. ECharts treats each \n as a hard
                  break, and with no outer width/overflow nothing re-flows. */
