@@ -983,6 +983,41 @@
         })),
       });
 
+      /* Post-filter the dropdown after each keystroke. Tom Select / Sifter
+         prefix-AND matching surfaces "Nursery" (45-2000 Agricultural,
+         37-1000 Building & Grounds) for the query "nurse" — weighted
+         fields only re-rank, they don't exclude. Word-boundary regex
+         here hides any rendered option that doesn't truly match.
+         Custom score() would be cleaner but doesn't filter in this
+         Tom Select build. */
+      (function () {
+        const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        window.__familySel.on('type', function (str) {
+          const ts    = window.__familySel;
+          const query = (str || '').trim().toLowerCase();
+          if (!query) return;
+          const tokens = query.split(/\s+/).filter(t => t.length > 0);
+          if (!tokens.length) return;
+          /* `\b<tok>s?\b` allows a trailing 's' so "nurse" matches
+             "Nurses" / "Physician Assistant" matches "Physician
+             Assistants" but neither matches "Nursery". */
+          const tokenRes = tokens.map(t =>
+            new RegExp('\\b' + escapeRe(t) + 's?\\b', 'i'));
+          setTimeout(function () {
+            const optionEls = ts.dropdown_content.querySelectorAll('[data-value]');
+            optionEls.forEach(el => {
+              const opt = ts.options[el.getAttribute('data-value')];
+              if (!opt) return;
+              const fields = (
+                (opt.text || '') + ' ' + (opt.jobs || '') + ' ' + (opt.aliases || '')
+              ).toLowerCase();
+              const passes = tokenRes.every(re => re.test(fields));
+              el.style.display = passes ? '' : 'none';
+            });
+          }, 0);
+        });
+      })();
+
       /* Empty-state model: industry and family start unselected; user
          picks them (or clicks "Try an example" to jump to a ready state).
          Region and target keep usable defaults so the slider/region
