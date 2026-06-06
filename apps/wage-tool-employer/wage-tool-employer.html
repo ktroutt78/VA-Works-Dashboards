@@ -546,6 +546,12 @@
       padding: 16px 20px;
     }
 
+    /* State: family-only (family picked, no industry) — show the pay-band
+       card, hide the industry band, hide the empty card. The 1-2-3 step
+       order is a suggestion; picking only a family is a valid entry too. */
+    body[data-state="family-only"] .industry-band,
+    body[data-state="family-only"] .empty-state { display: none; }
+
     /* State: ready (both picked) — hide the empty card entirely. */
     body[data-state="ready"] .empty-state { display: none; }
 
@@ -1382,13 +1388,17 @@
     }
 
     /* Set body[data-state] from current selections. CSS uses this to
-       toggle the empty-state card, industry band, and pay-band card. */
+       toggle the empty-state card, industry band, and pay-band card.
+       Four states because either selection is independently meaningful:
+       the 1-2-3 step order in the empty card is a suggestion, not a
+       requirement — picking just a family is also a valid entry. */
     function updateUIState(state) {
       const hasIndustry = !!state.sel.industryCode;
       const hasFamily   = !!state.sel.familyCode;
-      const mode = !hasIndustry ? 'empty'
-                 : !hasFamily   ? 'industry-only'
-                                : 'ready';
+      const mode = hasIndustry && hasFamily ? 'ready'
+                 : hasIndustry              ? 'industry-only'
+                 : hasFamily                ? 'family-only'
+                                            : 'empty';
       document.body.setAttribute('data-state', mode);
     }
 
