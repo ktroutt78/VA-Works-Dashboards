@@ -963,37 +963,25 @@
         ...tsOpts,
         placeholder: "Select a job family...",
         plugins: ['dropdown_input'],
-        searchField: ['text', 'aliases'],
-        /* Tom Select's default sifter ranked unrelated families high on
-           multi-word queries — e.g. "Physician Assistant" surfaced
-           43-6000 (Office) because "Assistant" appears in dozens of
-           secretary aliases, drowning out the missing "Physician". This
-           custom score requires either a contiguous phrase match or all
-           query tokens present somewhere in the family. Families missing
-           any token get score 0 (excluded). */
-        score: function(search) {
-          const query = (search.query || '').trim().toLowerCase();
-          if (!query) return function() { return 1; };
-          return function(item) {
-            const text = (item.text || '').toLowerCase();
-            const aliases = (item.aliases || '').toLowerCase();
-            /* Strongest match: full query appears as a substring. */
-            if (text.includes(query))    return 1.0;
-            if (aliases.includes(query)) return 0.9;
-            /* Multi-word fallback: every token must appear somewhere. */
-            const tokens = query.split(/\s+/);
-            if (tokens.length > 1) {
-              const allPresent = tokens.every(t =>
-                text.includes(t) || aliases.includes(t));
-              if (allPresent) return 0.3;
-            }
-            return 0;
-          };
-        },
+        /* Weighted searchField — the previous setup bundled primary SOC-6
+           job titles together with O*NET alternates into a single
+           "aliases" blob, so noisy alternates like "Nurse Manager"
+           dragged unrelated families (Management) up the rankings on
+           queries like "nurse". Split into two fields with explicit
+           weights: text and primary jobs dominate; alternates are still
+           searched but score weakly, so "RN" still finds Registered
+           Nurses while "Physician Assistant" no longer surfaces
+           43-6000 (Office). */
+        searchField: [
+          { field: 'text',    weight: 2.0 },
+          { field: 'jobs',    weight: 1.5 },
+          { field: 'aliases', weight: 0.4 },
+        ],
         options: state.families.map(f => ({
           value: f.code,
           text: `${f.code} · ${f.label}`,
-          aliases: f.jobs.flatMap(j => [j.label, ...(j.aliases || [])]).join(' | '),
+          jobs:    f.jobs.map(j => j.label).join(' | '),
+          aliases: f.jobs.flatMap(j => j.aliases || []).join(' | '),
         })),
       });
 
