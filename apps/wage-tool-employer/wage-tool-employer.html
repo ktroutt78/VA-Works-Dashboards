@@ -539,6 +539,15 @@
 
     /* State: ready (both picked) — hide the empty card entirely. */
     body[data-state="ready"] .empty-state { display: none; }
+
+    /* Industry uses controlInput:null so Tom Select's `placeholder` prop has
+       no search input to host the text. Paint the placeholder via CSS while
+       the control sits empty. JS toggles .show-ts-placeholder on change. */
+    .ts-wrapper.show-ts-placeholder .ts-control::before {
+      content: attr(data-placeholder);
+      color: var(--muted);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body data-state="empty">
@@ -947,6 +956,12 @@
       state.sel.targetPct    = 60;
 
       document.getElementById("target-slider").value = state.sel.targetPct;
+
+      /* Industry placeholder painter (see CSS .show-ts-placeholder rule).
+         controlInput:null suppresses the search input Tom Select's native
+         placeholder relies on, so this CSS hook fills the empty control. */
+      window.__industrySel.wrapper.setAttribute('data-placeholder', 'Select an industry...');
+      window.__industrySel.wrapper.classList.add('show-ts-placeholder');
     }
 
     /* ──────────────────────────────────────────────────────────────────
@@ -1376,6 +1391,7 @@
          can switch back to the empty mode if the user clears the selection. */
       window.__industrySel.on('change', (val) => {
         state.sel.industryCode = val || null;
+        window.__industrySel.wrapper.classList.toggle('show-ts-placeholder', !state.sel.industryCode);
         updateUIState(state);
         if (state.sel.industryCode) updateIndustryBand(state);
       });
