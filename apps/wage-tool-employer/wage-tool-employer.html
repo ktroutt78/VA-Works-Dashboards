@@ -542,11 +542,19 @@
 
     /* Industry uses controlInput:null so Tom Select's `placeholder` prop has
        no search input to host the text. Paint the placeholder via CSS while
-       the control sits empty. JS toggles .show-ts-placeholder on change. */
+       the control sits empty. JS toggles .show-ts-placeholder on change.
+       Absolute-positioned so it doesn't shift the control's flex layout. */
+    .ts-wrapper.show-ts-placeholder .ts-control { position: relative; }
     .ts-wrapper.show-ts-placeholder .ts-control::before {
-      content: attr(data-placeholder);
+      content: "Select an industry...";
       color: var(--muted);
       pointer-events: none;
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--sans);
+      font-size: 14px;
     }
   </style>
 </head>
@@ -905,7 +913,11 @@
        Called once after buildState. Wiring change handlers is task #5.
     ────────────────────────────────────────────────────────────────────── */
     function populateControls(state) {
-      const tsOpts = { allowEmptyOption: false, maxOptions: null };
+      /* dropdownParent:'body' detaches each dropdown panel from the .frame
+         container (which has overflow:hidden) so panels can extend past
+         the frame's bottom edge — matters in the empty/industry-only
+         states where the frame is shorter than the family panel. */
+      const tsOpts = { allowEmptyOption: false, maxOptions: null, dropdownParent: 'body' };
 
       /* Industry — browse-only (no typing). Only 20 NAICS-2 sectors, easy
          to scan visually; the alias-search affordance that makes sense for
@@ -960,7 +972,6 @@
       /* Industry placeholder painter (see CSS .show-ts-placeholder rule).
          controlInput:null suppresses the search input Tom Select's native
          placeholder relies on, so this CSS hook fills the empty control. */
-      window.__industrySel.wrapper.setAttribute('data-placeholder', 'Select an industry...');
       window.__industrySel.wrapper.classList.add('show-ts-placeholder');
     }
 
