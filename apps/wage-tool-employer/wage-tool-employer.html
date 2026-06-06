@@ -941,8 +941,13 @@
         })),
       });
 
+      /* Region — browse-only too. 14 LWDAs + statewide is a short list,
+         search adds friction without payoff. controlInput:null suppresses
+         the search input so the selected item sits centered in the control
+         without the typing cursor showing below it. */
       window.__regionSel = new TomSelect("#region-select", {
         ...tsOpts,
+        controlInput: null,
         options: state.areas.map(a => ({ value: a.id, text: a.label })),
       });
 
