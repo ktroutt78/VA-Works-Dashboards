@@ -963,43 +963,18 @@
         ...tsOpts,
         placeholder: "Select a job family...",
         plugins: ['dropdown_input'],
-        /* searchField lets Sifter pre-filter the items it scores. The
-           score function below does word-boundary matching so prefix
-           hits like "nurse" → "nursery" (45-2000 Agricultural) get
-           filtered out — they pass Sifter's prefix-AND filter but the
-           score function returns 0 and the items drop. */
-        searchField: ['text', 'jobs', 'aliases'],
-        score: function(search) {
-          const query = (search.query || '').trim().toLowerCase();
-          if (!query) return function() { return 1; };
-          const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const tokens   = query.split(/\s+/).filter(t => t.length > 0);
-          /* Match the full query as a word (allowing a trailing 's' for
-             simple plurals: "nurse" hits "Nurses", "Physician Assistant"
-             hits "Physician Assistants"). Does NOT match "Nursery". */
-          const fullRe   = new RegExp('\\b' + escapeRe(query) + 's?\\b', 'i');
-          const tokenRes = tokens.map(t =>
-            new RegExp('\\b' + escapeRe(t) + 's?\\b', 'i'));
-          return function(item) {
-            const text    = item.text    || '';
-            const jobs    = item.jobs    || '';
-            const aliases = item.aliases || '';
-            let s = 0;
-            /* Exact phrase hits — heavier weight on primary fields. */
-            if (fullRe.test(text))    s += 4;
-            if (fullRe.test(jobs))    s += 3;
-            if (fullRe.test(aliases)) s += 1;
-            /* Multi-token fallback: ALL tokens must appear (with the
-               same plural-tolerant word-boundary). "Physician Assistant"
-               won't pass for 43-6000 because "Physician" isn't there. */
-            if (s === 0 && tokens.length > 1) {
-              if (tokenRes.every(re => re.test(jobs)))       s = 1.5;
-              else if (tokenRes.every(re =>
-                re.test(text) || re.test(jobs) || re.test(aliases))) s = 0.5;
-            }
-            return s;
-          };
-        },
+        /* Custom score() didn't filter in this Tom Select / Sifter
+           combination (returning 0 didn't exclude items), so rely on
+           weighted searchField instead. Widening the weight gap so
+           a hit in primary job labels dominates a hit in O*NET
+           alternates — keeps "RN" → 29-1000 working while preventing
+           weak alternate-only matches like "Nurse Informaticist" in
+           15-1000 Computer from outranking real healthcare families. */
+        searchField: [
+          { field: 'text',    weight: 4.0 },
+          { field: 'jobs',    weight: 3.0 },
+          { field: 'aliases', weight: 0.2 },
+        ],
         options: state.families.map(f => ({
           value: f.code,
           text: `${f.code} · ${f.label}`,
