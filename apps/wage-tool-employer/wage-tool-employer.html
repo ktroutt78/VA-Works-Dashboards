@@ -963,20 +963,43 @@
         ...tsOpts,
         placeholder: "Select a job family...",
         plugins: ['dropdown_input'],
-        /* Weighted searchField — the previous setup bundled primary SOC-6
-           job titles together with O*NET alternates into a single
-           "aliases" blob, so noisy alternates like "Nurse Manager"
-           dragged unrelated families (Management) up the rankings on
-           queries like "nurse". Split into two fields with explicit
-           weights: text and primary jobs dominate; alternates are still
-           searched but score weakly, so "RN" still finds Registered
-           Nurses while "Physician Assistant" no longer surfaces
-           43-6000 (Office). */
-        searchField: [
-          { field: 'text',    weight: 2.0 },
-          { field: 'jobs',    weight: 1.5 },
-          { field: 'aliases', weight: 0.4 },
-        ],
+        /* searchField lets Sifter pre-filter the items it scores. The
+           score function below does word-boundary matching so prefix
+           hits like "nurse" → "nursery" (45-2000 Agricultural) get
+           filtered out — they pass Sifter's prefix-AND filter but the
+           score function returns 0 and the items drop. */
+        searchField: ['text', 'jobs', 'aliases'],
+        score: function(search) {
+          const query = (search.query || '').trim().toLowerCase();
+          if (!query) return function() { return 1; };
+          const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const tokens   = query.split(/\s+/).filter(t => t.length > 0);
+          /* Match the full query as a word (allowing a trailing 's' for
+             simple plurals: "nurse" hits "Nurses", "Physician Assistant"
+             hits "Physician Assistants"). Does NOT match "Nursery". */
+          const fullRe   = new RegExp('\\b' + escapeRe(query) + 's?\\b', 'i');
+          const tokenRes = tokens.map(t =>
+            new RegExp('\\b' + escapeRe(t) + 's?\\b', 'i'));
+          return function(item) {
+            const text    = item.text    || '';
+            const jobs    = item.jobs    || '';
+            const aliases = item.aliases || '';
+            let s = 0;
+            /* Exact phrase hits — heavier weight on primary fields. */
+            if (fullRe.test(text))    s += 4;
+            if (fullRe.test(jobs))    s += 3;
+            if (fullRe.test(aliases)) s += 1;
+            /* Multi-token fallback: ALL tokens must appear (with the
+               same plural-tolerant word-boundary). "Physician Assistant"
+               won't pass for 43-6000 because "Physician" isn't there. */
+            if (s === 0 && tokens.length > 1) {
+              if (tokenRes.every(re => re.test(jobs)))       s = 1.5;
+              else if (tokenRes.every(re =>
+                re.test(text) || re.test(jobs) || re.test(aliases))) s = 0.5;
+            }
+            return s;
+          };
+        },
         options: state.families.map(f => ({
           value: f.code,
           text: `${f.code} · ${f.label}`,
