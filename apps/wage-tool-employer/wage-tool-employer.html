@@ -436,9 +436,112 @@
     /* ─── Loading state ──────────────────────────────────────────────── */
     .frame.loading .card,
     .frame.loading .industry-band { opacity: 0.4; pointer-events: none; }
+
+    /* ─── Empty / partial-empty state card ────────────────────────────── */
+    .empty-state {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 18px;
+      margin: 0 16px 16px;
+      padding: 18px 20px 18px 18px;
+      background: #fff;
+      border: 1px solid var(--card-line);
+      border-left: 4px solid var(--you);
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .empty-state-icon {
+      width: 56px; height: 56px;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 2px;
+    }
+    .empty-state-icon svg { width: 44px; height: 44px; }
+    .empty-state-intro { margin-bottom: 14px; }
+    .empty-state-eyebrow {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.2px; color: var(--you);
+      text-transform: uppercase; margin-bottom: 4px;
+    }
+    .empty-state-heading {
+      font-family: var(--serif);
+      font-size: 19px; font-weight: 600;
+      color: var(--ink); margin: 0 0 6px;
+      line-height: 1.25;
+    }
+    .empty-state-desc {
+      font-size: 13px; line-height: 1.5; color: #3a4153;
+      margin: 0;
+    }
+    .empty-state-steps {
+      list-style: none; padding: 0; margin: 0;
+      display: grid; gap: 10px;
+    }
+    .step {
+      display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+      align-items: start;
+    }
+    .step-num {
+      width: 22px; height: 22px;
+      background: var(--you); color: #fff;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      font-size: 11.5px; font-weight: 700;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-body { line-height: 1.3; }
+    .step-title {
+      font-size: 13.5px; font-weight: 600; color: var(--ink);
+    }
+    .step-sub {
+      font-size: 12px; color: var(--muted); margin-top: 2px;
+      line-height: 1.4;
+    }
+    .empty-state-cta {
+      margin-top: 16px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .empty-state-btn {
+      background: var(--you); color: #fff;
+      border: none; padding: 9px 16px;
+      border-radius: 4px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .empty-state-btn:hover { background: #9d2f23; }
+    .empty-state-cta-note {
+      font-size: 11.5px; color: var(--muted);
+    }
+
+    /* Step-2's "industry-only" copy is hidden by default; revealed by data-state below. */
+    .step-only { display: none; }
+
+    /* ─── State-driven visibility ──────────────────────────────────────── */
+    /* State: empty (nothing picked yet) — hide industry band and pay-band card. */
+    body[data-state="empty"] .industry-band,
+    body[data-state="empty"] .card { display: none; }
+
+    /* State: industry-only (industry picked, family not) — hide pay-band card,
+       collapse the empty card to just step 2 with its compact copy. */
+    body[data-state="industry-only"] .card { display: none; }
+    body[data-state="industry-only"] .empty-state-intro,
+    body[data-state="industry-only"] .step[data-step="1"],
+    body[data-state="industry-only"] .step[data-step="3"],
+    body[data-state="industry-only"] .empty-state-cta { display: none; }
+    body[data-state="industry-only"] .step[data-step="2"] .step-default { display: none; }
+    body[data-state="industry-only"] .step[data-step="2"] .step-only { display: block; }
+    body[data-state="industry-only"] .empty-state-icon { display: none; }
+    body[data-state="industry-only"] .empty-state {
+      grid-template-columns: 1fr;
+      padding: 16px 20px;
+    }
+
+    /* State: ready (both picked) — hide the empty card entirely. */
+    body[data-state="ready"] .empty-state { display: none; }
   </style>
 </head>
-<body>
+<body data-state="empty">
   <div class="page-wrap">
     <div class="frame loading" id="frame">
 
@@ -475,12 +578,12 @@
           <span class="ind-naics-name" id="ind-naics-name">—</span>
         </div>
         <div>
-          <div class="ind-stat-label">Avg wage</div>
+          <div class="ind-stat-label">Industry avg wage · all roles (QCEW mean)</div>
           <div class="ind-stat-value" id="ind-mean">—</div>
           <div class="ind-stat-sub" id="ind-mean-hourly">—</div>
         </div>
         <div>
-          <div class="ind-stat-label">Employment</div>
+          <div class="ind-stat-label">Industry employment</div>
           <div class="ind-stat-value" id="ind-emp">—</div>
         </div>
         <div>
@@ -564,6 +667,54 @@
         <div class="card-footer">
           <div class="footer-source">Industry summary: BLS QCEW (mean) · Pay band: BLS OEWS (percentiles)</div>
           <button class="footer-export">Save this pay band ↓</button>
+        </div>
+      </div>
+
+      <!-- Empty / partial-empty state card. Visibility controlled by body[data-state]. -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-state-icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" width="44" height="44">
+            <circle cx="22" cy="22" r="20" fill="none" stroke="#b5392b" stroke-width="1.5"/>
+            <line x1="8" y1="22" x2="36" y2="22" stroke="#aab9d6" stroke-width="6" stroke-linecap="round"/>
+            <line x1="16" y1="22" x2="28" y2="22" stroke="#34537d" stroke-width="6" stroke-linecap="round"/>
+            <polygon points="24,16 30,22 24,28 18,22" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="empty-state-content">
+          <div class="empty-state-intro">
+            <div class="empty-state-eyebrow">GET STARTED</div>
+            <h2 class="empty-state-heading">Build a pay band for any job family in Virginia</h2>
+            <p class="empty-state-desc">See full wage distributions for every occupation in a SOC-3 minor group, set a target percentile, and get a recommended pay range backed by BLS data.</p>
+          </div>
+          <ol class="empty-state-steps">
+            <li class="step" data-step="1">
+              <span class="step-num">1</span>
+              <div class="step-body">
+                <div class="step-title">Pick an industry</div>
+                <div class="step-sub">Sets your industry context · drives the summary band</div>
+              </div>
+            </li>
+            <li class="step" data-step="2">
+              <span class="step-num">2</span>
+              <div class="step-body">
+                <div class="step-title step-default">Choose a job family</div>
+                <div class="step-title step-only">Choose a job family to see the pay band</div>
+                <div class="step-sub step-default">A SOC-3 minor group · 3–7 related occupations</div>
+                <div class="step-sub step-only">A SOC-3 minor group gives you 3–7 related occupations to benchmark against. The recommended pay range will appear here.</div>
+              </div>
+            </li>
+            <li class="step" data-step="3">
+              <span class="step-num">3</span>
+              <div class="step-body">
+                <div class="step-title">Drag the percentile slider</div>
+                <div class="step-sub">See the recommended pay range update live</div>
+              </div>
+            </li>
+          </ol>
+          <div class="empty-state-cta">
+            <button id="try-example-btn" class="empty-state-btn" type="button">Try an example →</button>
+            <span class="empty-state-cta-note">Loads a Financial Clerks sample in Virginia</span>
+          </div>
         </div>
       </div>
 
@@ -753,6 +904,7 @@
       window.__industrySel = new TomSelect("#industry-select", {
         ...tsOpts,
         controlInput: null,
+        placeholder: "Select an industry...",
         options: state.sectors.map(s => ({
           value: s.naics,
           text: `${s.naics} · ${s.label}`,
@@ -772,6 +924,7 @@
          the family). Type "nurse" → 29-1000 surfaces. */
       window.__familySel = new TomSelect("#family-select", {
         ...tsOpts,
+        placeholder: "Select a job family...",
         plugins: ['dropdown_input'],
         searchField: ['text', 'aliases'],
         options: state.families.map(f => ({
@@ -781,21 +934,16 @@
         })),
       });
 
-      /* Defaults: pick a family with the most occupations so the demo
-         doesn't open on a 1-row family. Industry → 62 (Health Care) if
-         present else first. Region → virginia (statewide). Percentile → 60. */
-      const defaultFamily = [...state.families]
-        .sort((a, b) => b.jobs.length - a.jobs.length)[0];
-      const defaultIndustry = state.sectors.find(s => s.naics === "62") || state.sectors[0];
+      /* Empty-state model: industry and family start unselected; user
+         picks them (or clicks "Try an example" to jump to a ready state).
+         Region and target keep usable defaults so the slider/region
+         dropdown aren't blank. */
       const defaultRegion = state.areas.find(a => a.id === "virginia") || state.areas[0];
-
-      window.__industrySel.setValue(defaultIndustry.naics, true);  // true = silent
       window.__regionSel.setValue(defaultRegion.id, true);
-      window.__familySel.setValue(defaultFamily.code, true);
 
-      state.sel.industryCode = defaultIndustry.naics;
+      state.sel.industryCode = null;
       state.sel.regionId     = defaultRegion.id;
-      state.sel.familyCode   = defaultFamily.code;
+      state.sel.familyCode   = null;
       state.sel.targetPct    = 60;
 
       document.getElementById("target-slider").value = state.sel.targetPct;
@@ -1193,13 +1341,28 @@
       $('target-value').textContent = pct + 'th';
     }
 
-    /* Full render — used on initial boot and on selection changes. */
+    /* Set body[data-state] from current selections. CSS uses this to
+       toggle the empty-state card, industry band, and pay-band card. */
+    function updateUIState(state) {
+      const hasIndustry = !!state.sel.industryCode;
+      const hasFamily   = !!state.sel.familyCode;
+      const mode = !hasIndustry ? 'empty'
+                 : !hasFamily   ? 'industry-only'
+                                : 'ready';
+      document.body.setAttribute('data-state', mode);
+    }
+
+    /* Full render — used on initial boot and on selection changes.
+       Skips downstream updates when their inputs aren't selected yet. */
     function render(state) {
-      updateIndustryBand(state);
-      updateFamilyHeader(state);
-      updateKpiStrip(state);
+      updateUIState(state);
       updateSlider(state);
-      renderChart(state);
+      if (state.sel.industryCode) updateIndustryBand(state);
+      if (state.sel.familyCode) {
+        updateFamilyHeader(state);
+        updateKpiStrip(state);
+        renderChart(state);
+      }
     }
 
     /* ──────────────────────────────────────────────────────────────────
@@ -1208,32 +1371,43 @@
     ────────────────────────────────────────────────────────────────────── */
     function wireHandlers(state) {
       /* Industry — only affects the summary band. Pay bands are NOT filtered
-         by industry per the README (BLS suppresses industry × occupation). */
+         by industry per the README (BLS suppresses industry × occupation).
+         Empty string from Tom Select normalizes to null so updateUIState
+         can switch back to the empty mode if the user clears the selection. */
       window.__industrySel.on('change', (val) => {
-        state.sel.industryCode = val;
-        updateIndustryBand(state);
+        state.sel.industryCode = val || null;
+        updateUIState(state);
+        if (state.sel.industryCode) updateIndustryBand(state);
       });
 
-      /* Region — affects the summary band, family sub-line, KPI strip, and chart. */
+      /* Region — affects the summary band, family sub-line, KPI strip, and
+         chart. The summary band only re-renders if there's an industry; the
+         family-driven UI only re-renders if there's a family. */
       window.__regionSel.on('change', (val) => {
         state.sel.regionId = val;
-        updateIndustryBand(state);
-        updateFamilyHeader(state);
-        updateKpiStrip(state);
-        renderChart(state);
+        if (state.sel.industryCode) updateIndustryBand(state);
+        if (state.sel.familyCode) {
+          updateFamilyHeader(state);
+          updateKpiStrip(state);
+          renderChart(state);
+        }
       });
 
       /* Family — affects header, KPI strip, chart. */
       window.__familySel.on('change', (val) => {
-        state.sel.familyCode = val;
-        updateFamilyHeader(state);
-        updateKpiStrip(state);
-        renderChart(state);
+        state.sel.familyCode = val || null;
+        updateUIState(state);
+        if (state.sel.familyCode) {
+          updateFamilyHeader(state);
+          updateKpiStrip(state);
+          renderChart(state);
+        }
       });
 
       /* Target percentile — affects header, KPI strip, slider visual, chart.
          Native input fires on every step; rAF-throttle so the chart redraw
-         keeps up while dragging without queuing. */
+         keeps up while dragging without queuing. Slider visual always
+         updates; chart-related updates only run when a family is selected. */
       const slider = $('target-slider');
       let pending = false;
       slider.addEventListener('input', () => {
@@ -1242,12 +1416,25 @@
         pending = true;
         requestAnimationFrame(() => {
           pending = false;
-          updateFamilyHeader(state);
-          updateKpiStrip(state);
           updateSlider(state);
-          renderChart(state);
+          if (state.sel.familyCode) {
+            updateFamilyHeader(state);
+            updateKpiStrip(state);
+            renderChart(state);
+          }
         });
       });
+
+      /* Try-an-example button: jump to a known-good demo configuration
+         (Finance & Insurance, Financial Clerks, Virginia, 60th percentile).
+         setValue fires the change events which run the normal update path. */
+      const tryBtn = document.getElementById('try-example-btn');
+      if (tryBtn) {
+        tryBtn.addEventListener('click', () => {
+          window.__industrySel.setValue('52');
+          window.__familySel.setValue('43-3000');
+        });
+      }
     }
 
     /* ──────────────────────────────────────────────────────────────────
