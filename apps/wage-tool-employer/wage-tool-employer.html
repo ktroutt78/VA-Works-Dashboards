@@ -964,6 +964,32 @@
         placeholder: "Select a job family...",
         plugins: ['dropdown_input'],
         searchField: ['text', 'aliases'],
+        /* Tom Select's default sifter ranked unrelated families high on
+           multi-word queries — e.g. "Physician Assistant" surfaced
+           43-6000 (Office) because "Assistant" appears in dozens of
+           secretary aliases, drowning out the missing "Physician". This
+           custom score requires either a contiguous phrase match or all
+           query tokens present somewhere in the family. Families missing
+           any token get score 0 (excluded). */
+        score: function(search) {
+          const query = (search.query || '').trim().toLowerCase();
+          if (!query) return function() { return 1; };
+          return function(item) {
+            const text = (item.text || '').toLowerCase();
+            const aliases = (item.aliases || '').toLowerCase();
+            /* Strongest match: full query appears as a substring. */
+            if (text.includes(query))    return 1.0;
+            if (aliases.includes(query)) return 0.9;
+            /* Multi-word fallback: every token must appear somewhere. */
+            const tokens = query.split(/\s+/);
+            if (tokens.length > 1) {
+              const allPresent = tokens.every(t =>
+                text.includes(t) || aliases.includes(t));
+              if (allPresent) return 0.3;
+            }
+            return 0;
+          };
+        },
         options: state.families.map(f => ({
           value: f.code,
           text: `${f.code} · ${f.label}`,
