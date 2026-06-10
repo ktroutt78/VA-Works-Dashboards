@@ -57,15 +57,21 @@ sg_vintage AS (
     GROUP BY StFips, AreaType
 ),
 region_mapping AS (
+    -- lwda_short_name is now GEOGRAPHIES.AreaName verbatim (no substring-parse).
+    -- Per the project dimension-derived-labels standard, dim fields cannot
+    -- be substring-parsed for display. The JSON field name `lwda_short_name`
+    -- is preserved for front-end compatibility, but the value is the verbose
+    -- AreaName (e.g. 'Greater Roanoke Region (LWDA III)'). Front-end UI
+    -- shortening is a separate concern and lives in the front end. Load gap
+    -- against the WID owner: "GEOGRAPHIES has no ShortName / Alias column for
+    -- LWDA rows" (probe RESULTS LOG P6). The verbose emission is the
+    -- standard-compliant interim until WID adds a short-name column.
     SELECT
         sg.SubArea          AS Area,
         sg.SubAreaType      AS AreaType,
         sg.Area             AS lwda_code,
         g.AreaName          AS lwda_name,
-        LTRIM(RTRIM(REPLACE(
-            LEFT(g.AreaName, CHARINDEX(' (LWDA', g.AreaName + ' (LWDA') - 1),
-            ' Region', ''
-        ))) AS lwda_short_name
+        g.AreaName          AS lwda_short_name
     FROM WID.dbo.SUBGEOGRAPHIES sg
     JOIN sg_vintage sgv
       ON sg.StFips = sgv.StFips AND sg.AreaType = sgv.AreaType
@@ -332,17 +338,40 @@ g_vintage AS (
     GROUP BY AreaType
 ),
 lwda_dim AS (
+    -- See region_mapping (Q1) header — lwda_short_name is GEOGRAPHIES.AreaName
+    -- verbatim, no substring-parse. JSON field name preserved for front-end
+    -- compat; value carries the full LWDA name suffix.
     SELECT g.Area AS lwda_code,
            g.AreaName AS lwda_name,
-           LTRIM(RTRIM(REPLACE(
-               LEFT(g.AreaName, CHARINDEX(' (LWDA', g.AreaName + ' (LWDA') - 1),
-               ' Region', ''
-           ))) AS lwda_short_name
+           g.AreaName AS lwda_short_name
     FROM WID.dbo.GEOGRAPHIES g
     JOIN g_vintage gv
       ON g.AreaType = gv.AreaType AND g.AreaTypeVersion = gv.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '15'
       AND g.AreaName NOT LIKE '%Combined%'
+),
+
+-- ─── BLS CES SUPERSECTOR DIMENSION — live labels from NAICSSuperSectors ─────
+-- Replaces the hardcoded sector_name column on the industry_sectors VALUES
+-- CTE below, per the project dimension-derived-labels standard. The 10 BLS
+-- CES private supersector codes '1011'..'1027' all exist in this dim with
+-- SuperTitle labels (e.g. '1013' = 'Manufacturing', '1024' = 'Professional
+-- and Business Services'). No vintage column — flat reference dim.
+--
+-- The Government bar's label is NOT sourced here. The bar is rollup-derived
+-- from IndCode='10' (Total all-industries) + Ownership IN ('10','20','30')
+-- per the 2026-06-10 audit (see state_both_qtrs header below) — not a 1:1
+-- supersector row. The dim's '10' row carries SuperTitle='Total, all
+-- industries' which is not what the bar represents; the dim's '1028' row
+-- carries 'Public Administration' which is also not what the bar represents.
+-- Keeping 'Government' as the documented dim-label exception per the
+-- [[feedback-dimension-derived-labels]] standard, applied in
+-- gov_change_state / gov_change_region below.
+super_dim AS (
+    SELECT
+        RTRIM(ss.NAICSSuper) AS super_code,
+        ss.SuperTitle         AS super_label
+    FROM WID.dbo.NAICSSuperSectors ss
 ),
 latest_quarter AS (
     SELECT MAX(CONCAT(i.PeriodYear, '-', i.Period)) AS max_yq
@@ -362,18 +391,22 @@ prior_q AS (
     FROM current_q
 ),
 industry_sectors AS (
+    -- (indcode, ownership) pair only. The sector_name column was dropped per
+    -- the project dimension-derived-labels standard; live labels come from
+    -- super_dim above (WID.dbo.NAICSSuperSectors.SuperTitle). The ordering
+    -- here is purely cosmetic — top5 selection is by jobs_added DESC.
     SELECT * FROM (VALUES
-        ('1024','50','Professional & Business'),
-        ('1025','50','Education & Health'),
-        ('1026','50','Leisure & Hospitality'),
-        ('1021','50','Trade & Transportation'),
-        ('1013','50','Manufacturing'),
-        ('1012','50','Construction'),
-        ('1011','50','Natural Resources & Mining'),
-        ('1022','50','Information'),
-        ('1023','50','Financial Activities'),
-        ('1027','50','Other Services')
-    ) AS t(indcode, ownership, sector_name)
+        ('1024','50'),
+        ('1025','50'),
+        ('1026','50'),
+        ('1021','50'),
+        ('1013','50'),
+        ('1012','50'),
+        ('1011','50'),
+        ('1022','50'),
+        ('1023','50'),
+        ('1027','50')
+    ) AS t(indcode, ownership)
 ),
 state_both_qtrs AS (
     -- Pulls both the 10 private supersectors (1011..1027, Ownership='50') and
@@ -412,21 +445,31 @@ state_current_only AS (
     WHERE EXISTS (SELECT 1 FROM current_q cq WHERE sc.PeriodYear = cq.yr AND sc.Period = cq.qtr)
 ),
 private_change_state AS (
+    -- sector_name is now sourced live from super_dim (WID.dbo.NAICSSuperSectors).
+    -- COALESCE to the BLS code if the dim row is missing — keeps the bar
+    -- visible with a code label rather than dropping it. lwda_name / lwda_short_name
+    -- are NULL on statewide rows; the CAST width matches the per-LWDA branch
+    -- (NVARCHAR(120)) so the downstream UNION ALL doesn't pick the narrower
+    -- type.
     SELECT 'statewide' AS scope,
-           CAST(NULL AS VARCHAR(60)) AS lwda_name,
-           CAST(NULL AS VARCHAR(60)) AS lwda_short_name,
-           s.sector_name,
+           CAST(NULL AS NVARCHAR(120)) AS lwda_name,
+           CAST(NULL AS NVARCHAR(120)) AS lwda_short_name,
+           COALESCE(sd.super_label, s.indcode) AS sector_name,
            COALESCE(sc.current_emp, 0) AS current_emp,
            COALESCE(sc.prior_emp, 0)   AS prior_emp,
            COALESCE(sc.current_emp, 0) - COALESCE(sc.prior_emp, 0) AS jobs_added
     FROM industry_sectors s
     LEFT JOIN state_current_only sc ON sc.indcode = s.indcode AND sc.Ownership = s.ownership
+    LEFT JOIN super_dim sd ON sd.super_code = s.indcode
 ),
 gov_change_state AS (
+    -- 'Government' literal is the documented dim-label exception (see
+    -- super_dim header). The bar is a rollup over IndCode='10' + Ownership IN
+    -- ('10','20','30'), not the dim's '1028' Public Administration row.
     SELECT 'statewide' AS scope,
-           CAST(NULL AS VARCHAR(60)) AS lwda_name,
-           CAST(NULL AS VARCHAR(60)) AS lwda_short_name,
-           'Government' AS sector_name,
+           CAST(NULL AS NVARCHAR(120)) AS lwda_name,
+           CAST(NULL AS NVARCHAR(120)) AS lwda_short_name,
+           CAST('Government' AS NVARCHAR(120)) AS sector_name,
            SUM(COALESCE(current_emp, 0)) AS current_emp,
            SUM(COALESCE(prior_emp, 0))   AS prior_emp,
            SUM(COALESCE(current_emp, 0)) - SUM(COALESCE(prior_emp, 0)) AS jobs_added
@@ -470,7 +513,10 @@ region_current_only AS (
     WHERE EXISTS (SELECT 1 FROM current_q cq WHERE rc.PeriodYear = cq.yr AND rc.Period = cq.qtr)
 ),
 private_change_region AS (
-    SELECT ld.lwda_code AS scope, ld.lwda_name, ld.lwda_short_name, s.sector_name,
+    SELECT ld.lwda_code AS scope,
+           ld.lwda_name,
+           ld.lwda_short_name,
+           COALESCE(sd.super_label, s.indcode) AS sector_name,
            COALESCE(rc.current_emp, 0) AS current_emp,
            COALESCE(rc.prior_emp, 0)   AS prior_emp,
            COALESCE(rc.current_emp, 0) - COALESCE(rc.prior_emp, 0) AS jobs_added
@@ -478,12 +524,16 @@ private_change_region AS (
     CROSS JOIN industry_sectors s
     LEFT JOIN region_current_only rc
       ON rc.lwda_code = ld.lwda_code AND rc.indcode = s.indcode AND rc.Ownership = s.ownership
+    LEFT JOIN super_dim sd ON sd.super_code = s.indcode
 ),
 gov_change_region AS (
+    -- 'Government' literal — same documented dim-label exception as
+    -- gov_change_state. CAST to NVARCHAR(120) so the UNION ALL into
+    -- all_sectors holds the verbose lwda_short_name from lwda_dim.
     SELECT ld.lwda_code AS scope,
            MAX(ld.lwda_name) AS lwda_name,
            MAX(ld.lwda_short_name) AS lwda_short_name,
-           'Government' AS sector_name,
+           CAST('Government' AS NVARCHAR(120)) AS sector_name,
            SUM(COALESCE(rc.current_emp, 0)) AS current_emp,
            SUM(COALESCE(rc.prior_emp, 0))   AS prior_emp,
            SUM(COALESCE(rc.current_emp, 0)) - SUM(COALESCE(rc.prior_emp, 0)) AS jobs_added

@@ -187,7 +187,9 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
 
 ## Part 3 — Data model (ERD)
 
-The tool reads from **three** production WID 3.0 tables: `IOWAGE`, `INDUSTRY`, and `GEOGRAPHIES`. There is **no local seed table** and **no setup step** — LWDA codes AND labels both come live from `GEOGRAPHIES` on every refresh. LWDA additions, retirements, and renames flow through automatically with zero manual edits.
+The tool reads from **five** production WID 3.0 tables: `IOWAGE` and `INDUSTRY` (fact), `GEOGRAPHIES` (area dim), `SOCCodes` (occupation dim — SOC-6 titles AND the 23 SOC major-group titles), and `NAICSSectors` (sector dim — Q2 industry labels). There is **no local seed table** and **no setup step** — codes AND labels both come live from the WID dimensions on every refresh. LWDA additions, sector renames, and SOC-2018 → SOC-2028 transitions flow through automatically with zero manual edits.
+
+> **Project-wide dimension-derived-labels standard.** Every human-readable label exposed in the dashboard comes from a WID 3.0 dimension table JOINed at refresh time. No hardcoded labels in CTEs, no labels in seed tables, no substring-parsing of dim fields. The one documented exception is the Front Page dashboard's `'Government'` rollup bar; this tool has no exceptions.
 
 ### Combined ERD — all tables and join keys
 
@@ -243,8 +245,22 @@ erDiagram
         varchar AreaName "WID display name; emitted as area.label verbatim. '%Combined%' rows excluded for AreaType='15'."
     }
 
-    IOWAGE   }o--|| GEOGRAPHIES : "(StFips, AreaType, Area) — Q1 LWDA cells"
-    INDUSTRY }o--|| GEOGRAPHIES : "(StFips, AreaType, Area) — Q2 LWDA cells"
+    SOCCodes {
+        char SOCCode PK "CHAR(6) unhyphenated 6-digit SOC; e.g. '111011', '291141'"
+        char SOCCodeType PK "vintage anchor — '19' = BLS SOC-2018 on this install"
+        varchar SOCTitle "occupation label, Q1 `label` field"
+        char SOCParent "tree pointer; major-group rows have SOCParent='000000'"
+    }
+
+    NAICSSectors {
+        char NAICSSector PK "CHAR(2) leading 2-digit NAICS; e.g. '11','31','44','48','92'"
+        varchar SectorDesc "sector label, Q2 `label` field"
+    }
+
+    IOWAGE      }o--|| GEOGRAPHIES  : "(StFips, AreaType, Area) — Q1 LWDA cells"
+    INDUSTRY    }o--|| GEOGRAPHIES  : "(StFips, AreaType, Area) — Q2 LWDA cells"
+    IOWAGE      }o--|| SOCCodes     : "Q1: REPLACE(OccCode,'-','') = RTRIM(SOCCode), SOCCodeType anchored to MAX"
+    INDUSTRY    }o--|| NAICSSectors : "Q2: naics_sectors.naics_code = RTRIM(NAICSSector) (after wid_code-→-2-digit mapping)"
 ```
 
 **Join-key cheat sheet** (this is the most error-prone part of the codebase):
@@ -258,6 +274,10 @@ erDiagram
 | `INDUSTRY` ↔ `lwda_dim` (Q2 LWDA cells) | `(StFips, AreaType, Area)` — **NOT** AreaTypeVersion | Same reason. |
 | `state_area` CTE (built directly from GEOGRAPHIES at AreaType `'01'`) | (no further join) | Sources the statewide area code + label dynamically; no hardcoded `'virginia'` literal. |
 | `INDUSTRY` ↔ `naics_sectors` (Q2 supersector lookup) | `INDUSTRY.IndCode = naics_sectors.wid_code` | `wid_code` is the WID-stored form (e.g. `'31-33'`); `naics_code` is the clean 2-digit form emitted to JSON. |
+| `soc_dim` vintage filter (Q1) | `SOCCodeType = '19'` literal | Pinned to the BLS SOC-2018 vintage that IOWAGE rows are coded under. **Not** `MAX(SOCCodeType)` — see the inline header comment in `_RUN.sql`. If a second SOC vintage (e.g. SOC-2028 as `'20'`) ever loads, MAX would silently re-key every title against it before the OEWS load rolls forward, and labels would NULL out across the board. The literal fails LOUD instead — Spot-check A and the smoke tests catch it. Re-pin AND re-verify the IOWAGE↔SOCCodes intersection at the next vintage rollover. |
+| `IOWAGE` ↔ `soc_dim` (Q1 SOC title) | `REPLACE(LTRIM(RTRIM(IOWAGE.OccCode)),'-','') = RTRIM(SOCCodes.SOCCode)` | IOWAGE stores SOC in either hyphenated or unhyphenated 6-digit form; SOCCodes is CHAR(6) unhyphenated. RTRIM is safe-by-default. |
+| `soc_dim` → `major_group_dim` (Q1) | `RIGHT(soc_code,4)='0000' AND LEFT(soc_code,2)<>'00'` | The 23 SOC majors are derived from soc_dim itself — no separate table. The hardcoded 23-row VALUES CTE in prior versions is retired. |
+| `naics_sectors` ↔ `naics_dim` (Q2 sector title) | `naics_sectors.naics_code = RTRIM(NAICSSectors.NAICSSector)` | naics_sectors still provides the IndCode → 2-digit mapping (wid_code/naics_code); naics_dim provides the SectorDesc label. No vintage column. |
 
 ### Q1 call-out — `wages.json`
 
@@ -302,16 +322,22 @@ The set of LWDAs is **inferred live from GEOGRAPHIES** at `AreaType='15'` after 
 
 ## Part 4 — Static lookups
 
-Two additional JSON files ship with the tool but are **not** SQL-generated:
+Two static JSON files ship with the tool. They serve **different roles** post the SOCCodes wire-in:
 
-| File | Purpose | What happens if missing |
+| File | Role | What happens if missing |
 |---|---|---|
-| `data/soc-titles.json` | SOC-6 → human occupation title, derived from the BLS SOC structure. WID 3.0 on this install does not expose `OccName` on `IOWAGE`. | Job labels fall back to the SOC code (`"11-1011"` instead of `"Chief Executives"`). Tool remains usable. |
-| `data/soc-aliases.json` | SOC-6 → array of O*NET alternate titles, e.g. `"Registered Nurse"` aliases including `"RN"`, `"Nurse Practitioner"`. Powers the family dropdown's alias-aware search. | Family dropdown falls back to literal-text search. Tool remains usable. |
+| `data/soc-titles.json` | **NULL-only fallback.** The SQL now emits `SOCCodes.SOCTitle` live as `job.label` (see `soc_dim` CTE in `_RUN.sql` Q1). This file patches the rare cases where SOCCodes has no row for a SOC-6 (new BLS code not yet in the dim, or a vintage mismatch). | Job labels fall back to the SOC code (`"11-1011"` instead of `"Chief Executives"`) only for the missing rows. Tool remains usable. |
+| `data/soc-aliases.json` | **LIVE alias source — NOT a fallback.** Carries curated O*NET ALTERNATE titles (e.g. SOC `29-1141` → `["RN", "Nurse Practitioner", "Cardiac Nurse"]`). Powers the family dropdown's alias-aware search. | Family dropdown falls back to literal-text search. Tool remains usable. |
 
-Both are loaded via `fetch(...).then(r => r.ok ? r.json() : {}).catch(() => ({}))` — i.e. soft-fail. They are not blockers for refresh, and they are not part of the SQL pipeline. When/if WID 3.0 starts exposing `OccName` on `IOWAGE` and `ONET_TITLES` as a separate dimension table, both lookups become SQL-emittable and the pre-commented CTE blocks in `_RUN.sql` (lines 309–332) can be uncommented to ship aliases natively.
+**Why `soc-aliases.json` stays live (not retired) even though SOCCodes is now wired.** This is the most important nuance in the rewire. There are *three* candidate dim sources for aliases:
 
-These two files do not need to be regenerated on every refresh — they only change when BLS releases a new SOC vintage (rare, ~5 year cycle) or when new O*NET alt titles are published.
+1. **`WID.dbo.OccupationXOccupation`** — the BLS WID 3.0 spec's SOC↔ONET↔alt-title crosswalk. **EMPTY** on this install (probe `P3` RESULTS LOG: 0 rows). This is the *right* dim and would replace `soc-aliases.json` entirely if loaded — file the load gap against the WID owner.
+2. **`WID.dbo.ONETCodes`** — LOADED, but carries O*NET **formal** occupation titles, not alternate titles. Treating it as an alias source would (a) duplicate the SOCTitle on many SOC-6 rows, (b) miss the 2-5 curated colloquial labels per occupation that `soc-aliases.json` actually carries. This is the *wrong* dim. The SQL has a lossy-proxy CTE for it (commented out in `_RUN.sql` Q1) reserved for the day `soc-aliases.json` becomes unavailable AND `OccupationXOccupation` is still empty.
+3. **`data/soc-aliases.json`** — the best-available source on this install. Curated against the real O*NET Alternate Titles file. **This is the live alias source today** and stays in production until `OccupationXOccupation` loads.
+
+`soc-aliases.json` is not in the SQL pipeline because it doesn't need to be — its refresh cadence (~5 year BLS SOC vintage cycle) is decoupled from the WID monthly/annual refresh. Both files are loaded via `fetch(...).then(r => r.ok ? r.json() : {}).catch(() => ({}))` — soft-fail; they don't block refresh.
+
+**Future state.** When `WID.dbo.OccupationXOccupation` is loaded, rewrite the commented aliases CTE in `_RUN.sql` Q1 against that table (not the ONETCodes-direct lossy proxy currently sketched in the block), uncomment, and retire `soc-aliases.json` to a NULL-only fallback like `soc-titles.json`. The load-gap ticket is in [Known WID 3.0 load gaps](#known-wid-30-load-gaps-on-this-install).
 
 ---
 
@@ -339,13 +365,14 @@ Renaming any of these in SQL = silent wrong numbers (no error). Confirm via `_va
 
 ### Known WID 3.0 load gaps on this install
 
-These are documented gaps where this WID install lacks columns the BLS WID 3.0 spec defines. Track separately as load-gap tickets to the WID owner — not workarounds to bake in permanently.
+These are documented gaps where this WID install lacks columns or tables the BLS WID 3.0 spec defines. Track separately as load-gap tickets to the WID owner — not workarounds to bake in permanently.
 
-| Spec column | Status here | Workaround in this pipeline |
+| Spec column / table | Status here | Workaround in this pipeline |
 |---|---|---|
-| `IOWAGE.OccName` | Missing | SOC code is used as the label placeholder; `data/soc-titles.json` is applied client-side at render time. |
-| `INDUSTRY.AvgAnnualPay` | Missing | Computed inline as `TotalWages / NULLIF(QuarterAvgEmp, 0)` (matches BLS published methodology). |
-| `WID.dbo.ONET_TITLES` | Likely missing (probe 5 confirms) | `aliases` field emits `[]`; `data/soc-aliases.json` is applied client-side. The CTE for the live form is pre-written and commented in `_RUN.sql:309-332`. |
+| `IOWAGE.OccName` | Missing — **no longer load-bearing.** | SOC-6 labels are now sourced live from `WID.dbo.SOCCodes.SOCTitle` via `soc_dim` (Q1). `data/soc-titles.json` is retained only as a NULL-only client-side fallback for SOC-6 rows missing from SOCCodes. The ticket remains open for spec completeness but the dashboard no longer needs it. |
+| `INDUSTRY.AvgAnnualPay` | Missing | Computed inline as `TotalWages / NULLIF(QuarterAvgEmp, 0)` on `PeriodType='01' AND Period='00'` rows (matches BLS published `AvgAnnualPay` methodology). |
+| `WID.dbo.OccupationXOccupation` | **Structurally present, EMPTY (0 rows).** This is the BLS WID 3.0 spec's SOC↔ONET↔alt-title crosswalk — the *correct* alias dimension. | `aliases` field emits `[]` from SQL. **`data/soc-aliases.json` is the LIVE alias source** (not a fallback) and stays in production until this crosswalk loads. `WID.dbo.ONETCodes` is LOADED but carries O*NET formal titles, not alt titles, so it's not a substitute — see [Part 4](#part-4--static-lookups) for the full reasoning. A lossy-proxy CTE against ONETCodes is sketched in `_RUN.sql` Q1 (commented) for the day `soc-aliases.json` goes away. |
+| `WID.dbo.GEOGRAPHIES.ShortName` | Missing (no ShortName / Alias / DisplayName / Abbreviation column on this install — probe RESULTS LOG P6). | `areas[].label` is `GEOGRAPHIES.AreaName` verbatim — `"Alexandria/Arlington Region (LWDA XII)"` etc. — including the verbose `(LWDA …)` suffix. Acceptable for a dropdown; not blocking. Front-end UI may abbreviate at render time; the SQL never substring-parses. |
 
 ### Why JSON-on-disk instead of live SQL
 
@@ -362,7 +389,7 @@ Each row marks whether an assumption has been **Confirmed** against the live WID
 | # | Assumption | Status | Source of confirmation |
 |---|---|---|---|
 | 1 | `IOWAGE` exposes `Percentile10Wage`, `Percentile25Wage`, `MedianWage`, `Percentile75Wage`, `Percentile90Wage`, `MeanWage`, `EmpCount`, `RateType`, `OccCode`, `IndCode`, `IndCodeType`, `SuppressWage`, `SuppressEmp` | **Confirmed** | `_validate.sql` Probe 1, 2026-06-04 (header marker in `_RUN.sql:41–43`). |
-| 2 | `IOWAGE.OccName` is **missing** | **Confirmed** | Same probe. Documented load gap. |
+| 2 | `IOWAGE.OccName` is **missing** — **no longer load-bearing** | **Confirmed** | Same probe. Documented load gap. SOC-6 labels now sourced live from `WID.dbo.SOCCodes.SOCTitle` via `soc_dim` (Q1) per probe RESULTS LOG P1; `data/soc-titles.json` demoted to NULL-only fallback. |
 | 3 | `IOWAGE.RateType` values: `'4'` = Annual (~$67K median), `'1'` = Hourly (~$32 median) | **Confirmed** | `_validate.sql` Probe 4, 2026-06-04. |
 | 4 | `IOWAGE.AreaType = '15'` for LWDAs | **Confirmed** | `_validate.sql` Probe 2 + Probe 3, 2026-06-04. |
 | 5 | OEWS published at LWDA granularity (Probe 3 returned non-zero rows for `AreaType='15'`) | **Confirmed** | `_validate.sql` Probe 3, 2026-06-04. If a future refresh shows zero LWDA rows, every cell falls back to statewide — still valid output, but worth flagging in the UI. |
@@ -375,8 +402,12 @@ Each row marks whether an assumption has been **Confirmed** against the live WID
 | 12 | `INDUSTRY.Suppress = '1'` covers ~66% of VA annual rows, with populated values reconciling to statewide totals at 99.96% — i.e. the flag indicates imputation/quality, not non-publishability | **Confirmed (architectural decision)** | `_validate.sql` diagnostic + `_RUN.sql:582–587` comment. The Q2 query intentionally does **not** filter on `Suppress`. Revisit if WID load semantics are documented for this install. |
 | 13 | Fact tables (IOWAGE / INDUSTRY) and the GEOGRAPHIES dimension may carry **different** `AreaTypeVersion` values. Vintages should be pinned independently and joined on `(StFips, AreaType, Area)` only — not on `AreaTypeVersion`. | **Confirmed (architectural decision)** | Established pattern in `_RUN.sql:222–227` (with explicit inline comment). |
 | 14 | LWDA codes AND labels resolved live from `WID.dbo.GEOGRAPHIES` at `AreaType='15'` (with `AreaName NOT LIKE '%Combined%'`). No seed table. Same pattern for the statewide row at `AreaType='01'`. | **Confirmed (architectural decision)** | `_RUN.sql` `lwda_dim` + `state_area` CTEs. Validated by [Smoke Test 7 — LWDA tiling partition check](#smoke-test-7-lwda-tiling-partition-check) on every refresh. Future LWDA changes (additions, retirements, renames) flow through automatically. |
-| 15 | `WID.dbo.ONET_TITLES` may exist (BLS WID 3.0 spec includes it) but probe was not formally run | **Assumed — pending validation** | Run [Smoke Test 6 — ONET_TITLES presence](#smoke-test-6-onet_titles-presence). If present, the CTE in `_RUN.sql:309–332` can be uncommented and `soc-aliases.json` static lookup retired. |
+| 15 | `WID.dbo.OccupationXOccupation` exists structurally but has **0 rows** on this install (prior versions had this row pointed at the BLS-spec name `ONET_TITLES`). This is the SOC↔ONET↔alt-title crosswalk — the correct alias dimension. | **Confirmed (load gap)** | `queries/dimension_resolution_probe.sql` P3 RESULTS LOG (2026-06-10). Aliases stay sourced from `data/soc-aliases.json` (the LIVE alias source — see [Part 4](#part-4--static-lookups)). The commented onet_aliases CTE in `_RUN.sql` Q1 sketches the ONETCodes-direct lossy proxy reserved for the day soc-aliases.json goes away. |
 | 16 | Top-code repair thresholds (`$239,200` annual, `$115.00` hourly) match what the UI v1 used | **Confirmed (architectural decision)** | These are the documented OEWS top-codes for the relevant reference year. If BLS changes them, this constant moves with the SQL — flag any change here. |
+| 17 | `WID.dbo.SOCCodes` is LOADED. 1,447 rows, distinct SOC-6 codes. SOC-6 titles AND the 23 SOC major-group labels both come live from this dim via `soc_dim` + `major_group_dim` CTEs in Q1. **Vintage pinned to the literal `SOCCodeType='19'`** (BLS SOC-2018) — deliberately NOT `MAX()`. If a second SOC vintage ever loads, MAX would silently re-key titles before IOWAGE rolls forward; the literal fails LOUD instead, surfacing the mismatch via Spot-check A. **Known coverage gap:** 5 SOC-2018 codes are referenced in `IOWAGE` but absent from `SOCCodes` at vintage `'19'` (`211018`, `252052`, `259045`, `512028`, `531047`). Those rows emit with the hyphenated SOC-6 as `label`; the client-side `data/soc-titles.json` covers them with human titles until the WID owner reloads `SOCCodes` against the current SOC-2018 reference file. Tracked in `docs/client-tickets/wid-data-quality-punchlist.md` item 1. | **Confirmed** | `queries/dimension_resolution_probe.sql` P1 + P9.a RESULTS LOG (2026-06-10). The hardcoded 23-row major_groups VALUES CTE in prior versions is retired. |
+| 18 | `WID.dbo.NAICSSectors` is LOADED. 20 BLS NAICS-2 sectors with SectorDesc labels. Q2 `industries.json` sector labels come live from this dim via `naics_dim`. No vintage column — flat reference dim. | **Confirmed** | `queries/dimension_resolution_probe.sql` P4 RESULTS LOG (2026-06-10). The hardcoded `sector_name` column on the Q2 `naics_sectors` VALUES CTE is retired. |
+| 19 | `WID.dbo.NAICSSectors.SectorDesc` has known typos on this install — `'54'` = "Professiona.l Scientific & Technical Svc"; `'56'` = "Admin., Support, Waste Mgmt, Remediation". These flow through verbatim and are filed against the WID data-QA backlog. Not patched in SQL. | **Confirmed (data-QA backlog ticket)** | `queries/dimension_resolution_probe.sql` P4 RESULTS LOG. Until WID fixes, the UI will display the typos. |
+| 20 | `WID.dbo.GEOGRAPHIES` has **no** ShortName / Alias / DisplayName / Abbreviation column on this install. `areas[].label` is `AreaName` verbatim including the `(LWDA …)` suffix. | **Confirmed (load gap)** | `queries/dimension_resolution_probe.sql` P6 RESULTS LOG. Verbose emission is the standard-compliant interim until WID adds a short-name column. Front-end UI may abbreviate at render time; SQL never substring-parses dim fields. |
 
 ---
 
@@ -886,6 +917,10 @@ HighCharts/
 └── queries/
     ├── employer_wage_tool_mssql_validate.sql   ← schema-discovery probes, run once during commissioning
     ├── employer_wage_tool_mssql_RUN.sql        ← the 2 queries that emit wages + industries
+    ├── dimension_resolution_probe.sql          ← cross-tool probe of dim tables (SOCCodes, ONETCodes,
+    │                                              OccupationXOccupation, NAICSSectors, NAICSSuperSectors,
+    │                                              GEOGRAPHIES short-name); RESULTS LOG at the bottom
+    │                                              drives the dimension-derived-labels rewires
     └── employer_wage_tool_snowflake.sql        ← legacy Snowflake reference (not deployed)
 ```
 

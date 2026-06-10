@@ -80,11 +80,14 @@
 --                          OccCode, RateType, EmpCount, plus Percentile*Wage /
 --                          MedianWage / MeanWage cols above.
 --                          MISSING in this WID install: OccName (occupation
---                          label). Label defaults to SOC code. Major group
---                          labels are hardcoded from the BLS SOC structure.
---                          Production fix: load BLS SOC occupation-name
---                          reference (separate WID load-gap ticket — parallel
---                          to the AvgAnnualPay gap above).
+--                          label). NOT a blocker anymore: SOC-6 titles + the
+--                          23 SOC major-group labels are now sourced live
+--                          from WID.dbo.SOCCodes (see soc_dim / major_group_dim
+--                          CTEs in Q1). data/soc-titles.json is retained as
+--                          a NULL-only client-side fallback. The IOWAGE.OccName
+--                          load-gap ticket against the WID owner remains
+--                          open for completeness but no longer affects this
+--                          tool's labels.
 --   WID.dbo.INDUSTRY     : StFips, Area, AreaType, AreaTypeVersion, PeriodYear,
 --                          PeriodType, Period, Ownership, IndCode,
 --                          TotalWages, QuarterAvgEmp, Establishments
@@ -92,6 +95,33 @@
 --   WID.dbo.GEOGRAPHIES  : StFips, Area, AreaType, AreaTypeVersion, AreaName
 --                          (sole source of LWDA + statewide codes AND labels;
 --                          no local seed table)
+--   WID.dbo.SOCCodes     : SOCCode CHAR(6) (unhyphenated 6-digit), SOCTitle,
+--                          SOCParent, SOCCodeType (vintage). 1,447 rows on
+--                          this install, SOCCodeType='19' (BLS SOC-2018).
+--                          Live source for SOC-6 occupation labels and the
+--                          23 SOC major-group labels (major rows: SOCCode
+--                          LIKE '__0000' with non-'00' prefix).
+--   WID.dbo.NAICSSectors : NAICSSector CHAR(2), SectorDesc, SectorDescLong.
+--                          23 rows on this install — 20 BLS NAICS-2 sectors
+--                          plus '00' Total, '10' Supersector totals, '99'
+--                          Unclassified. Live source for NAICS-2 sector
+--                          labels in Q2. NO vintage column. KNOWN DATA-QA
+--                          ISSUES on this install: SectorDesc rows for '54'
+--                          ('Professiona.l Scientific & Technical Svc') and
+--                          '56' ('Admin., Support, Waste Mgmt, Remediation')
+--                          have typos / abbreviations. Filed to the WID
+--                          owner's data-QA backlog; NOT patched in SQL.
+--                          (Aliases dim — WID.dbo.ONETCodes — carries
+--                          O*NET FORMAL titles not alternate/lay titles.
+--                          The true alias dim — O*NET Alternate Titles file
+--                          / WID.dbo.OccupationXOccupation crosswalk — is
+--                          structurally present but EMPTY on this install.
+--                          Aliases stay sourced from the curated static
+--                          file data/soc-aliases.json — NOT a fallback,
+--                          the live source — until the true dim loads.
+--                          See the commented-out aliases CTE below for the
+--                          lossy-proxy ONETCodes-direct form to use only
+--                          if soc-aliases.json ever becomes unavailable.)
 --
 -- REQUIRES: SQL Server 2017+ for STRING_AGG (Azure SQL — the prod host —
 --   qualifies). FOR JSON PATH needs 2016+. Read-only; no temp tables.
@@ -181,6 +211,50 @@ state_area AS (
       ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
      AND g.AreaTypeVersion = gv.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '01'
+),
+
+-- ─── SOC DIMENSION — live SOC-6 + major-group labels from WID.dbo.SOCCodes ──
+-- Replaces the previously hardcoded 23-row major_groups VALUES CTE and the
+-- soc_code-as-label placeholder.
+--
+-- VINTAGE PIN — DELIBERATE, NOT FLOATING. SOCCodeType is pinned to the
+-- literal '19' (BLS SOC-2018), which is the SOC vintage the IOWAGE rows on
+-- this install are coded under (per probe RESULTS LOG P1 + the parallel WID
+-- OEWS release cadence). An earlier draft used MAX(SOCCodeType) defensively,
+-- but MAX would silently re-key every title if the WID owner ever loads a
+-- second vintage (e.g. SOC-2028 as '20') — fact rows are still SOC-2018-coded
+-- until the OEWS load also rolls forward, so the dim/fact would slip out of
+-- sync and titles would NULL out across the board. Pinning to '19' fails
+-- LOUD instead: when SOC-2028 lands and IOWAGE rolls with it, this query
+-- emits all-NULL labels and the smoke tests catch it. Re-pin the literal
+-- AND re-verify the IOWAGE↔SOCCodes intersection at that point — do NOT
+-- swap back to MAX.
+--
+-- SOCCode is CHAR(6) so RTRIM is safe-by-default even though the observed
+-- values aren't padded today. WID stores SOC codes UNHYPHENATED (e.g.
+-- '111011'); IOWAGE stores them in either form, normalized via
+-- REPLACE(..., '-', '') downstream.
+soc_dim AS (
+    SELECT
+        RTRIM(sc.SOCCode)  AS soc_code,
+        sc.SOCTitle        AS soc_title
+    FROM WID.dbo.SOCCodes sc
+    WHERE sc.SOCCodeType = '19'   -- BLS SOC-2018; pinned per header comment, do NOT swap to MAX
+),
+
+-- ─── SOC MAJOR GROUP DIMENSION — derived from soc_dim ───────────────────────
+-- BLS SOC majors are the 23 rows whose code ends in '0000' with a non-'00'
+-- leading pair (e.g. '110000' Management Occupations, '550000' Military
+-- Specific Occupations). Replaces the 23-row hardcoded VALUES CTE in prior
+-- versions. The mg_prefix is the 2-digit SOC family used to join to any
+-- SOC-6's leading 2 chars in the final SELECT.
+major_group_dim AS (
+    SELECT
+        LEFT(soc_code, 2)  AS mg_prefix,
+        soc_title          AS major_group_name
+    FROM soc_dim
+    WHERE RIGHT(soc_code, 4) = '0000'
+      AND LEFT(soc_code, 2) <> '00'
 ),
 
 -- ─── LATEST YEAR IN STATEWIDE OEWS ───────────────────────────────────────────
@@ -303,65 +377,56 @@ lwda_wages_repaired AS (
     FROM lwda_wages
 ),
 
--- ─── MAJOR GROUP LABELS (hardcoded BLS SOC majors) ───────────────────────────
--- Original plan was to source from IOWAGE XX-0000 rows + OccName; IOWAGE has
--- the rows but no OccName column in this WID install. SOC major groups are
--- stable (23 entries), safe to inline.
-major_groups AS (
-    SELECT * FROM (VALUES
-        ('11-0000', 'Management Occupations'),
-        ('13-0000', 'Business and Financial Operations'),
-        ('15-0000', 'Computer and Mathematical'),
-        ('17-0000', 'Architecture and Engineering'),
-        ('19-0000', 'Life, Physical, and Social Science'),
-        ('21-0000', 'Community and Social Service'),
-        ('23-0000', 'Legal'),
-        ('25-0000', 'Educational Instruction and Library'),
-        ('27-0000', 'Arts, Design, Entertainment, Sports, and Media'),
-        ('29-0000', 'Healthcare Practitioners and Technical'),
-        ('31-0000', 'Healthcare Support'),
-        ('33-0000', 'Protective Service'),
-        ('35-0000', 'Food Preparation and Serving Related'),
-        ('37-0000', 'Building and Grounds Cleaning and Maintenance'),
-        ('39-0000', 'Personal Care and Service'),
-        ('41-0000', 'Sales and Related'),
-        ('43-0000', 'Office and Administrative Support'),
-        ('45-0000', 'Farming, Fishing, and Forestry'),
-        ('47-0000', 'Construction and Extraction'),
-        ('49-0000', 'Installation, Maintenance, and Repair'),
-        ('51-0000', 'Production Occupations'),
-        ('53-0000', 'Transportation and Material Moving'),
-        ('55-0000', 'Military Specific Occupations')
-    ) AS t(mg_code, major_group_name)
-),
-
--- ─── O*NET ALIASES — COMMENTED OUT FOR v1 ────────────────────────────────────
--- Frontend always reads the `aliases` field on each job. v1 emits "aliases": [].
--- To wire real aliases: load O*NET Alternate Titles into WID.dbo.ONET_TITLES
--- (cols: ONETSOC_CODE, ALTERNATE_TITLE, OccCodeVersion) and uncomment the two
--- CTEs below + the LEFT JOIN + the JSON_QUERY swap in the final SELECT.
+-- ─── O*NET ALIASES — LOSSY PROXY, COMMENTED FOR v1 ──────────────────────────
+-- Frontend always reads the `aliases` field on each job. v1 emits "aliases": []
+-- from SQL. The LIVE alias source on this install is the static client-side
+-- file data/soc-aliases.json (see Part 4 of docs/handover/employer-wage-tool.md).
+-- That file is NOT a fallback — it carries curated O*NET ALTERNATE titles
+-- (e.g. SOC 29-1141 → ["RN", "Nurse Practitioner", "Cardiac Nurse"]), which
+-- is the right data shape for the family-dropdown alias-aware search.
 --
--- onet_vintage AS (
---     SELECT MAX(OccCodeVersion) AS OccCodeVersion
---     FROM WID.dbo.ONET_TITLES
--- ),
+-- WHY NOT WIRE FROM WID.dbo.ONETCodes:
+--   WID.dbo.ONETCodes (P2 in queries/dimension_resolution_probe.sql) carries
+--   O*NET FORMAL occupation titles, not alternate/lay titles. The true
+--   alias dimension is the O*NET Alternate Titles file, which the BLS WID
+--   3.0 spec exposes via WID.dbo.OccupationXOccupation as a SOC↔ONET↔alt
+--   crosswalk. On this install OccupationXOccupation exists structurally but
+--   has 0 rows (P3 RESULTS LOG). Until the WID owner loads it, the curated
+--   static file is the best-available alias data and stays live.
+--
+-- THE BLOCK BELOW is the LOSSY PROXY available if data/soc-aliases.json ever
+-- becomes unavailable AND OccupationXOccupation is still empty. It groups
+-- ONETCodes by SOC-6 prefix and treats the formal ONETTitles as approximate
+-- aliases. It will: (a) duplicate the SOCTitle on many SOC-6 detail rows,
+-- (b) miss the 2-5 curated colloquial labels per occupation that the static
+-- file carries. DO NOT live-wire without re-checking those tradeoffs. Load-gap
+-- ticket against the WID owner: "O*NET Alternate Titles dim / OccupationXOccupation
+-- crosswalk not loaded on this install" (see RESULTS LOG P3 for the spec).
+--
 -- onet_aliases AS (
---     -- O*NET ONETSOC_CODE is 8 chars (e.g. '11-1011.00'); WID SOC is 6 chars
---     -- (e.g. '11-1011'). LEFT(..., 7) trims to the SOC-6 prefix including the
---     -- hyphen. Inner DISTINCT dedupes the many-to-one fanout (one SOC-6 maps
---     -- to multiple O*NET-SOC detail codes with overlapping alt titles).
+--     -- Vintage is pinned to the literal ONETCodeType='12' (single vintage
+--     -- on this install per probe RESULTS LOG P2). MAX is deliberately NOT
+--     -- used here — same reasoning as soc_dim's literal pin: if a second
+--     -- vintage ever loads, MAX would silently re-key against it while the
+--     -- ONETCode↔SOC linkage may not have rolled forward in parallel. Pin
+--     -- to '12'; fail loud if that vintage retires.
+--     --
+--     -- ONETCode is CHAR(8) unhyphenated, no dot (e.g. '11101100',
+--     -- '11101103'); SOC-6 prefix = LEFT(ONETCode, 6). Inner DISTINCT
+--     -- dedupes the many-to-one fanout (one SOC-6 has 1..N ONET detail
+--     -- codes with overlapping formal titles).
 --     SELECT
 --         soc_code,
 --         '[' + STRING_AGG('"' + STRING_ESCAPE(alt, 'json') + '"', ',')
 --               WITHIN GROUP (ORDER BY alt) + ']' AS aliases_json
 --     FROM (
 --         SELECT DISTINCT
---             LEFT(o.ONETSOC_CODE, 7) AS soc_code,
---             o.ALTERNATE_TITLE       AS alt
---         FROM WID.dbo.ONET_TITLES o
---         JOIN onet_vintage ov ON o.OccCodeVersion = ov.OccCodeVersion
---         WHERE o.ALTERNATE_TITLE IS NOT NULL
---           AND o.ALTERNATE_TITLE <> ''
+--             LEFT(o.ONETCode, 6) AS soc_code,
+--             o.ONETTitle          AS alt
+--         FROM WID.dbo.ONETCodes o
+--         WHERE o.ONETCodeType = '12'      -- pinned per header; do NOT swap to MAX
+--           AND o.ONETTitle IS NOT NULL
+--           AND o.ONETTitle <> ''
 --     ) deduped
 --     GROUP BY soc_code
 -- ),
@@ -468,18 +533,22 @@ SELECT
     )) AS areas,
     JSON_QUERY((
         SELECT
-            STUFF(sw.soc_code, 3, 0, '-')            AS id,
-            STUFF(sw.soc_code, 3, 0, '-')            AS soc_code,
-            STUFF(sw.soc_code, 3, 0, '-')            AS label,        -- placeholder; OccName not in WID load
-
-            ISNULL(mg.major_group_name, 'Other')     AS major_group,
-            JSON_QUERY('[]')                         AS aliases,
-            -- When aliases CTE is uncommented above, swap the line above for:
-            --   JSON_QUERY(ISNULL(oa.aliases_json, '[]')) AS aliases,
-            JSON_QUERY(jb.areas_json)                AS areas
+            STUFF(sw.soc_code, 3, 0, '-')                                       AS id,
+            STUFF(sw.soc_code, 3, 0, '-')                                       AS soc_code,
+            COALESCE(sd.soc_title, STUFF(sw.soc_code, 3, 0, '-'))               AS label,
+            ISNULL(mgd.major_group_name, 'Other')                               AS major_group,
+            JSON_QUERY('[]')                                                    AS aliases,
+            -- aliases stays [] from SQL by design — data/soc-aliases.json is
+            -- the LIVE alias source (see header note + commented onet_aliases
+            -- block above). If/when the OccupationXOccupation crosswalk is
+            -- loaded AND the onet_aliases block is rewritten against it (not
+            -- the current ONETCodes-direct lossy proxy), swap the line above
+            -- for:  JSON_QUERY(ISNULL(oa.aliases_json, '[]')) AS aliases,
+            JSON_QUERY(jb.areas_json)                                           AS areas
         FROM state_wages_repaired sw
         JOIN job_areas_blob jb ON jb.soc_code = sw.soc_code
-        LEFT JOIN major_groups mg ON LEFT(sw.soc_code, 2) + '-0000' = mg.mg_code
+        LEFT JOIN soc_dim sd ON sd.soc_code = sw.soc_code
+        LEFT JOIN major_group_dim mgd ON mgd.mg_prefix = LEFT(sw.soc_code, 2)
         -- LEFT JOIN onet_aliases oa ON oa.soc_code = sw.soc_code
         ORDER BY sw.soc_code
         FOR JSON PATH
@@ -576,36 +645,58 @@ latest_ind_year AS (
 --   '31-33' Manufacturing  (covers NAICS 31, 32, 33)
 --   '44-45' Retail Trade  (covers NAICS 44, 45)
 --   '48-49' Transportation & Warehousing  (covers NAICS 48, 49)
--- WID stores the IndCode literally as the hyphenated range string. The other
--- 17 NAICS-2 sectors store as single 2-digit codes (e.g. '11', '22'). Joining
--- on a single 2-digit code would silently drop Manufacturing, Retail Trade,
--- and Transportation — three of Virginia's largest sectors.
--- Solution: two-column lookup. wid_code = the form actually stored in
--- IndCode (used in the JOIN); naics_code = the clean 2-digit form (emitted
+-- WID.dbo.INDUSTRY stores IndCode literally as the hyphenated range string;
+-- WID.dbo.NAICSSectors stores the sector under its LEADING 2-digit form ('31'
+-- represents 31-33, etc.). This CTE bridges the two: wid_code = the IndCode
+-- form (used in the IndCode JOIN below); naics_code = the leading 2-digit
+-- form (used to look up the live label from WID.dbo.NAICSSectors AND emitted
 -- into the JSON so the UI's sector keys stay consistent with the skeleton).
+-- The sector LABEL is now sourced live from NAICSSectors via naics_dim below
+-- — prior versions inlined a 3rd VALUES column (sector_name) which is gone.
 naics_sectors AS (
     SELECT * FROM (VALUES
-        ('11', '11',    'Agriculture, Forestry, Fishing & Hunting'),
-        ('21', '21',    'Mining, Quarrying & Oil/Gas Extraction'),
-        ('22', '22',    'Utilities'),
-        ('23', '23',    'Construction'),
-        ('31', '31-33', 'Manufacturing'),
-        ('42', '42',    'Wholesale Trade'),
-        ('44', '44-45', 'Retail Trade'),
-        ('48', '48-49', 'Transportation & Warehousing'),
-        ('51', '51',    'Information'),
-        ('52', '52',    'Finance & Insurance'),
-        ('53', '53',    'Real Estate & Rental/Leasing'),
-        ('54', '54',    'Professional, Scientific & Technical'),
-        ('55', '55',    'Management of Companies'),
-        ('56', '56',    'Administrative & Support/Waste Mgmt'),
-        ('61', '61',    'Educational Services'),
-        ('62', '62',    'Health Care & Social Assistance'),
-        ('71', '71',    'Arts, Entertainment & Recreation'),
-        ('72', '72',    'Accommodation & Food Services'),
-        ('81', '81',    'Other Services (except Public Admin)'),
-        ('92', '92',    'Public Administration')
-    ) AS t(naics_code, wid_code, sector_name)
+        ('11', '11'),
+        ('21', '21'),
+        ('22', '22'),
+        ('23', '23'),
+        ('31', '31-33'),
+        ('42', '42'),
+        ('44', '44-45'),
+        ('48', '48-49'),
+        ('51', '51'),
+        ('52', '52'),
+        ('53', '53'),
+        ('54', '54'),
+        ('55', '55'),
+        ('56', '56'),
+        ('61', '61'),
+        ('62', '62'),
+        ('71', '71'),
+        ('72', '72'),
+        ('81', '81'),
+        ('92', '92')
+    ) AS t(naics_code, wid_code)
+),
+
+-- ─── NAICS DIMENSION — live sector labels from WID.dbo.NAICSSectors ─────────
+-- Per the project dimension-derived-labels standard, sector titles come live
+-- from WID.dbo.NAICSSectors. This dim has no vintage column — it's a flat
+-- 23-row reference dim ('00' Total + '10' Supersector totals + 20 BLS NAICS-2
+-- sectors + '99' Unclassified). The 20 NAICS-2 codes match the naics_sectors
+-- CTE one-to-one on naics_code; the SectorDesc column carries the BLS-published
+-- range annotation directly ('Manufacturing (31-33)', 'Retail Trade (44 & 45)',
+-- 'Transportation and Warehousing (48 & 49)').
+--
+-- KNOWN DATA-QA ISSUES on this WID install (probe RESULTS LOG P4):
+--   '54' SectorDesc = 'Professiona.l Scientific & Technical Svc'   ← typo
+--   '56' SectorDesc = 'Admin., Support, Waste Mgmt, Remediation'   ← abbreviated
+-- These are surfaced verbatim — file the typos on the WID owner's data-QA
+-- backlog (separate ticket). Do NOT patch in SQL or hand-curate over them.
+naics_dim AS (
+    SELECT
+        RTRIM(ns.NAICSSector) AS naics_code,
+        ns.SectorDesc          AS sector_label
+    FROM WID.dbo.NAICSSectors ns
 ),
 
 -- ─── STATEWIDE QCEW (BLS Total Covered row direct, no rollup) ───────────────
@@ -733,11 +824,12 @@ SELECT
     )) AS areas,
     JSON_QUERY((
         SELECT
-            ns.naics_code                AS naics,
-            ns.sector_name               AS label,
-            JSON_QUERY(sab.areas_json)   AS areas
+            ns.naics_code                                AS naics,
+            COALESCE(nd.sector_label, ns.naics_code)     AS label,
+            JSON_QUERY(sab.areas_json)                   AS areas
         FROM naics_sectors ns
         JOIN sector_areas_blob sab ON sab.naics_code = ns.naics_code
+        LEFT JOIN naics_dim nd ON nd.naics_code = ns.naics_code
         ORDER BY ns.naics_code
         FOR JSON PATH
     )) AS sectors

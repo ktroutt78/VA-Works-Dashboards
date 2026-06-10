@@ -107,7 +107,7 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
       "hc_key": "us-va-001",          // join key for the map
       "areaname": "Accomack County",
       "region": "000456",              // LWDA code (drives bar chart on click)
-      "lwda_short_name": "Hampton Roads",
+      "lwda_short_name": "Hampton Roads (LWDA XIV)",   // verbose AreaName verbatim, see note below
       "employment_rate": 95.1,
       "unemployed_rate": 4.9,
       "labor_force": 14578,
@@ -117,6 +117,8 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
   ]
 }
 ```
+
+> **`lwda_short_name` value note (was changed).** The JSON field name is preserved for front-end compatibility, but the **value** is now `GEOGRAPHIES.AreaName` verbatim — `"Hampton Roads (LWDA XIV)"`, `"Greater Roanoke Region (LWDA III)"`, etc. — including the `(LWDA …)` suffix. Prior versions substring-parsed the AreaName to derive a short label (e.g. `"Hampton Roads"`), which violated the project [dimension-derived-labels standard](#) — no substring-parsing of dim fields. The verbose emission is the standard-compliant interim until WID adds a short-name column. Front-end UI may abbreviate at render time; the SQL never substring-parses.
 
 **Semantics:**
 - `kpi.virginia.value` is the **unemployment rate** (seasonally adjusted, `AreaType='01'`, `Adjusted='1'`).
@@ -164,10 +166,10 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
   ],
   "regions": [
     {
-      "key": "000451",              // LWDA code, joined to county.region in Q1
-      "label": "Northern",
+      "key": "000451",                                    // LWDA code, joined to county.region in Q1
+      "label": "Northern Region (LWDA XI)",                // verbose AreaName verbatim (was "Northern")
       "sectors": [
-        { "sector": "Professional & Business", "jobs_added": 4100 },
+        { "sector": "Professional and Business Services", "jobs_added": 4100 },  // from NAICSSuperSectors.SuperTitle
         ...
       ]
     },
@@ -176,9 +178,13 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
 }
 ```
 
+> **`regions[].label` and `sectors[].sector` value notes (were changed).** Both fields are now sourced live from WID dimension tables:
+> - `regions[].label` = `GEOGRAPHIES.AreaName` verbatim (was a substring-parsed short label like `"Northern"`). Same change as Q1's `lwda_short_name` field — see the Q1 note above. Front-end abbreviates if needed.
+> - `sectors[].sector` = `NAICSSuperSectors.SuperTitle` verbatim (was a hardcoded literal like `"Professional & Business"`). The dim's strings are the BLS-published canonical forms — `"Trade, Transportation and Utilities"`, `"Education and Health Services"`, `"Professional and Business Services"`. The Government bar's label is the one exception — see [Q3 Semantics](#q3--top-5-industry-bar-chart) below.
+
 **Semantics:**
 - "Jobs added" = `QuarterAvgEmp` in the latest quarter minus `QuarterAvgEmp` in the prior quarter. **Not** year-over-year. The `LAG(...) OVER (PARTITION BY ...)` window in `state_change` / `region_change` CTEs computes this.
-- The 10 BLS CES supersector codes (`'1011'..'1027'`) are private-sector aggregates — each is filtered to `Ownership='50'` (Private) via the `industry_sectors` lookup CTE. **Load-bearing safeguard:** the `private_change_state` / `private_change_region` LEFT JOINs match on **both** `indcode` AND `Ownership` (against `industry_sectors`, which has no row for `'10'`). This is what prevents the `IndCode='10' Ownership='50'` "Total private" row — which now flows through `state_both_qtrs` upstream — from leaking into the top-5 private ranking and dominating it. If a future change ever simplifies that LEFT JOIN to match on `indcode` alone, the chart will silently start showing a giant "Total private" bar instead of the supersector breakdown. Do not simplify.
+- The 10 BLS CES supersector codes (`'1011'..'1027'`) are private-sector aggregates — each is filtered to `Ownership='50'` (Private) via the `industry_sectors` lookup CTE. The CTE is now an `(indcode, ownership)` pair only; the **labels** come live from `WID.dbo.NAICSSuperSectors.SuperTitle` via the `super_dim` CTE (per the project dimension-derived-labels standard — the hardcoded `sector_name` column on the VALUES is retired). **Load-bearing safeguard:** the `private_change_state` / `private_change_region` LEFT JOINs match on **both** `indcode` AND `Ownership` (against `industry_sectors`, which has no row for `'10'`). This is what prevents the `IndCode='10' Ownership='50'` "Total private" row — which now flows through `state_both_qtrs` upstream — from leaking into the top-5 private ranking and dominating it. If a future change ever simplifies that LEFT JOIN to match on `indcode` alone, the chart will silently start showing a giant "Total private" bar instead of the supersector breakdown. Do not simplify.
 - **The Government row** is rolled up from the BLS pre-summed **Total-all-industries** supersector — `IndCode='10'`, with `Ownership IN ('10','20','30')` to restrict to Federal + State + Local employment across **every** industry (schools, hospitals, transit, etc.). This is the BLS-published canonical government total (~749k VA employees as of the 2025-Q4 extract). Prior versions of this query summed `IndCode='1028'` (NAICS-92 Public Administration) instead, which only captured ~265k workers — about a third of actual government employment. The fix was committed 2026-06-10 after the A vs. C audit (see below).
 - The Government row's label is the hardcoded literal **'Government'** — the one documented dim-label exception in this query. The bar is a rollup over an ownership filter against a supersector total, not a 1:1 dimension row, so there's no clean `NAICSSuperSectors` title to source. (The dim's title for IndCode='10' is 'Total, all industries', which isn't what the bar represents.)
 - Top 5 per scope (statewide and each LWDA) via `ROW_NUMBER() OVER (PARTITION BY scope ORDER BY jobs_added DESC)`. If a sector lost jobs (negative `jobs_added`) but still ranks in the top 5, it appears in the output (the front-end colors negative bars differently).
@@ -246,10 +252,16 @@ erDiagram
         int QuarterAvgEmp
     }
 
-    LABORFORCE }o--|| GEOGRAPHIES : "(StFips, AreaType, AreaTypeVersion, Area) — used by Q1 + Q2"
-    INDUSTRY    }o--|| GEOGRAPHIES : "(StFips, AreaType, AreaTypeVersion, Area) — used by Q3"
-    SUBGEOGRAPHIES }o--|| GEOGRAPHIES : "(StFips, '15', AreaTypeVersion, Area) — Q1 LWDA-name lookup"
-    SUBGEOGRAPHIES ||--o{ LABORFORCE : "SubArea = LABORFORCE.Area — Q1 county→LWDA mapping"
+    NAICSSuperSectors {
+        char NAICSSuper PK "CHAR(4) BLS CES supersector code; '10','101','102','1011'..'1029'"
+        varchar SuperTitle "supersector label, Q3 `sector` field (private bars)"
+    }
+
+    LABORFORCE     }o--|| GEOGRAPHIES       : "(StFips, AreaType, AreaTypeVersion, Area) — used by Q1 + Q2"
+    INDUSTRY       }o--|| GEOGRAPHIES       : "(StFips, AreaType, AreaTypeVersion, Area) — used by Q3"
+    SUBGEOGRAPHIES }o--|| GEOGRAPHIES       : "(StFips, '15', AreaTypeVersion, Area) — Q1 LWDA-name lookup"
+    SUBGEOGRAPHIES ||--o{ LABORFORCE        : "SubArea = LABORFORCE.Area — Q1 county→LWDA mapping"
+    INDUSTRY       }o--|| NAICSSuperSectors : "Q3: industry_sectors.indcode = RTRIM(NAICSSuper) (private bars only; Government label = hardcoded literal — documented exception)"
 ```
 
 **Join-key cheat sheet** (this is the most error-prone part of the codebase):
@@ -262,6 +274,7 @@ erDiagram
 | `SUBGEOGRAPHIES` ↔ `GEOGRAPHIES` (Q1 LWDA name) | `(StFips, AreaType, Area)` where SUBGEOGRAPHIES.Area = GEOGRAPHIES.Area (the LWDA's code) | Used to get the LWDA's `AreaName` for `lwda_short_name`. |
 | `SUBGEOGRAPHIES` ↔ `LABORFORCE` (Q1 county→LWDA mapping) | `SUBGEOGRAPHIES.SubArea = LABORFORCE.Area` AND `SUBGEOGRAPHIES.SubAreaType = LABORFORCE.AreaType (='04')` | This is what assigns each county to its LWDA. |
 | `INDUSTRY` ↔ `GEOGRAPHIES` (Q3) | `(StFips, AreaType, AreaTypeVersion, Area)` | Same 4-column pattern. AreaType pinned to `'15'` for LWDAs. |
+| `industry_sectors` ↔ `super_dim` (Q3 private sector labels) | `industry_sectors.indcode = RTRIM(NAICSSuperSectors.NAICSSuper)` | Live label source for the 10 private CES supersectors via `super_dim` CTE. No vintage column. `industry_sectors` VALUES CTE no longer carries a hardcoded `sector_name` column. The Government bar is a rollup (`IndCode='10' + Ownership IN ('10','20','30')`) — its `'Government'` label is the **one documented dim-label exception** in this query. |
 
 ### Q1 call-out — `employment_by_locality.json`
 
@@ -297,8 +310,9 @@ Filters applied:
 
 ```mermaid
 erDiagram
-    INDUSTRY ||--o{ GEOGRAPHIES : "4-col geo key (used only for LWDA labels)"
-    INDUSTRY }o--|| INDUSTRY_SECTORS : "IndCode → sector_name (10 supersectors + Government)"
+    INDUSTRY ||--o{ GEOGRAPHIES      : "4-col geo key — LWDA labels (AreaName verbatim)"
+    INDUSTRY }o--|| industry_sectors : "IndCode → (indcode, ownership) pair only — labels via super_dim"
+    industry_sectors }o--|| NAICSSuperSectors : "live SuperTitle for the 10 private supersectors; Government bar uses literal 'Government'"
 ```
 
 Filters applied:
@@ -354,11 +368,14 @@ Each row marks whether an assumption has been **Confirmed** against the live WID
 | 6 | `hc_key = 'us-va-' + RIGHT(LABORFORCE.Area, 3)` produces the GeoJSON join key | **Assumed — pending validation** | Flagged explicitly in the v8 SQL header (lines 30–33). Confirm via [Smoke Test 4 — Alexandria spot-check](#smoke-test-4-hc_key-construction). |
 | 7 | `SUBGEOGRAPHIES.SubArea = LABORFORCE.Area` for county→LWDA mapping (with `SubAreaType = '04'`) | **Assumed — pending validation** | The Q1 region_mapping CTE depends on this shape. Run [Smoke Test 3](#smoke-test-3-lwda-county-mapping-completeness). |
 | 8 | 14 LWDAs return after the `AreaName NOT LIKE '%Combined%'` filter | **Confirmed** | Verified for the Employer Wage Tool on 2026-06-05 (`_setup.sql` seed). |
-| 9 | `GEOGRAPHIES.AreaName` for an LWDA always starts with the LWDA short name followed by ` (LWDA …)` or ` Region` | **Assumed — pending validation** | The substring-parsing in `lwda_short_name` (Q1 lines 65–68, Q3 lines 337–340) relies on this. Watch for new LWDA naming conventions on vintage rollover. |
+| 9 | `lwda_short_name` field is now `GEOGRAPHIES.AreaName` verbatim — substring-parser RETIRED per the project dimension-derived-labels standard. Was previously: "AreaName always starts with the LWDA short name followed by ` (LWDA …)` or ` Region`" — an assumption that's no longer load-bearing. | **Confirmed (architectural decision, 2026-06-10)** | `region_mapping` (Q1) and `lwda_dim` (Q3) CTEs both emit `g.AreaName` verbatim into `lwda_short_name` and (in Q3) `regions[].label`. The JSON field names are preserved for front-end compatibility; values are verbose ("Hampton Roads (LWDA XIV)" etc.). Load gap: `GEOGRAPHIES.ShortName` not present on this install (probe RESULTS LOG P6). |
 | 10 | `INDUSTRY` exposes `QuarterAvgEmp, IndCode, Ownership, PeriodType, Period` | **Confirmed** | Verified for the Employer Wage Tool `_validate.sql` Probe 1 (2026-06-05). |
 | 11 | BLS CES supersector codes `'10'` (Total all-industries) + `'1011'..'1027'` (private supersectors) exist in `INDUSTRY.IndCode` at AreaType `'01'`. The `'10'` row drives the corrected Government rollup. | **Confirmed at AreaType='01'** (2026-06-10 audit returned 748,907 for `IndCode='10' AND Ownership IN ('10','20','30')`). **Assumed at AreaType='15'** — verify via [Smoke Test 5](#smoke-test-5-supersector-coverage) on next refresh; if `'10'` rows aren't loaded at the LWDA level, per-LWDA Government bars will render NULL. |
 | 12 | `IndCode='10' AND Ownership IN ('10','20','30')` summed across the BLS Total-all-industries supersector = total Fed+State+Local government employment | **Confirmed (2026-06-10 audit)** | Statewide: 748,907 employees. Replaced the prior assumption that `IndCode='1028' AND Ownership IN ('10','20','30')` was the right rollup — that filter returned only 264,752 (NAICS-92 Public Administration only). See Q3 Semantics A/B/C audit. |
 | 13 | Fact tables (LABORFORCE / INDUSTRY) and the GEOGRAPHIES dimension may carry **different** `AreaTypeVersion` values. The two vintages should be pinned independently and joined on `(StFips, AreaType, Area)` only — not on `AreaTypeVersion`. | **Confirmed (architectural decision)** | This is the established pattern in `queries/employer_wage_tool_mssql_RUN.sql` (lines 222–227) and applies here as well. |
+| 14 | `WID.dbo.NAICSSuperSectors` is LOADED. 15 rows, including the 10 private CES supersectors `'1011'..'1027'` with SuperTitle labels. Q3 `regions[].sectors[].sector` (and the statewide bars) come live from this dim via `super_dim`. No vintage column — flat reference dim. | **Confirmed** | `queries/dimension_resolution_probe.sql` P5 RESULTS LOG (2026-06-10). The hardcoded `sector_name` column on the Q3 `industry_sectors` VALUES CTE is retired. Notable label deltas vs prior hardcoded values: `'1021'` = "Trade, Transportation and Utilities" (was "Trade & Transportation"); `'1024'` = "Professional and Business Services" (was "Professional & Business"); `'1025'` = "Education and Health Services" (was "Education & Health"); `'1026'` = "Leisure and Hospitality" (was "Leisure & Hospitality"). |
+| 15 | The Government bar's label is the **literal `'Government'`** — the one documented dim-label exception in this query. The bar is rollup-derived (`IndCode='10' + Ownership IN ('10','20','30')`), not a 1:1 supersector row. The dim's `'1028'` SuperTitle is "Public Administration" (NAICS-92 only, not what the bar represents); the dim's `'10'` SuperTitle is "Total, all industries" (also not what the bar represents). | **Confirmed (architectural decision)** | `gov_change_state` and `gov_change_region` CTEs in `_RUN_v8.sql`. Aligned with the [feedback-dimension-derived-labels](#) standard's exception clause for rollup-derived series. |
+| 16 | `WID.dbo.GEOGRAPHIES` has no ShortName / Alias / DisplayName / Abbreviation column on this install. `lwda_short_name` / `regions[].label` carry the verbose AreaName instead. | **Confirmed (load gap)** | `queries/dimension_resolution_probe.sql` P6 RESULTS LOG (2026-06-10). Load gap against the WID owner: "GEOGRAPHIES has no LWDA short-name column." Verbose emission is the standard-compliant interim. |
 
 ---
 
