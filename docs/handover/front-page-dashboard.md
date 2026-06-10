@@ -195,6 +195,25 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
   
   A << C (35% of C) — rollup bug. B ≈ C (99.99% of C) — the supersector partition tiles total nonfarm cleanly; the private-sector bars were never affected.
 
+#### `Ownership='80'` isolation from the Government rollup
+
+**What `'80'` is.** `Ownership='80'` carries ~343k VA rows of **government employment classified by industry of function** rather than employer ownership. A public school teacher's employer is State or Local government (`'20'`/`'30'`) AND their *industry of function* is Educational Services (NAICS 61) — so the same person also appears under `'80'` + IndCode 61. Same for public-hospital nurses (Health Care 62) and Public Administration workers (NAICS 92). These rows concentrate in NAICS `'92'`/`'61'`/`'62'`. **`'80'` sits OUTSIDE `'00'` Total Covered** — supplemental, not a constituent (P3 reconciliation confirmed `Ownership IN ('10','20','30','50')` sums to `'00'` at ratio `1.0000` across every supersector). This is a documented BLS QCEW construct, not dirty data; resolved by the 2026-06-10 audit. Full background in `docs/client-tickets/wid-data-quality-punchlist.md` Note B.
+
+**Why this matters for Q3.** Including `'80'` in the Government rollup would double-count government workers already counted under `'10'`/`'20'`/`'30'` — the same teacher counted once as a State employee AND once as "works in Education." The rollup is structurally protected against this at two independent levels:
+
+| Gate | CTE | Filter | Effect |
+|---|---|---|---|
+| Upstream | `state_both_qtrs` (line **432**) | `WHERE i.Ownership IN ('10','20','30','50')` | `'80'` rows never enter the fact-pool; downstream CTEs (`state_change`, `state_current_only`) can't see them. |
+| Upstream | `region_both_qtrs` (line **500**) | `WHERE i.Ownership IN ('10','20','30','50')` | Same effect on the regional side. |
+| Downstream | `gov_change_state` (line **481**) | `WHERE indcode = '10' AND Ownership IN ('10','20','30')` | `'80'` explicitly absent from the Government-rollup IN-list. |
+| Downstream | `gov_change_region` (line **546**) | `... AND rc.Ownership IN ('10','20','30')` | Same on the regional side. |
+
+Either layer alone would block `'80'`. Together they're belt-and-suspenders.
+
+> **Load-bearing rule — DO NOT widen the gov filter.** The downstream `gov_change_state.Ownership IN ('10','20','30')` and `gov_change_region.Ownership IN ('10','20','30')` IN-lists are the integrity guarantee for the Government bar's number. **Never add `'80'` to either IN-list.** Doing so adds ~343k spurious workers (the size of the industry-of-function population) to the Government rollup, double-counting them — they're already in there once via their `'10'`/`'20'`/`'30'` ownership rows. A future contributor who sees `'80'` in the data and thinks "looks like another government code" would land here; this paragraph is your warning sign. Smoke Test 9 below test-enforces this rule.
+
+**Empirical cross-check.** The audit measured the Government rollup at **748,907 VA**, which matches the BLS-published Fed+State+Local total. If `'80'` were leaking in (~343k rows), the audit would have measured ~1,091,907 — about a 46% over-count. The clean 748,907 confirms the exclusion works in production.
+
 ---
 
 ## Part 3 — Data model (ERDs)
@@ -376,6 +395,7 @@ Each row marks whether an assumption has been **Confirmed** against the live WID
 | 14 | `WID.dbo.NAICSSuperSectors` is LOADED. 15 rows, including the 10 private CES supersectors `'1011'..'1027'` with SuperTitle labels. Q3 `regions[].sectors[].sector` (and the statewide bars) come live from this dim via `super_dim`. No vintage column — flat reference dim. | **Confirmed** | `queries/dimension_resolution_probe.sql` P5 RESULTS LOG (2026-06-10). The hardcoded `sector_name` column on the Q3 `industry_sectors` VALUES CTE is retired. Notable label deltas vs prior hardcoded values: `'1021'` = "Trade, Transportation and Utilities" (was "Trade & Transportation"); `'1024'` = "Professional and Business Services" (was "Professional & Business"); `'1025'` = "Education and Health Services" (was "Education & Health"); `'1026'` = "Leisure and Hospitality" (was "Leisure & Hospitality"). |
 | 15 | The Government bar's label is the **literal `'Government'`** — the one documented dim-label exception in this query. The bar is rollup-derived (`IndCode='10' + Ownership IN ('10','20','30')`), not a 1:1 supersector row. The dim's `'1028'` SuperTitle is "Public Administration" (NAICS-92 only, not what the bar represents); the dim's `'10'` SuperTitle is "Total, all industries" (also not what the bar represents). | **Confirmed (architectural decision)** | `gov_change_state` and `gov_change_region` CTEs in `_RUN_v8.sql`. Aligned with the [feedback-dimension-derived-labels](#) standard's exception clause for rollup-derived series. |
 | 16 | `WID.dbo.GEOGRAPHIES` has no ShortName / Alias / DisplayName / Abbreviation column on this install. `lwda_short_name` / `regions[].label` carry the verbose AreaName instead. | **Confirmed (load gap)** | `queries/dimension_resolution_probe.sql` P6 RESULTS LOG (2026-06-10). Load gap against the WID owner: "GEOGRAPHIES has no LWDA short-name column." Verbose emission is the standard-compliant interim. |
+| 17 | `INDUSTRY.Ownership='80'` is industry-of-function government employment (~343k VA rows; public teachers under NAICS 61, public-hospital nurses under NAICS 62, Public Administration under NAICS 92). It sits **OUTSIDE** `'00'` Total Covered (P3 reconciliation: `Ownership IN ('10','20','30','50')` sums to `'00'` at ratio `1.0000`). Q3 intentionally excludes `'80'` at two independent levels: upstream `state_both_qtrs:432` / `region_both_qtrs:500` filter `Ownership IN ('10','20','30','50')` AND downstream `gov_change_state:481` / `gov_change_region:546` filter `Ownership IN ('10','20','30')`. Including `'80'` would double-count government workers already counted under `'10'`/`'20'`/`'30'`. | **Confirmed (architectural decision, 2026-06-10 audit)** | Commit `5a7d8da`. Empirical cross-check: Government rollup measured at 748,907 VA — matches BLS Fed+State+Local. A leak would have produced ~1.09M (~46% over). Full reasoning in [`Ownership='80'` isolation from the Government rollup](#ownership80-isolation-from-the-government-rollup) under Q3 Semantics and `docs/client-tickets/wid-data-quality-punchlist.md` Note B. Test-enforced by [Smoke Test 9](#smoke-test-9-q3-government-bar-80-isolation-guard). |
 
 ---
 
@@ -605,6 +625,112 @@ LEFT JOIN fact_pool p
   ON p.indcode = s.indcode AND p.Ownership = s.ownership   -- ← reproduces the load-bearing condition
 ORDER BY s.indcode;
 ```
+
+#### Smoke Test 9: Q3 Government bar `'80'` isolation guard (integration tier)
+
+**This is an integration test, not a pure smoke test.** It execs the production Q3 Government-rollup CTE chain from `queries/labor_market_dashboard_mssql_RUN_v8.sql` lines ~411–481 verbatim against the live WID and asserts the resulting Government-bar employment value falls inside a band tuned to detect the `'80'` leak signature. Live-data dependency: `WID.dbo.INDUSTRY` at `AreaType='01'`. Place this test alongside the live-data spot-checks in your refresh runbook, not in the column-inventory tier.
+
+The reason this test execs production SQL rather than recomputing a clean reference sum: a test that builds its own filter from scratch passes even when production widens its filter to include `'80'` — the test stops enforcing the rule it documents. By executing the production CTE chain verbatim, this test catches both BLS-side and SQL-side leaks, with one maintenance convention: **if you change the production CTEs, you MUST update this test's CTEs to match.** The two copies are deliberately coupled.
+
+**What the leak signature looks like (the band is tuned around these numbers):**
+- Clean rollup (`Ownership IN ('10','20','30')`): **~749k VA** (2026-06-10 audit: `748,907`)
+- With `'80'` leaking in (`Ownership IN ('10','20','30','80')`): **~1.09M VA** (+343k)
+- Gap: ~340k. Normal BLS year-over-year workforce drift is ~5-10% (~40-75k). The gap is ~4-8× the drift envelope, so a band-based verdict stays robust to legitimate workforce movement.
+
+**Verdict logic:**
+
+| `gov_bar_emp` range | Verdict | Meaning |
+|---|---|---|
+| `[600k, 950k)` | `'ok'` | Clean rollup, inside the BLS Fed+State+Local plausibility envelope. |
+| `[950k, 1,000k)` | `'*** AMBIGUOUS *** investigate'` | Either real workforce growth OR a partial leak. Re-anchor against the BLS-published Fed+State+Local total for the current quarter before declaring pass/fail. |
+| `≥ 1,000k` | `'*** LEAK ***'` | Matches the ~1.09M leak signature. Production Q3 has likely widened `Ownership IN` to include `'80'` (or some other Government-counting code). Check `_RUN_v8.sql` line ~481 (state) and ~546 (region); the IN-list must be exactly `('10','20','30')`. |
+| `< 600k` | `'*** PLAUSIBILITY ***'` | Re-anchor — either BLS revision, vintage rollover, or a different kind of regression (missing data, broken upstream IN-list). |
+| `NULL` | `'*** UNEXPECTED ***'` | No rollup row produced. Likely vintage anchor or BLS load gap. |
+
+```sql
+-- SMOKE TEST 9 — Q3 Government bar '80' isolation guard (integration)
+-- LIVE-DATA DEPENDENCY: WID.dbo.INDUSTRY at AreaType='01'.
+-- CTEs below are an EXACT COPY of queries/labor_market_dashboard_mssql_RUN_v8.sql
+-- Q3 lines ~411–481 (state_both_qtrs + state_current_only + gov_change_state),
+-- simplified to current-quarter only (no LAG/prior-quarter rows — the leak
+-- signature is in the absolute rollup value, not the jobs_added delta).
+--
+-- *** LOAD-BEARING SYNC CONVENTION ***
+-- If you change ANY of these in queries/labor_market_dashboard_mssql_RUN_v8.sql:
+--   * state_both_qtrs filter (IndCode IN-list, Ownership IN-list, AreaType)
+--   * gov_change_state filter (IndCode='10', Ownership IN-list)
+-- you MUST mirror the change in this test's CTEs below, OR this test silently
+-- drifts from production and stops enforcing the leak guard. The two copies
+-- are intentionally coupled. There is no automation enforcing the sync —
+-- maintainer discipline only.
+
+WITH
+i_vintage AS (
+    SELECT AreaType, MAX(AreaTypeVersion) AS AreaTypeVersion
+    FROM WID.dbo.INDUSTRY
+    WHERE StFips = '51' AND AreaType = '01'
+    GROUP BY AreaType
+),
+latest_quarter AS (
+    SELECT MAX(CONCAT(i.PeriodYear, '-', i.Period)) AS max_yq
+    FROM WID.dbo.INDUSTRY i
+    JOIN i_vintage iv
+      ON i.AreaType = iv.AreaType AND i.AreaTypeVersion = iv.AreaTypeVersion
+    WHERE i.StFips = '51' AND i.AreaType = '01' AND i.PeriodType = '02'
+      AND i.Period <> '00'
+),
+current_q AS (
+    SELECT SUBSTRING(max_yq, 1, 4) AS yr, SUBSTRING(max_yq, 6, 2) AS qtr
+    FROM latest_quarter
+),
+state_both_qtrs AS (
+    -- COPY of RUN_v8.sql state_both_qtrs (current-quarter slice only).
+    SELECT TRIM(i.IndCode) AS indcode, i.Ownership,
+           TRY_CAST(i.QuarterAvgEmp AS BIGINT) AS current_emp
+    FROM WID.dbo.INDUSTRY i
+    JOIN i_vintage iv
+      ON i.AreaType = iv.AreaType AND i.AreaTypeVersion = iv.AreaTypeVersion
+    CROSS JOIN current_q cq
+    WHERE i.StFips = '51' AND i.AreaType = '01' AND i.PeriodType = '02'
+      AND i.IndCode IN ('10','1011','1012','1013','1021','1022','1023','1024','1025','1026','1027')
+      AND i.Ownership IN ('10','20','30','50')                       -- ← LOAD-BEARING (sync with prod)
+      AND i.PeriodYear = cq.yr AND i.Period = cq.qtr
+),
+gov_rollup AS (
+    -- COPY of RUN_v8.sql gov_change_state filter (current-quarter SUM only).
+    SELECT SUM(COALESCE(current_emp, 0)) AS gov_bar_emp
+    FROM state_both_qtrs
+    WHERE indcode = '10' AND Ownership IN ('10','20','30')           -- ← LOAD-BEARING (sync with prod)
+),
+-- Informational: surfaces the '80' fact-table population at IndCode='10' so
+-- the operator can see what the leak would add if the IN-list were widened.
+-- Not used in the verdict — the verdict is based on the production rollup
+-- itself, which is what would actually drive the dashboard.
+leak_context AS (
+    SELECT SUM(TRY_CAST(i.QuarterAvgEmp AS BIGINT)) AS ind10_own80_emp
+    FROM WID.dbo.INDUSTRY i
+    JOIN i_vintage iv
+      ON i.AreaType = iv.AreaType AND i.AreaTypeVersion = iv.AreaTypeVersion
+    CROSS JOIN current_q cq
+    WHERE i.StFips = '51' AND i.AreaType = '01' AND i.PeriodType = '02'
+      AND i.IndCode = '10' AND i.Ownership = '80'
+      AND i.PeriodYear = cq.yr AND i.Period = cq.qtr
+)
+SELECT
+    gr.gov_bar_emp,
+    lc.ind10_own80_emp                          AS leak_size_if_widened,
+    gr.gov_bar_emp + ISNULL(lc.ind10_own80_emp, 0) AS leak_signature_total,
+    CASE
+        WHEN gr.gov_bar_emp IS NULL              THEN '*** UNEXPECTED *** no rollup row produced'
+        WHEN gr.gov_bar_emp >= 1000000           THEN '*** LEAK *** rollup ≥ 1.0M matches the leak signature; check _RUN_v8.sql gov_change_state:481 and gov_change_region:546 — IN-list must be exactly (''10'',''20'',''30'')'
+        WHEN gr.gov_bar_emp >= 950000            THEN '*** AMBIGUOUS *** rollup in [950k, 1M) — re-anchor against BLS Fed+State+Local published total for the current quarter before pass/fail'
+        WHEN gr.gov_bar_emp < 600000             THEN '*** PLAUSIBILITY *** rollup < 600k — re-anchor; BLS revision, vintage rollover, or upstream regression'
+        ELSE 'ok'
+    END                                          AS verdict
+FROM gov_rollup gr CROSS JOIN leak_context lc;
+```
+
+> **Scope note.** This test covers `AreaType='01'` (statewide). The `region_both_qtrs` upstream and `gov_change_region` downstream at `AreaType='15'` use the same IN-lists with the same mechanism — if statewide is safe, regional is safe by the same logic. The band `[600k, 950k]` for `'ok'` is anchored to the 2026-06-10 audit (`748,907`) plus a generous BLS year-over-year drift envelope (~5-10%); the `≥ 1,000k` LEAK threshold sits ~91k below the leak signature (`~1.09M`), leaving room for drift without false positives. Re-anchor against the BLS-published Fed+State+Local total — NOT against this test's own historical pass — if VA's workforce changes materially.
 
 ### Tier 2 — Spot-checks (anchored to 2026-06-05 extract)
 
