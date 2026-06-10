@@ -91,34 +91,46 @@ There is no short-name column to source a compact display label from. Prior dash
 
 ---
 
-## 5. `INDUSTRY.Ownership` — encoding deviation from BLS QCEW spec; `'08'` Total Government coverage
+## 5. `INDUSTRY.Ownership` — `'08'` Total Government convenience rollup not loaded
 
-**Table / field:** `WID.dbo.INDUSTRY.Ownership` (and parallel `IOWAGE.Ownership`).
+**Table / field:** `WID.dbo.INDUSTRY.Ownership`.
 
-**Observed (probe RESULTS LOG, validate.sql Probe 4).** The Virginia WID install stores QCEW Ownership codes in **2-digit form with trailing zero**:
+**Observed.** BLS QCEW canonically publishes a pre-summed `'08'` (or single-digit `8`) **Total Government** rollup row at every (NAICS, area) cell — equivalent to `Federal + State + Local`. This convenience code is not present on this WID install. The Ownership values that ARE present are: `'00'` Total Covered, `'10'` Federal, `'20'` State, `'30'` Local, `'50'` Private, and `'80'` (see [Documented encoding notes](#documented-encoding-notes) note B below for `'80'`).
 
-| WID-stored | Meaning |
-|---|---|
-| `'00'` | Total Covered (= sum of `'10'+'20'+'30'+'50'`) |
-| `'10'` | Federal |
-| `'20'` | State |
-| `'30'` | Local |
-| `'50'` | Private |
-| `'80'` | Other / unknown (~343k VA rows; not in standard BLS QCEW) |
+**Expected.** Either Ownership `'08'` loaded as the pre-summed Fed+State+Local rollup per BLS QCEW convention, or a documented decision NOT to load it.
 
-BLS QCEW canonical Ownership codes are **single-digit**: `0` Total Covered, `1` Federal, `2` State, `3` Local, `5` Private. The 2-digit encoding adds a trailing zero on every code. **Plus,** BLS canonically publishes `'08'` (or single-digit `8`) as **Total Government** (= Federal + State + Local rollup), but this code is **not observed** on this install.
+**Affects.** **Front Page Dashboard** Q3 Government rollup. Today the rollup is computed by SUMMING `IndCode='10' + Ownership IN ('10','20','30')` across the 3 constituent ownership rows (Fed/State/Local). This produces the correct number (~749k VA verified 2026-06-10 audit, commit `76a6515`) but requires the BLS Total-all-industries `IndCode='10'` row plus the 3-row sum. If `'08'` were loaded, the rollup could be sourced as a single row (`IndCode='10' AND Ownership='08'`), removing one source of arithmetic risk. No business-logic blocker today.
 
-**Expected.** Either:
-- (a) Document the 2-digit encoding as a deliberate WID-Virginia convention, and clarify what `'80'` represents (the 343k rows are populated, not garbage — possibly nonprofit / supplemental coverage that doesn't fit the standard codes); OR
-- (b) Rebase to BLS single-digit codes to match the spec.
+**Requested action.** Confirm whether `'08'` Total Government should be present per the WID-Virginia ownership-encoding convention. If yes, load it as the pre-summed rollup. If no, document the decision so future SQL doesn't assume it. Low priority — current Q3 rollup is correct and tested.
 
-Either way, confirm whether `'08'` Total Government should be present and (if so) load it.
+---
 
-**Affects.** Both tools today silently work around this:
-- **Employer Wage Tool** Q2 filters to `Ownership='00'` (Total Covered) — fine, since `'00'` IS the BLS-published total.
-- **Front Page Dashboard** Q3 Government rollup uses `IndCode='10' + Ownership IN ('10','20','30')` (Fed+State+Local across all industries) instead of an Ownership='08' shortcut, because '08' isn't loaded. The current rollup produces the correct number (~749k VA, verified 2026-06-10 audit), but if BLS-canonical `'08'` were loaded, the Government bar could be sourced as a single row instead of a 3-ownership sum.
+## Documented encoding notes
 
-**Requested action.** Clarify the WID-Virginia ownership-encoding convention in the load-doc. Confirm whether `'80'` is intentional (and what it represents). Decide whether `'08'` Total Government should be loaded as a pre-summed convenience rollup — if yes, the Front Page Q3 Government rollup can simplify; if no, document so future SQL doesn't assume it.
+_Items in this section are documented WID behavior, not defects to fix. Recorded so future SQL maintainers don't mistake them for bugs and don't "fix" them by rebasing to spec form._
+
+### Note A — `INDUSTRY.Ownership` 2-digit encoding (vs BLS single-digit spec)
+
+**Observed.** The Virginia WID install stores QCEW Ownership codes in **2-digit form with trailing zero**: `'00'` Total Covered, `'10'` Federal, `'20'` State, `'30'` Local, `'50'` Private. BLS QCEW canonical encoding is single-digit: `0/1/2/3/5`. The trailing zero appears to be a WID-Virginia convention.
+
+**Why this is a NOTE not a defect.** All downstream code uses the 2-digit form consistently (probe verified, no half-mixed encoding observed). Rebasing to single-digit would touch every Ownership filter in both tools (`Ownership='00'`, `Ownership IN ('10','20','30','50')`, etc.) for a purely cosmetic change. The 2-digit form works correctly today.
+
+**Do not "fix".** Anyone tempted to rewrite the IN-lists to spec form should leave them alone unless the WID owner confirms a global encoding migration.
+
+### Note B — `INDUSTRY.Ownership='80'` is industry-of-function government employment
+
+**Observed.** Ownership `'80'` carries ~343k VA rows (annual statewide latest extract). Initial speculation classified these as "other/unknown" or "possibly nonprofit." The 2026-06-10 audit (P1/P2/P3 probes against the live WID, follow-up to the dimension-derived-labels rewire) resolved this definitively:
+
+- **What it is.** `'80'` rows are **government employees classified by their industry of function**, not by their employer's ownership. Concrete examples: a public school teacher's employer is State or Local government (Ownership `'20'`/`'30'`), but their *industry of function* is Educational Services (NAICS 61) — so the same person also appears under Ownership `'80'`, IndCode `'61'`. Same for public-hospital nurses (Health Care, NAICS 62) and public-administration workers (NAICS 92). The rows concentrate in NAICS `'92'` / `'61'` / `'62'`.
+- **Relationship to `'00'` Total Covered.** P3 reconciliation confirmed `Ownership IN ('10','20','30','50')` sums to `Ownership='00'` at ratio `1.0000` across every NAICS supersector at AreaType='01'. **`'80'` sits OUTSIDE `'00'`** — it is supplemental, not a constituent of Total Covered.
+- **BLS / QCEW status.** This is a documented BLS QCEW construct ("classified by industry") published as a parallel view of government employment. It is NOT dirty data, NOT a load defect, and NOT unique to the Virginia WID install.
+
+**Why this is a NOTE not a defect.** Both dashboards already handle `'80'` correctly by design:
+
+- **Employer Wage Tool** Q2 filters to `Ownership='00'` (Total Covered) — `'80'` is intentionally excluded. Verified by P3 reconciliation (`'00'` sums to constituents without `'80'`); the JSON shows the BLS-canonical Total Covered without double-counting.
+- **Front Page Dashboard** Q3 excludes `'80'` at two independent levels: upstream (`state_both_qtrs` / `region_both_qtrs` filter `Ownership IN ('10','20','30','50')`) AND downstream (`gov_change_state` / `gov_change_region` filter `Ownership IN ('10','20','30')`). Including `'80'` in the Government rollup would double-count government workers already counted under `'10'`/`'20'`/`'30'` (the same person counted once as "State employee" AND once as "works in Education"). The exclusion is load-bearing for the rollup's integrity — see Smoke Test 8 in `docs/handover/front-page-dashboard.md` for the structurally-parallel private-bar leak guard.
+
+**If a future analysis ever wants the industry-of-function government view** (e.g. "show me total government employment by NAICS sector"), pull `Ownership='80'` alone — it's the right code. Never combine with the `'10'/'20'/'30'` rollup.
 
 ---
 

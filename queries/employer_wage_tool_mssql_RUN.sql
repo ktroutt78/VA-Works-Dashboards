@@ -34,11 +34,20 @@
 --   * AreaTypeVersion: anchor to MAX() per (table, AreaType) — fact/dim
 --     vintages diverge.
 --   * Ownership codes (verified via _validate.sql Probe 4 on WID 3.0, 2-digit):
---       '00'=Total Covered (sums constituents below) · '10'=Federal · '20'=State ·
---       '30'=Local · '50'=Private · '80'=other/unknown (343k VA rows, not standard
---       BLS QCEW — possibly nonprofit or supplemental). This query uses '00'.
---     Never combine '00' with ('10','20','30','50') in the same filter — that
---     would double-count. Total Covered IS the sum.
+--       '00'=Total Covered (= '10'+'20'+'30'+'50') · '10'=Federal · '20'=State ·
+--       '30'=Local · '50'=Private · '80'=industry-of-function government (NOT
+--       "other/unknown" — that was an earlier guess; resolved by the 2026-06-10
+--       audit, see docs/client-tickets/wid-data-quality-punchlist.md Note B).
+--       '80' is government employment classified by industry of function rather
+--       than employer ownership (public teachers under Education NAICS 61,
+--       public-hospital nurses under Health NAICS 62, etc.). It sits OUTSIDE
+--       '00' Total Covered, ~343k VA rows, concentrated in NAICS 92/61/62.
+--     This query uses '00' (Q2 industries.json). '80' is intentionally excluded
+--     — Total Covered is the right denominator for an employer benchmark tool,
+--     and including '80' would double-count government workers already counted
+--     under '10'/'20'/'30'. Never combine '00' with any of ('10','20','30','50')
+--     in the same filter either — same double-count risk; Total Covered IS the
+--     sum.
 --
 -- =============================================================================
 -- COLUMN ASSUMPTIONS — verify against WID 3.0 before first run
