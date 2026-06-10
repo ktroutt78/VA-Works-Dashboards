@@ -10,10 +10,22 @@
 --   Q2 -> apps/wage-tool-employer/data/industries.json
 --
 -- PREREQUISITES:
---   * Run _validate.sql once; record findings.
---   * Run _setup.sql once (write access) — fills dbo.LWDA_Slugs with real
---     lwda_code + AreaTypeVersion values from validate.sql probe 2.
---   * This RUN.sql is then scheduled (read-only) for periodic refresh.
+--   * Run _validate.sql once to confirm schema assumptions; record findings.
+--   * This RUN.sql is then scheduled (read-only) for periodic refresh. NO
+--     elevated setup step — labels and codes come live from GEOGRAPHIES on
+--     every run.
+--
+-- LABEL RESOLUTION:
+--   * LWDA code + label come from WID.dbo.GEOGRAPHIES live (AreaType='15',
+--     vintage-anchored via geo_vintage CTE). area_id in the JSON is the
+--     6-digit GEOGRAPHIES.Area; label is GEOGRAPHIES.AreaName verbatim
+--     (NOT substring-parsed — the "(LWDA III)" suffix flows through).
+--   * Statewide row likewise: area_id from GEOGRAPHIES.Area at AreaType='01';
+--     label from AreaName. Front-end identifies statewide by
+--     area.areatype === '01'.
+--   * Prior versions used a hand-maintained dbo.LWDA_Slugs seed table for
+--     slug + label; that's been removed. LWDA additions, retirements, and
+--     renames flow through automatically with zero manual edits.
 --
 -- WID 3.0 conventions in play (see [[sqlserver_data_pipeline]]):
 --   * Schema: WID.dbo.*
@@ -78,17 +90,18 @@
 --                          TotalWages, QuarterAvgEmp, Establishments
 --                          (plus Month1/2/3Emp fallback, AvgWeeklyWage, Suppress)
 --   WID.dbo.GEOGRAPHIES  : StFips, Area, AreaType, AreaTypeVersion, AreaName
---   dbo.LWDA_Slugs       : lwda_code, lwda_id, lwda_label, AreaTypeVersion
---                          (built by _setup.sql)
+--                          (sole source of LWDA + statewide codes AND labels;
+--                          no local seed table)
 --
 -- REQUIRES: SQL Server 2017+ for STRING_AGG (Azure SQL — the prod host —
 --   qualifies). FOR JSON PATH needs 2016+. Read-only; no temp tables.
 --
 -- JSON SHAPE NOTE: Both files have a data-keyed `areas` object inside each
---   job/sector (keys = lwda_id slugs). FOR JSON PATH can't dynamically key an
---   object, so that nested blob is hand-built with STRING_AGG and spliced via
---   JSON_QUERY. The outer envelope (meta/areas[]/jobs[] or sectors[]) uses
---   normal FOR JSON PATH.
+--   job/sector (keys = 6-digit lwda_code for LWDAs + the statewide area code
+--   for the Virginia row, both from GEOGRAPHIES.Area). FOR JSON PATH can't
+--   dynamically key an object, so that nested blob is hand-built with
+--   STRING_AGG and spliced via JSON_QUERY. The outer envelope (meta /
+--   areas[] / jobs[] or sectors[]) uses normal FOR JSON PATH.
 -- =============================================================================
 
 
@@ -97,10 +110,14 @@
 --
 -- Shape: { meta, areas[], jobs[] }
 --   meta:    { source, extracted_at, latest_year }
---   areas:   [ {id, label, areatype} ]  — 14 LWDAs + 'virginia' statewide
+--   areas:   [ {id, label, areatype} ]  — N LWDAs (AreaType='15') + the
+--                                          statewide row (AreaType='01').
+--                                          id = GEOGRAPHIES.Area code.
 --   jobs:    [ {id, soc_code, label, major_group, aliases, areas} ]
---     areas: keyed object — { "<lwda_id>": {p10..p90, p10_h..p90_h,
---                                           employment, provenance}, ... }
+--     areas: keyed object — { "<lwda_code>": {p10..p90, p10_h..p90_h,
+--                                             employment, provenance}, ... }
+--                            keys = the 6-digit lwda_code for LWDA rows
+--                            and the statewide area code for the VA row.
 --
 -- Provenance is 3-state:
 --   'lwda'                — native LWDA cell exists
@@ -123,30 +140,47 @@ iowage_vintage AS (
 geo_vintage AS (
     SELECT StFips, AreaType, MAX(AreaTypeVersion) AS AreaTypeVersion
     FROM WID.dbo.GEOGRAPHIES
-    WHERE StFips = '51' AND AreaType = '15'
+    WHERE StFips = '51' AND AreaType IN ('01','15')
     GROUP BY StFips, AreaType
 ),
 
--- ─── LWDA DIMENSION (6-column composite identity at the LWDA boundary) ──────
--- Joins GEOGRAPHIES (with vintage anchor) to dbo.LWDA_Slugs. Establishes a
--- 4-column composite key (StFips + AreaType + AreaTypeVersion + Area) for
--- IOWAGE / INDUSTRY to join against. Defensive against future GEOGRAPHIES
--- vintage rollovers — e.g., LWDA III was "Western Virginia" at vintage 0000
--- but "Greater Roanoke Region" at 0002. Binding the slug to a specific
--- AreaTypeVersion prevents silent label drift when the WID load advances.
+-- ─── LWDA DIMENSION — fully dynamic from GEOGRAPHIES ─────────────────────────
+-- Both the LWDA code (= GEOGRAPHIES.Area) and the display label
+-- (= GEOGRAPHIES.AreaName) come from the live dimension on every refresh.
+-- LWDA additions, retirements, and renames flow through automatically with
+-- zero hand-curated state. Prior versions of this tool used a hand-maintained
+-- dbo.LWDA_Slugs seed table to control slugs + labels; that was deleted under
+-- the project's dimension-derived-labels standard. The JSON area.id is the
+-- 6-digit lwda_code; verbose AreaName flows through as the label. The
+-- "(LWDA III)"-style suffix in AreaName is intentionally NOT parsed away.
 lwda_dim AS (
     SELECT
-        g.StFips, g.AreaType, g.AreaTypeVersion, g.Area AS lwda_code,
-        g.AreaName AS wid_name,
-        s.lwda_id, s.lwda_label
+        g.StFips, g.AreaType, g.AreaTypeVersion,
+        g.Area      AS lwda_code,
+        g.AreaName  AS lwda_label
     FROM WID.dbo.GEOGRAPHIES g
     JOIN geo_vintage gv
       ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
      AND g.AreaTypeVersion = gv.AreaTypeVersion
-    JOIN dbo.LWDA_Slugs s
-      ON g.Area = s.lwda_code AND g.AreaTypeVersion = s.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '15'
       AND g.AreaName NOT LIKE '%Combined%'
+),
+
+-- ─── STATEWIDE AREA — same dynamic pattern, AreaType='01' ───────────────────
+-- The "Virginia statewide" row in the JSON areas[] is sourced live from
+-- GEOGRAPHIES at AreaType='01'. JSON area.id becomes the statewide Area code
+-- (whatever WID stores there — typically a 6-digit '000000' or state-level
+-- code), NOT the legacy hardcoded literal 'virginia'. Front-end identifies
+-- statewide by area.areatype === '01'.
+state_area AS (
+    SELECT
+        g.Area      AS state_code,
+        g.AreaName  AS state_label
+    FROM WID.dbo.GEOGRAPHIES g
+    JOIN geo_vintage gv
+      ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
+     AND g.AreaTypeVersion = gv.AreaTypeVersion
+    WHERE g.StFips = '51' AND g.AreaType = '01'
 ),
 
 -- ─── LATEST YEAR IN STATEWIDE OEWS ───────────────────────────────────────────
@@ -197,13 +231,14 @@ state_wages AS (
 ),
 
 -- ─── LWDA-LEVEL OEWS ─────────────────────────────────────────────────────────
--- Joins on lwda_dim (GEOGRAPHIES + dbo.LWDA_Slugs, 4-col composite). If IOWAGE
--- has no LWDA-level rows in this WID install, this CTE returns 0 rows and EVERY
+-- Joins on lwda_dim (GEOGRAPHIES only — no seed table). area_id is the
+-- 6-digit lwda_code sourced live from GEOGRAPHIES.Area. If IOWAGE has no
+-- LWDA-level rows in this WID install, this CTE returns 0 rows and EVERY
 -- cell falls back to statewide — provenance flips to 'statewide_fallback'.
 lwda_wages AS (
     SELECT
         REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')                                                          AS soc_code,
-        ld.lwda_id                                                                       AS area_id,
+        ld.lwda_code                                                                     AS area_id,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile10Wage AS INT) END)     AS p10,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile25Wage AS INT) END)     AS p25,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.MedianWage       AS INT) END)     AS p50,
@@ -233,7 +268,7 @@ lwda_wages AS (
       AND w.IndCodeType = '10' AND w.IndCode = '000000'   -- all-industries cross-industry row
       AND LEN(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')) = 6   -- SOC-6 (WID stores 6 digits; hyphen-tolerant via REPLACE)
       AND RIGHT(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), 1) <> '0'   -- SOC-6 detail only (BLS aggregates end in 0)
-    GROUP BY REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), ld.lwda_id
+    GROUP BY REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), ld.lwda_code
 ),
 
 -- ─── TOP-CODE REPAIR ─────────────────────────────────────────────────────────
@@ -348,32 +383,36 @@ all_cells AS (
 
     -- Statewide fallback for missing LWDA cells
     SELECT
-        sw.soc_code, ld.lwda_id AS area_id,
+        sw.soc_code, ld.lwda_code AS area_id,
         sw.p10, sw.p25, sw.p50, sw.p75, sw.p90,
         sw.p10_h, sw.p25_h, sw.p50_h, sw.p75_h, sw.p90_h,
         sw.employment,
         'statewide_fallback'    AS provenance,
-        ld.lwda_id              AS area_sort_key
+        ld.lwda_code            AS area_sort_key
     FROM state_wages_repaired sw
     CROSS JOIN lwda_dim ld
     WHERE NOT EXISTS (
         SELECT 1 FROM lwda_wages_repaired lw2
         WHERE lw2.soc_code = sw.soc_code
-          AND lw2.area_id  = ld.lwda_id
+          AND lw2.area_id  = ld.lwda_code
           AND lw2.p50 IS NOT NULL
     )
 
     UNION ALL
 
-    -- The 'virginia' statewide row itself (always native)
+    -- The statewide row itself (always native). area_id = the statewide
+    -- area code sourced live from GEOGRAPHIES at AreaType='01' — NOT the
+    -- legacy hardcoded 'virginia' literal. Front-end identifies this row
+    -- by areatype === '01' in the areas[] dropdown.
     SELECT
-        sw.soc_code, 'virginia'  AS area_id,
+        sw.soc_code, sa.state_code     AS area_id,
         sw.p10, sw.p25, sw.p50, sw.p75, sw.p90,
         sw.p10_h, sw.p25_h, sw.p50_h, sw.p75_h, sw.p90_h,
         sw.employment,
-        'statewide'              AS provenance,
-        'zzz-virginia'           AS area_sort_key
+        'statewide'                    AS provenance,
+        'zzz-' + sa.state_code         AS area_sort_key
     FROM state_wages_repaired sw
+    CROSS JOIN state_area sa
 ),
 
 -- ─── HAND-BUILD job.areas KEYED OBJECT ───────────────────────────────────────
@@ -418,10 +457,11 @@ SELECT
     JSON_QUERY((
         SELECT id, label, areatype
         FROM (
-            SELECT ld.lwda_id AS id, ld.lwda_label AS label, '15' AS areatype, ld.lwda_id AS sortk
+            SELECT ld.lwda_code AS id, ld.lwda_label AS label, '15' AS areatype, ld.lwda_code AS sortk
             FROM lwda_dim ld
             UNION ALL
-            SELECT 'virginia', 'Virginia', '01', 'zzz-virginia'
+            SELECT sa.state_code, sa.state_label, '01' AS areatype, 'zzz-' + sa.state_code AS sortk
+            FROM state_area sa
         ) src
         ORDER BY src.sortk
         FOR JSON PATH
@@ -453,10 +493,13 @@ GO
 --
 -- Shape: { meta, areas[], sectors[] }
 --   meta:    { source, extracted_at, latest_year }
---   areas:   [ {id, label} ]  — same 14 LWDAs + 'virginia' (no areatype field)
+--   areas:   [ {id, label, areatype} ]  — same N LWDAs + statewide.
+--                                          id = GEOGRAPHIES.Area code.
 --   sectors: [ {naics, label, areas} ]
---     areas: keyed object — { "<lwda_id>": {mean_wage, employment,
---                                           establishments}, ... }
+--     areas: keyed object — { "<lwda_code>": {mean_wage, employment,
+--                                             establishments}, ... }
+--                            keys = the 6-digit lwda_code for LWDA rows
+--                            and the statewide area code for the VA row.
 --
 -- Aggregation choice: filter to Ownership='00' (BLS QCEW Total Covered row —
 -- federal+state+local+private already summed). One row per (NAICS, area, year),
@@ -483,26 +526,37 @@ ind_vintage AS (
 geo_vintage AS (
     SELECT StFips, AreaType, MAX(AreaTypeVersion) AS AreaTypeVersion
     FROM WID.dbo.GEOGRAPHIES
-    WHERE StFips = '51' AND AreaType = '15'
+    WHERE StFips = '51' AND AreaType IN ('01','15')
     GROUP BY StFips, AreaType
 ),
 
--- ─── LWDA DIMENSION (6-column composite identity at the LWDA boundary) ──────
--- See Q1 header note. Same pattern, redefined here because Q1 and Q2 are
--- separate batches (GO separator) and CTEs don't carry across.
+-- ─── LWDA DIMENSION — fully dynamic from GEOGRAPHIES ─────────────────────────
+-- See Q1 lwda_dim header. Same pattern, redefined here because Q1 and Q2 are
+-- separate batches (GO separator) and CTEs don't carry across. No seed table.
 lwda_dim AS (
     SELECT
-        g.StFips, g.AreaType, g.AreaTypeVersion, g.Area AS lwda_code,
-        g.AreaName AS wid_name,
-        s.lwda_id, s.lwda_label
+        g.StFips, g.AreaType, g.AreaTypeVersion,
+        g.Area      AS lwda_code,
+        g.AreaName  AS lwda_label
     FROM WID.dbo.GEOGRAPHIES g
     JOIN geo_vintage gv
       ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
      AND g.AreaTypeVersion = gv.AreaTypeVersion
-    JOIN dbo.LWDA_Slugs s
-      ON g.Area = s.lwda_code AND g.AreaTypeVersion = s.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '15'
       AND g.AreaName NOT LIKE '%Combined%'
+),
+
+-- ─── STATEWIDE AREA — same dynamic pattern, AreaType='01' ───────────────────
+-- See Q1 state_area header. Same pattern, redefined here for the Q2 batch.
+state_area AS (
+    SELECT
+        g.Area      AS state_code,
+        g.AreaName  AS state_label
+    FROM WID.dbo.GEOGRAPHIES g
+    JOIN geo_vintage gv
+      ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
+     AND g.AreaTypeVersion = gv.AreaTypeVersion
+    WHERE g.StFips = '51' AND g.AreaType = '01'
 ),
 
 -- ─── LATEST ANNUAL YEAR IN INDUSTRY (statewide) ──────────────────────────────
@@ -589,7 +643,7 @@ state_qcew AS (
 -- ─── PER-LWDA QCEW (Ownership='00' = BLS Total Covered row) ────────────────
 lwda_qcew AS (
     SELECT
-        ld.lwda_id                                                             AS area_id,
+        ld.lwda_code                                                           AS area_id,
         ns.naics_code                                                          AS naics_code,
         TRY_CAST(i.TotalWages
                  / NULLIF(COALESCE(i.QuarterAvgEmp,
@@ -629,9 +683,12 @@ all_industry_cells AS (
 
     UNION ALL
 
-    SELECT 'virginia' AS area_id, naics_code, mean_wage, employment, establishments,
-           'zzz-virginia' AS area_sort_key
+    -- Statewide row. area_id = the statewide area code sourced live from
+    -- GEOGRAPHIES at AreaType='01' (NOT the legacy hardcoded 'virginia').
+    SELECT sa.state_code     AS area_id, naics_code, mean_wage, employment, establishments,
+           'zzz-' + sa.state_code AS area_sort_key
     FROM state_qcew
+    CROSS JOIN state_area sa
 ),
 
 -- ─── HAND-BUILD sector.areas KEYED OBJECT ────────────────────────────────────
@@ -663,12 +720,13 @@ SELECT
         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
     )) AS meta,
     JSON_QUERY((
-        SELECT id, label
+        SELECT id, label, areatype
         FROM (
-            SELECT ld.lwda_id AS id, ld.lwda_label AS label, ld.lwda_id AS sortk
+            SELECT ld.lwda_code AS id, ld.lwda_label AS label, '15' AS areatype, ld.lwda_code AS sortk
             FROM lwda_dim ld
             UNION ALL
-            SELECT 'virginia', 'Virginia', 'zzz-virginia'
+            SELECT sa.state_code, sa.state_label, '01' AS areatype, 'zzz-' + sa.state_code AS sortk
+            FROM state_area sa
         ) src
         ORDER BY src.sortk
         FOR JSON PATH

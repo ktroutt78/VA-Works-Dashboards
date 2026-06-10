@@ -1,12 +1,16 @@
 -- =============================================================================
--- EMPLOYER WAGE TOOL — WID 3.0 schema discovery (run before _setup.sql / _RUN.sql)
+-- EMPLOYER WAGE TOOL — WID 3.0 schema discovery (run before _RUN.sql)
 -- =============================================================================
--- Read-only. Run all four probes in SSMS / Azure Data Studio. Use the output to:
---   (a) populate dbo.LWDA_Slugs in _setup.sql with the real lwda_code + AreaType
+-- Read-only. Run all probes in SSMS / Azure Data Studio. Use the output to:
+--   (a) confirm AreaType code for LWDAs is '15' on this WID install (Probe 2)
 --   (b) stamp _RUN.sql's header with verified column names (high-variance columns
 --       called out below — these are the ones where rename = silent wrong numbers)
 --   (c) flip the O*NET aliases CTE in _RUN.sql from commented to live if
 --       WID.dbo.ONET_TITLES (or equivalent) exists with the expected columns
+--
+-- NOTE: This tool no longer uses a hand-maintained dbo.LWDA_Slugs seed table —
+-- LWDA codes AND labels come live from WID.dbo.GEOGRAPHIES at refresh time
+-- (see _RUN.sql lwda_dim / state_area CTEs). There is no elevated setup step.
 -- =============================================================================
 
 
@@ -25,10 +29,13 @@ ORDER BY TABLE_NAME, ORDINAL_POSITION;
 GO
 
 
--- ─── PROBE 2: confirm AreaType code for LWDAs + capture the 14 lwda_code values
+-- ─── PROBE 2: confirm AreaType code for LWDAs + inventory the lwda_code values
 -- The labor market dashboard uses AreaType='15' for LWDAs in this WID install,
--- but BLS variants use '06' or '07'. Confirm before populating dbo.LWDA_Slugs.
--- Expected: 14 real LWDAs + 1 synthetic "Combined Projections Area" to exclude.
+-- but BLS variants use '06' or '07'. Confirm before relying on _RUN.sql's
+-- AreaType='15' filter in lwda_dim. Expected: N real LWDAs (currently 14) +
+-- the synthetic "Combined Projections Area" which _RUN.sql excludes via
+-- `AreaName NOT LIKE '%Combined%'`. The output is informational only — no
+-- seed table to populate.
 SELECT DISTINCT AreaType, Area, AreaName, AreaTypeVersion
 FROM WID.dbo.GEOGRAPHIES
 WHERE StFips = '51'

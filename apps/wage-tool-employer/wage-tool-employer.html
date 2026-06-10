@@ -1021,8 +1021,15 @@
       /* Empty-state model: industry and family start unselected; user
          picks them (or clicks "Try an example" to jump to a ready state).
          Region and target keep usable defaults so the slider/region
-         dropdown aren't blank. */
-      const defaultRegion = state.areas.find(a => a.id === "virginia") || state.areas[0];
+         dropdown aren't blank.
+
+         The default region is "Virginia statewide" — identified by
+         area.areatype === '01' rather than a hardcoded id literal. Under
+         the dynamic LWDA contract, area.id is the 6-digit GEOGRAPHIES.Area
+         code (LWDAs are areatype='15', statewide is areatype='01'); only
+         the areatype field is stable enough to identify "the statewide
+         row" without knowing the install's actual statewide code. */
+      const defaultRegion = state.areas.find(a => a.areatype === "01") || state.areas[0];
       window.__regionSel.setValue(defaultRegion.id, true);
 
       state.sel.industryCode = null;
