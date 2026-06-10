@@ -3,6 +3,9 @@
 .cortex-*.log
 .cortex-prompt*.txt
 
+# Claude Code per-project session state
+.claude/
+
 # Vercel CLI project linkage (per-machine, not for source control)
 .vercel/
 
