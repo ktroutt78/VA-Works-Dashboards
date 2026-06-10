@@ -322,70 +322,286 @@ GO
 
 
 -- =============================================================================
--- RESULTS LOG — paste outcomes here after running the probes
+-- RESULTS LOG — populated 2026-06-10 against the live VA WID 3.0 install
 -- =============================================================================
--- For each probe: LOADED / EMPTY / MISSING + key columns + notes.
+-- Probes were run via "Results to Text" mode in SSMS against the VA Azure SQL
+-- WID 3.0 server. See git log for the audit / decisions these results drove.
 --
--- P1 SOCCodes
---    status:    [LOADED | EMPTY | MISSING]
---    rows:      ___
---    code col:  SOCCode  (CHAR-padded? Y/N)
---    title col: ___      (e.g. SOCTitle / OccName / SocName)
---    vintage:   ___      (P9.a SOCCodeType values, latest = ___)
---    notes:
+-- ─── P1 SOCCodes — LOADED ────────────────────────────────────────────────────
+--    rows:                 1,447 total, 1,447 distinct SOCCode (no duplicates)
+--    code col:             SOCCode  CHAR(6)  — values like '110000', '111011'
+--                          unhyphenated. CHAR-padded BY TYPE but observed
+--                          values are exactly 6 chars (LEN=DATALENGTH=6), so
+--                          no trailing-space noise in this load. RTRIM in any
+--                          rewired JOIN remains safe-by-default.
+--    title col:            SOCTitle  VARCHAR(100)  (samples: 'Chief Executives',
+--                          'General and Operations Managers', 'Management
+--                          Occupations'). SOCTitleLong matched SOCTitle in
+--                          every sampled row — pick SOCTitle (shorter).
+--                          SOCDesc carries the long paragraph text, populated
+--                          only on SOC-6 detail rows.
+--    vintage:              SOCCodeType  CHAR(2)  = '19' on every sampled row
+--                          (BLS SOC-2018). Re-run P9.a for formal confirmation
+--                          (see Open follow-ups below).
+--    hierarchy bonus:      SOCParent column gives the SOC tree
+--                          ('111011' → '111010' → '111000' → '110000'). The
+--                          hardcoded 23-row major_groups VALUES CTE in
+--                          employer_wage_tool_mssql_RUN.sql Q1 can retire —
+--                          source major-group label from
+--                          SOCCodes.SOCTitle WHERE SOCCode LIKE 'XX0000'.
+--    Step 2 wire-in:
+--        soc_vintage AS (
+--            SELECT MAX(SOCCodeType) AS SOCCodeType FROM WID.dbo.SOCCodes
+--        ),
+--        soc_dim AS (
+--            SELECT RTRIM(sc.SOCCode) AS soc_code, sc.SOCTitle AS soc_title
+--            FROM WID.dbo.SOCCodes sc
+--            JOIN soc_vintage sv ON sc.SOCCodeType = sv.SOCCodeType
+--        )
+--        -- Q1 wages.json `label` becomes:
+--        --   COALESCE(sd.soc_title, sw.soc_code) AS label
+--        -- Demote soc-titles.json to client-side fallback for NULL rows only.
 --
--- P2 ONETCodes
---    status:    [LOADED | EMPTY | MISSING]
---    rows:      ___
---    code col:  ___      (e.g. ONETSOCCode)
---    title col: ___      (e.g. Title / OccName)
---    vintage:   ___      (P9.b values, latest = ___)
---    notes:
+-- ─── P2 ONETCodes — LOADED ───────────────────────────────────────────────────
+--    rows:                 1,016 total
+--    code col:             ONETCode  CHAR(8)  — values like '11101100',
+--                          '11101103' (8 digits, NO hyphen, NO dot — BLS
+--                          spec format '11-1011.00' is normalized here).
+--                          SOC-6 prefix = LEFT(ONETCode, 6).
+--    title col:            ONETTitle  VARCHAR(200)  (samples: 'Chief Executives',
+--                          'Chief Sustainability Officers', 'Legislators',
+--                          'Advertising and Promotions Managers'). NOT NULL.
+--    vintage:              ONETCodeType  CHAR(2)  = '12' on every sampled row,
+--                          ONETYear  CHAR(4)  = '2025'. Re-run P9.b for formal
+--                          confirmation (see Open follow-ups).
+--    Step 2 wire-in (paired with the EMPTY P3 below — see Aliases path):
+--        Aliases are harvested DIRECTLY from ONETCodes via the SOC-6 prefix
+--        grouping (LEFT(ONETCode, 6) = SOCCode). Each SOC-6 has 1..N ONET
+--        detail codes; the alternate titles become aliases for the SOC-6
+--        parent. Concrete example seen:
+--            SOC '111011' Chief Executives
+--              ↑
+--            ONETCode '11101100' ONETTitle 'Chief Executives'        (dup)
+--            ONETCode '11101103' ONETTitle 'Chief Sustainability Officers'
+--            → aliases for SOC 111011 = ['Chief Sustainability Officers']
+--              (dedup against the SOC's own SOCTitle to suppress the dup).
 --
--- P3 OccupationXOccupation
---    status:    [LOADED | EMPTY | MISSING]
---    rows:      ___
---    key cols:  ___      (e.g. OccCode1, OccCode2)
---    type col:  ___      (which value = alias / alt-title)
---    StFips:    Y/N      (scope by StFips='51' if Y)
---    notes:
+-- ─── P3 OccupationXOccupation — EMPTY (table exists, 0 rows) ────────────────
+--    rows:                 0
+--    cols:                 StFips CHAR(2), CodeType CHAR(2), Code CHAR(10),
+--                          CodeType2 CHAR(2), Code2 CHAR(10)
+--    StFips column:        Y (but no rows to filter)
+--    Implication:          The BLS WID 3.0 crosswalk table exists structurally
+--                          but isn't populated on this install. The originally
+--                          planned aliases path (SOCCodes ↔ OccupationXOccupation
+--                          ↔ ONETCodes via the crosswalk) is unavailable —
+--                          pivot to the ONETCodes-direct path described under
+--                          P2 above. The commented-out aliases CTE in
+--                          employer_wage_tool_mssql_RUN.sql (lines 303–332)
+--                          was written for OccupationXOccupation and needs
+--                          to be rewritten for the ONETCodes-direct shape
+--                          before live-flipping.
+--    Load-gap ticket:      "WID 3.0 on this install: OccupationXOccupation
+--                          table exists but has 0 rows. The BLS-spec table
+--                          is intended to carry SOC↔ONET↔alt-title crosswalks.
+--                          Tools currently fall back to grouping ONETCodes
+--                          by SOC-6 prefix as an alternative." File under
+--                          the WID owner's load backlog.
 --
--- P4 NAICSSectors
---    status:    [LOADED | EMPTY | MISSING]
---    rows:      ___
---    code col:  ___      (e.g. NAICSCode)
---    title col: ___      (e.g. NAICSTitle)
---    notes:
+-- ─── P4 NAICSSectors — LOADED ────────────────────────────────────────────────
+--    rows:                 23 total — covers '00' Total, '10' Supersector
+--                          totals, the 20 single-2-digit NAICS sectors
+--                          ('11', '21', '22', '23', '31', '42', '44', '48',
+--                          '51', '52', '53', '54', '55', '56', '61', '62',
+--                          '71', '72', '81', '92'), plus '99' Unclassified.
+--    code col:             NAICSSector  CHAR(2)  — stored as the leading
+--                          digit-pair even for the QCEW supersector RANGES
+--                          ('31' represents 31-33, '44' represents 44-45,
+--                          '48' represents 48-49).
+--    title col:            SectorDesc  VARCHAR(45)  — and SectorDescLong
+--                          VARCHAR(120) is slightly longer. Both carry the
+--                          BLS range annotation directly in the title
+--                          ('Manufacturing (31-33)', 'Retail Trade (44 & 45)',
+--                          'Transportation and Warehousing (48 & 49)').
+--    Data quality issues observed (will surface in the Employer tool UI):
+--        '54' SectorDesc = 'Professiona.l Scientific & Technical Svc'    ← typo
+--                          SectorDescLong = 'Professional., Scientific, and
+--                          Technical Services'                            ← also typo
+--        '56' SectorDesc = 'Admin., Support, Waste Mgmt, Remediation'    ← abbreviated
+--        Other rows look clean. File the typos on the WID owner's data-QA
+--        backlog when wiring the Employer Q2 label.
+--    Range-mapping CTE:    The Employer Q2 `naics_sectors` VALUES CTE
+--                          continues to provide the WID-IndCode → 2-digit
+--                          mapping (the wid_code / naics_code columns) but
+--                          can drop the sector_name column entirely — label
+--                          comes from NAICSSectors.SectorDesc at refresh.
+--    Step 2 wire-in:       (no vintage column in this dim — flat)
+--        naics_dim AS (
+--            SELECT RTRIM(ns.NAICSSector) AS naics_code,
+--                   ns.SectorDesc          AS sector_label
+--            FROM WID.dbo.NAICSSectors ns
+--        )
+--        -- Q2 industries.json `label` becomes the dim's SectorDesc.
 --
--- P5 NAICSSuperSectors
---    status:    [LOADED | EMPTY | MISSING]
---    rows:      ___
---    code col:  ___      (e.g. NAICSCode / SuperSectorCode)
---    title col: ___
---    has 1011..1028 (CES codes)?  Y/N    ← drives Front-page Q3 rewire
---    has '31-33'/'44-45'/'48-49'? Y/N    ← drives Employer Q2 range rewire
---    notes:
+-- ─── P5 NAICSSuperSectors — LOADED ──────────────────────────────────────────
+--    rows:                 15 total — '10' Total all industries, '101' / '102'
+--                          domain totals, '1011'..'1029' CES supersectors.
+--    code col:             NAICSSuper  CHAR(4)  — '10', '101', '102',
+--                          '1011', '1012', '1013', '1021', '1022', '1023',
+--                          '1024', '1025', '1026', '1027', '1028', '1029'.
+--    title col:            SuperTitle  VARCHAR(35)  — samples:
+--                            '10'   = 'Total, all industries'
+--                            '1011' = 'Natural Resources and Mining'
+--                            '1013' = 'Manufacturing'
+--                            '1021' = 'Trade, Transportation and Utilities'
+--                            '1025' = 'Education and Health Services'
+--                            '1028' = 'Public Administration'      ← see commit 76a6515
+--                                                                    re: Government bar
+--                                                                    label exception
+--    has 1011..1028 (CES codes)?  Y — all 11 codes present.
+--    has '31-33'/'44-45'/'48-49'? N — those range strings are NAICSSectors
+--                                  territory (P4), not NAICSSuperSectors.
+--                                  This dim uses the 4-digit CES code form.
+--    Notable label deltas vs the Front Page Q3 hardcoded VALUES CTE:
+--        '1021' dim 'Trade, Transportation and Utilities' vs current 'Trade & Transportation'
+--        '1024' dim 'Professional and Business Services' vs current 'Professional & Business'
+--        '1025' dim 'Education and Health Services'      vs current 'Education & Health'
+--        '1026' dim 'Leisure and Hospitality'            vs current 'Leisure & Hospitality'
+--        '1028' dim 'Public Administration'              — Q3 keeps the 'Government'
+--                                                          literal as a documented
+--                                                          dim-label exception per
+--                                                          the rollup audit (the bar
+--                                                          is sourced from IndCode='10'
+--                                                          + Ownership IN (10,20,30),
+--                                                          not the dim's '1028' row).
+--    Step 2 wire-in (Front Page Q3 supersector labels):
+--        super_dim AS (
+--            SELECT RTRIM(ss.NAICSSuper) AS super_code,
+--                   ss.SuperTitle        AS super_label
+--            FROM WID.dbo.NAICSSuperSectors ss
+--        )
+--        -- industry_sectors VALUES CTE in Q3 drops the sector_name field
+--        -- entirely; label is sourced by JOIN super_dim ON super_code = indcode.
+--        -- Government row keeps its 'Government' literal (rollup-derived bar).
 --
--- P6 GEOGRAPHIES short-name
---    column found?  Y/N   if Y → column name: ___
---    if N → load-gap ticket: short-name column for LWDA AreaType='15'
---    notes:
+-- ─── P6 GEOGRAPHIES short-name — MISSING column ─────────────────────────────
+--    column found?  N — no ShortName / Alias / DisplayName / Abbreviation
+--                       column exists. Columns present: StFips, AreaType,
+--                       AreaTypeVersion, Area, AreaName, AreaDesc, Latitude,
+--                       Longitude, GeoPrecisionCode.
+--    AreaName format (current vintage '0002', 14 LWDAs + 1 Combined):
+--        000441 'Southwest Region (LWDA I)'
+--        000442 'New River/Mt. Rogers Region (LWDA II)'
+--        000443 'Greater Roanoke Region (LWDA III)'
+--        000444 'Shenandoah Valley Region (LWDA IV)'
+--        000446 'Piedmont Region (LWDA VI)'
+--        000447 'Central Region (LWDA VII)'
+--        000448 'South Central Region (LWDA VIII)'
+--        000449 'Capital Region (LWDA IX)'
+--        000451 'Northern Region (LWDA XI)'
+--        000452 'Alexandria/Arlington Region (LWDA XII)'
+--        000453 'Bay Consortium Region (LWDA XIII)'
+--        000455 'Crater Region (LWDA V)'         (notice AreaDesc is "XV" — see notes)
+--        000456 'Hampton Roads (LWDA XIV)'      (no "Region" suffix — irregular)
+--        000457 'West Piedmont Region (LWDA X)'
+--        000491 'Combined Projections Area (LWDA XI and LWDA XII)'  ← excluded by '%Combined%' filter
+--    AreaDesc column:      Carries 'Local Workforce Development Area I' etc.
+--                          — also not a short name. NOTE: 000455 has AreaDesc
+--                          'Local Workforce Development Area XV' while
+--                          AreaName says '(LWDA V)' — internal WID inconsistency,
+--                          not load-bearing here.
+--    Implication:
+--        * Employer Wage Tool — already emits AreaName verbatim per commit
+--          d6ecedb (dynamic LWDA). No follow-up needed beyond regenerating
+--          the JSON.
+--        * Front Page Dashboard Q3 — currently substring-parses AreaName for
+--          lwda_short_name. The substring-parser must go per the dimension-
+--          derived-labels standard. Decision pending on whether to emit
+--          AreaName verbatim ("Greater Roanoke Region (LWDA III)") or accept
+--          a temporary documented exception while waiting on a short-name
+--          column.
+--        * The irregular 'Hampton Roads (LWDA XIV)' (no "Region" suffix)
+--          confirms the existing substring-parser would already produce
+--          "Hampton Roads" cleanly for that row — but it's brittle.
+--    Load-gap ticket:      "WID 3.0 on this install: GEOGRAPHIES has no
+--                          short-name / display-name column for LWDA rows.
+--                          Both dashboards currently work around this with
+--                          either verbose AreaName emission (Employer) or
+--                          substring parsing (Front Page Q3, scheduled for
+--                          removal)."
 --
--- P7 Ownership lookup
---    table name found:    ___          (e.g. OwnershipTypes)
---    status:              [LOADED | EMPTY | MISSING]
---    code col / title col: ___ / ___
---    notes:
+-- ─── P7 Ownership lookup — TWO CANDIDATES (column inventory NOT yet run) ────
+--    candidate tables:     `Ownerships` and `InstitutionOwnerships` (both
+--                          surfaced via INFORMATION_SCHEMA.TABLES with name
+--                          LIKE '%Owner%').
+--    column inventory:     NOT run yet — see Open follow-ups.
+--    Likely interpretation: BLS WID 3.0 convention puts ownership codes
+--                          (00/10/20/30/50/80) in 'Ownerships'.
+--                          'InstitutionOwnerships' is probably IPEDS / higher-ed
+--                          related (separate WID domain). Confirm with the
+--                          P7.b follow-up before wiring.
+--    Step 2 wire-in:       Deferred. Neither tool currently exposes ownership
+--                          labels in the UI surface — the Q2 query filters
+--                          to Ownership='00' (Total Covered) silently, and
+--                          the Front Page Q3 Government bar is rollup-derived
+--                          with a hardcoded label. No urgency.
 --
--- P8 CES supersector dim (only if P5 didn't have 1011..1028)
---    table name found:    ___
---    status:              [LOADED | EMPTY | MISSING]
---    code col / title col: ___ / ___
---    has 1011..1028?      Y/N
---    notes:
+-- ─── P8 catch-all (BLS CES / other industry dims) ──────────────────────────
+--    relevant matches in INFORMATION_SCHEMA.TABLES (%Industry%/%Sector%/%CES%):
+--        CES, CESCodes, CPISources, IncomeSources, Industry, IndustryCodes,
+--        IndustrySums, IndustryXIndustry, NAICSSectors, NAICSSuperSectors,
+--        PopulationSources, VI_CES, VI_Industry, VI_IndustryBySize, WageSources
+--    NAICSSuperSectors covers everything Q3 needs (P5 confirmed '1011'..'1028'
+--    are all present in that dim). No CES-specific lookup required.
+--    CESCodes inventory was NOT pursued — file as "explored if needed" follow-up.
 --
--- P9 vintage anchors
---    SOC latest vintage:  ___
---    ONET latest vintage: ___
---    notes:
+-- ─── P9 vintage anchors — partial (re-run needed) ───────────────────────────
+--    P9.a SOCCodeType:     NOT formally run. P1 sample showed '19' on every
+--                          row (1,447 of 1,447) — strong signal that this
+--                          install carries only the SOC-2018 vintage. Formal
+--                          GROUP BY confirmation pending — see Open follow-ups.
+--    P9.b ONETCodeType:    Errored on first attempt — the probe used the
+--                          BLS-spec column name 'ONETSOCCodeType' which
+--                          doesn't exist on this WID install. The actual
+--                          column is 'ONETCodeType' (no SOC infix). P2 sample
+--                          showed '12' on every row with ONETYear '2025' —
+--                          strong signal of single vintage. Formal GROUP BY
+--                          confirmation pending — see Open follow-ups.
+--
+-- =============================================================================
+-- OPEN FOLLOW-UPS (small, non-blocking)
+-- =============================================================================
+-- Run when convenient; results don't gate Step 2 SQL rewires for SOC / NAICS
+-- supersector / NAICS sector / aliases (which can proceed on the strong-signal
+-- vintage assumption that '19' / '12' are the only loaded values).
+--
+-- 1. P9.a re-run — confirm SOC vintage count
+--      SELECT SOCCodeType, COUNT(*) AS row_count
+--      FROM WID.dbo.SOCCodes
+--      GROUP BY SOCCodeType
+--      ORDER BY SOCCodeType;
+--    EXPECT: one row, SOCCodeType='19', row_count=1447. Anything else means
+--    a second vintage coexists and the rewired JOIN needs to MAX-anchor.
+--
+-- 2. P9.b re-run with the correct column name — confirm ONET vintage count
+--      SELECT ONETCodeType, COUNT(*) AS row_count
+--      FROM WID.dbo.ONETCodes
+--      GROUP BY ONETCodeType
+--      ORDER BY ONETCodeType;
+--    EXPECT: one row, ONETCodeType='12', row_count=1016.
+--
+-- 3. P7 column inventory — pick the right Ownership table
+--      SELECT 'Ownerships' AS t, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
+--      FROM WID.INFORMATION_SCHEMA.COLUMNS
+--      WHERE TABLE_NAME = 'Ownerships' ORDER BY ORDINAL_POSITION;
+--
+--      SELECT TOP 10 * FROM WID.dbo.Ownerships;
+--
+--      SELECT 'InstitutionOwnerships' AS t, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
+--      FROM WID.INFORMATION_SCHEMA.COLUMNS
+--      WHERE TABLE_NAME = 'InstitutionOwnerships' ORDER BY ORDINAL_POSITION;
+--
+--      SELECT TOP 10 * FROM WID.dbo.InstitutionOwnerships;
+--
+-- =============================================================================
 -- =============================================================================
