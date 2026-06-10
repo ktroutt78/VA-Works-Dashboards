@@ -376,13 +376,26 @@ industry_sectors AS (
     ) AS t(indcode, ownership, sector_name)
 ),
 state_both_qtrs AS (
+    -- Pulls both the 10 private supersectors (1011..1027, Ownership='50') and
+    -- the BLS pre-summed Total-all-industries row (IndCode='10', Ownership
+    -- '10'/'20'/'30') used by the Government rollup downstream. '1028'
+    -- (Public Administration) is intentionally OMITTED — the prior version
+    -- summed 1028 + Ownership IN ('10','20','30') as "Government" but that
+    -- only captures NAICS-92 government workers (~265k VA), not the full
+    -- Fed+State+Local workforce (~749k VA — government employees in
+    -- schools/hospitals/transit are under 1025 / 1021 / etc.). The IndCode='10'
+    -- row is the BLS-published total across all supersectors and is the
+    -- correct anchor. Verified 2026-06-10 with the A vs C audit:
+    --   A=264,752  (IndCode 1028 only — the bug)
+    --   B=748,815  (sum across 1011..1028 — partition check)
+    --   C=748,907  (IndCode 10 — BLS canonical, used here)
     SELECT TRIM(i.IndCode) AS indcode, i.Ownership, i.PeriodYear, i.Period, i.QuarterAvgEmp
     FROM WID.dbo.INDUSTRY i
     JOIN i_vintage iv
       ON i.AreaType = iv.AreaType AND i.AreaTypeVersion = iv.AreaTypeVersion
     CROSS JOIN current_q cq CROSS JOIN prior_q pq
     WHERE i.StFips = '51' AND i.AreaType = '01' AND i.PeriodType = '02'
-      AND i.IndCode IN ('1011','1012','1013','1021','1022','1023','1024','1025','1026','1027','1028')
+      AND i.IndCode IN ('10','1011','1012','1013','1021','1022','1023','1024','1025','1026','1027')
       AND i.Ownership IN ('10','20','30','50')
       AND ((i.PeriodYear = cq.yr AND i.Period = cq.qtr)
         OR (i.PeriodYear = pq.yr AND i.Period = pq.qtr))
@@ -418,9 +431,20 @@ gov_change_state AS (
            SUM(COALESCE(prior_emp, 0))   AS prior_emp,
            SUM(COALESCE(current_emp, 0)) - SUM(COALESCE(prior_emp, 0)) AS jobs_added
     FROM state_current_only
-    WHERE indcode = '1028' AND Ownership IN ('10','20','30')
+    -- IndCode='10' = BLS "Total, all industries" supersector row. Ownership
+    -- IN ('10','20','30') restricts to Federal+State+Local employees across
+    -- every industry (schools, hospitals, transit, etc.), not just NAICS-92
+    -- Public Administration. See state_both_qtrs header for the audit numbers.
+    WHERE indcode = '10' AND Ownership IN ('10','20','30')
 ),
 region_both_qtrs AS (
+    -- Per-LWDA twin of state_both_qtrs. Same Government-rollup correction:
+    -- IndCode='10' replaces '1028' in the IN-list so each LWDA's Government
+    -- bar sums Fed+State+Local across all industries, not just NAICS-92.
+    -- ASSUMPTION (verify on first refresh): IndCode='10' rows exist at
+    -- AreaType='15' with Ownership IN ('10','20','30'). If they don't, the
+    -- per-LWDA Government row will be NULL — visible in the bar chart, file
+    -- a load-gap ticket against the IndCode='10' / AreaType='15' rows.
     SELECT i.Area AS lwda_code, TRIM(i.IndCode) AS indcode, i.Ownership,
            i.PeriodYear, i.Period, i.QuarterAvgEmp AS total_emp
     FROM WID.dbo.INDUSTRY i
@@ -429,7 +453,7 @@ region_both_qtrs AS (
     JOIN lwda_dim ld ON i.Area = ld.lwda_code
     CROSS JOIN current_q cq CROSS JOIN prior_q pq
     WHERE i.StFips = '51' AND i.AreaType = '15' AND i.PeriodType = '02'
-      AND i.IndCode IN ('1011','1012','1013','1021','1022','1023','1024','1025','1026','1027','1028')
+      AND i.IndCode IN ('10','1011','1012','1013','1021','1022','1023','1024','1025','1026','1027')
       AND i.Ownership IN ('10','20','30','50')
       AND ((i.PeriodYear = cq.yr AND i.Period = cq.qtr)
         OR (i.PeriodYear = pq.yr AND i.Period = pq.qtr))
@@ -465,7 +489,11 @@ gov_change_region AS (
            SUM(COALESCE(rc.current_emp, 0)) - SUM(COALESCE(rc.prior_emp, 0)) AS jobs_added
     FROM lwda_dim ld
     LEFT JOIN region_current_only rc
-      ON rc.lwda_code = ld.lwda_code AND rc.indcode = '1028' AND rc.Ownership IN ('10','20','30')
+      -- IndCode='10' = BLS Total-all-industries supersector (Fed+State+Local
+      -- across every NAICS), per the audit; replaces the prior '1028' which
+      -- only captured NAICS-92 Public Administration. See state_both_qtrs
+      -- header for the audit numbers.
+      ON rc.lwda_code = ld.lwda_code AND rc.indcode = '10' AND rc.Ownership IN ('10','20','30')
     GROUP BY ld.lwda_code
 ),
 all_sectors AS (
