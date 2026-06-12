@@ -105,6 +105,64 @@ There is no short-name column to source a compact display label from. Prior dash
 
 ---
 
+## 6. `SOCCodes` row `'311100'` has self-referencing `SOCParent` — 3 Healthcare Support details emit NULL `minor_group`
+
+**Table / field:** `WID.dbo.SOCCodes`, row `(SOCCodeType='19', SOCCode='311100')`. Field: `SOCParent`.
+
+**Observed (2026-06-12, `_validate.sql` Probe 9a).**
+
+| SOCCode | SOCTitle | SOCParent | Issue |
+|---|---|---|---|
+| `'311100'` | `Home Health and Personal Care Aides; and Nursing Assistants, Orderlies, and Psychiatric Aides` | `'311100'` | Self-references instead of pointing at major group `'310000'` |
+
+The row should be a SOC-2018 minor group with `SOCParent='310000'` (its parent major group). Instead, `SOCParent='311100'` — pointing at itself, which is a structural impossibility in any tree.
+
+This breaks the SOCParent-walk minor-group resolution for the 3 detail occupations whose path runs through this row:
+
+| SOC-6 | SOCTitle | Resolution failure |
+|---|---|---|
+| `'311131'` | Nursing Assistants | `311131 → 311100` (broad/minor) → walk hits self-ref `311100 → 311100` → can't reach a major → NULL |
+| `'311132'` | Orderlies | Same |
+| `'311133'` | Psychiatric Aides | Same |
+
+**Expected.** `SOCParent` on `'311100'` should be `'310000'` (Healthcare Support Occupations major). Once corrected, the SOCParent walk in `_RUN.sql` Q1 `soc6_to_minor` CTE will resolve the 3 Healthcare Support details to their minor group automatically — no SQL changes needed downstream.
+
+**Affects.** **Employer Wage Tool** `wages.json` for these 3 jobs — `minor_code` and `minor_group` emit as `null`. Front-end falls back to `j.major_group` ("Healthcare Support Occupations") for the family bucket label. The other ~5,800 Healthcare-Support-major details unaffected; only the 3 that walk through `'311100'`.
+
+The `_RUN.sql` `minor_group_dim` CTE explicitly excludes self-referencing rows via `SOCCode <> SOCParent` so the load anomaly **fails graceful** (NULL fallback) rather than producing a wrong label. When the load is fixed, the existing CTE picks it up automatically.
+
+**Requested action.** Update `WID.dbo.SOCCodes` row `(SOCCodeType='19', SOCCode='311100')` to set `SOCParent='310000'`. Verify the 3 Healthcare Support details (`311131`, `311132`, `311133`) start emitting non-null `minor_group` on the next refresh.
+
+---
+
+## 7. `GEOGRAPHIES` carries a phantom `Area='000051'` statewide row with no fact-table references
+
+**Table / field:** `WID.dbo.GEOGRAPHIES`, the `Area` column for `StFips='51' AND AreaType='01'`.
+
+**Observed (2026-06-12, `_validate.sql` Probes 6a + 11 + 12).** At `StFips='51' AND AreaType='01'` (statewide) and the latest `AreaTypeVersion`, GEOGRAPHIES carries **2 rows**:
+
+| Area | AreaName | AreaDesc | Latitude | Longitude |
+|---|---|---|---|---|
+| `'000000'` | `Virginia` | `NULL` | `37.522251` | `-86.843447` |
+| `'000051'` | `Virginia` | `NULL` | `37.522251` | `-86.843447` |
+
+Both labeled `"Virginia"`, identical lat/long, no `AreaDesc` to differentiate. Probe 12 confirmed that **`IOWAGE` and `INDUSTRY` exclusively reference `Area='000000'`** for statewide rows:
+
+| Fact table | Row count at `(StFips='51', AreaType='01', Area='000000')` | At `Area='000051'` |
+|---|---|---|
+| `IOWAGE` | 231,736 rows | 0 rows |
+| `INDUSTRY` | 50,653 rows | 0 rows |
+
+So `'000051'` is a phantom in the dim with no fact-table linkage. Likely a duplicate insertion from the GEOGRAPHIES load (`'51'` being the StFips, the loader may have constructed an `Area='000051'` row by zero-padding the StFips).
+
+**Expected.** Exactly one statewide row per `(StFips, AreaType='01', AreaTypeVersion)`. Either the duplicate should be removed, or — if both rows exist by design (e.g. carrying different metadata in a future column) — the loader should populate a differentiating field so downstream queries can pick the canonical row.
+
+**Affects.** **Employer Wage Tool** `_RUN.sql` `state_area` CTE (both Q1 and Q2) — without the explicit `AND Area='000000'` filter (added 2026-06-12, commit `97bc551`), the `CROSS JOIN state_area` in `all_cells` and `all_industry_cells` would double every statewide row in the emitted JSON. The Probe 12-driven filter handles it correctly today, but the load duplicate is the root cause and worth removing at the source.
+
+**Requested action.** Investigate why `Area='000051'` was created at `AreaType='01'`. Either delete the phantom (preferred) or document the encoding so the explicit `Area='000000'` filter has a recorded reason at the source. No SQL changes needed downstream — the explicit filter is already in place and is self-documenting via the inline comment in `state_area`.
+
+---
+
 ## Documented encoding notes
 
 _Items in this section are documented WID behavior, not defects to fix. Recorded so future SQL maintainers don't mistake them for bugs and don't "fix" them by rebasing to spec form._

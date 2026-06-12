@@ -91,39 +91,52 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
 {
   "meta": {
     "source": "WID.dbo.IOWAGE (T-SQL refresh)",
-    "extracted_at": "2026-06-05T17:44:54.169Z",
+    "extracted_at": "2026-06-12T18:08:21.233Z",
     "latest_year": 2025
   },
   "areas": [
     // area.id = the 6-digit GEOGRAPHIES.Area code; label = GEOGRAPHIES.AreaName verbatim.
     // LWDA rows have areatype "15"; the statewide row has areatype "01".
-    // The actual code values, label text, and ordering are whatever GEOGRAPHIES emits at refresh time.
-    { "id": "000452", "label": "Alexandria/Arlington Region (LWDA XII)", "areatype": "15" },
+    // counties[] = the LWDA's county + independent-city membership, sourced live from
+    // WID.dbo.SubGeographies (SubAreaType='04' — BLS lumps counties and indep cities here).
+    // Statewide gets counties:[] (search shouldn't surface "Virginia" when typing a county).
+    {
+      "id":       "000449",
+      "label":    "Capital Region (LWDA IX)",
+      "areatype": "15",
+      "counties": [
+        "Charles City County", "Chesterfield County", "Goochland County",
+        "Hanover County",      "Henrico County",      "New Kent County",
+        "Powhatan County",     "Richmond city"
+      ]
+    },
     ...
-    { "id": "<statewide-area-code>", "label": "Virginia", "areatype": "01" }
+    { "id": "000000", "label": "Virginia", "areatype": "01", "counties": [] }
   ],
   "jobs": [
     {
-      "id":          "11-1011",
-      "soc_code":    "11-1011",
-      "label":       "11-1011",                       // ← placeholder; SOC title patched client-side
-      "major_group": "Management Occupations",
-      "aliases":     [],                              // ← O*NET aliases (currently empty; see Part 4)
+      "id":          "15-1211",
+      "soc_code":    "15-1211",
+      "label":       "Computer Systems Analysts",     // ← from soc_dim (SOCCodes); falls back to soc_code if dim missing
+      "major_group": "Computer and Mathematical Occupations",
+      "minor_code":  "15-1200",                        // ← BLS SOC-2018 minor-group code (NOT the SOC4-prefix structural derivation)
+      "minor_group": "Computer Occupations",           // ← BLS SOC-2018 minor-group title; null if SOCParent walk fails
+      "aliases":     [],                               // ← O*NET aliases (currently empty; see Part 4)
       "areas": {
         // Keys = the same lwda_code / statewide code from areas[].id above.
-        "000452": {
-          "p10": 149990,   "p25": 230910,  "p50": 359880,
-          "p75": 514990,   "p90": 670100,
-          "p10_h":  72.11, "p25_h": 111.02, "p50_h": 173.02,
-          "p75_h": 247.59, "p90_h": 322.16,
-          "employment": 530,
+        "000449": {
+          "p10": 84370,    "p25": 107680, "p50": 132220,
+          "p75": 165690,   "p90": 209430,
+          "p10_h":  40.56, "p25_h": 51.77, "p50_h": 63.57,
+          "p75_h": 79.66,  "p90_h": 100.69,
+          "employment": 7530,
           "provenance": "lwda"
         },
         ...
-        "<statewide-area-code>": {
-          "p10": 88450, "p25": ..., "p50": ..., "p75": ..., "p90": ...,
-          "p10_h": ..., "p25_h": ..., "p50_h": ..., "p75_h": ..., "p90_h": ...,
-          "employment": 18430,
+        "000000": {
+          "p10": 83350, "p25": 106610, "p50": 136460, "p75": 171090, "p90": 211930,
+          "p10_h": 40.07, "p25_h": 51.25, "p50_h": 65.61, "p75_h": 82.26, "p90_h": 101.89,
+          "employment": 88280,
           "provenance": "statewide"
         }
       }
@@ -133,7 +146,21 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
 }
 ```
 
-> **Front-end contract.** `area.id` is the 6-digit `GEOGRAPHIES.Area` code (LWDA `lwda_code` for `areatype === '15'`; the statewide area code for `areatype === '01'`). The UI never reads a slug literal — the default-region picker finds statewide via `area.areatype === '01'`. The label rendered in the dropdown is `GEOGRAPHIES.AreaName` verbatim, including the "(LWDA …)" suffix. If a URL param exposes the selected region, the param value is the `lwda_code` (or statewide code), not a slug.
+> **Front-end data contract — required reading for any system that re-emits `wages.json` (replacement API, blob-delivery layer, etc.).** The browser consumes the following fields with the following semantics. Any replacement endpoint must match these shapes byte-for-byte or the front-end will silently degrade (empty regions, "Other" labels, blank charts) rather than fail loud.
+>
+> **`area.id`** — the 6-digit `GEOGRAPHIES.Area` code (LWDA `lwda_code` for `areatype === '15'`; the statewide area code for `areatype === '01'`). The UI never reads a slug literal. The default-region picker finds statewide via `area.areatype === '01'`. If a URL param exposes the selected region, the param value is the `lwda_code` (or statewide code), not a slug.
+>
+> **`area.label`** — `GEOGRAPHIES.AreaName` verbatim, including the "(LWDA …)" suffix. Rendered as-is in the region dropdown subtitle.
+>
+> **`area.counties`** — array of strings (county/city names from `GEOGRAPHIES.AreaName` at `AreaType='04'`). Powers the Region filter's **county-first search** UX: the dropdown flattens these into option rows, each tagged with its parent LWDA label, so an employer who types `"Henrico"` surfaces `"Henrico County → Capital Region (LWDA IX)"` and selecting it scopes the report to LWDA `000449`. **Statewide row MUST emit `counties: []`** (empty array, not omitted) — the front-end iterates `areas[].counties` unconditionally and an omitted field would surface "Virginia" mid-list when the user types unrelated text. A replacement endpoint that ships county names that don't match any actual VA county will produce phantom dropdown entries that route to wrong LWDAs.
+>
+> **`job.minor_code`** and **`job.minor_group`** — the BLS SOC-2018 **minor** group code and title resolved via SOCParent walk in `soc6_to_minor` CTE. Used by the front-end family-bucket title. **May be `null`** when the walk fails (SOC code not loaded in `SOCCodes` dim, or walks into the `'311100'` self-referencing-SOCParent anomaly — see [punchlist items 1 and 6](#)). Front-end falls back to `job.major_group` (the SOC major-group title) when `minor_group` is null. A replacement endpoint MUST either emit `minor_group` correctly OR emit `null` — emitting a wrong/stale value (e.g. the SOC4-prefix-based `XX-X000` structural derivation rather than the SOCParent-walked SOC-2018 minor) will produce "Computer and Mathematical Occupations" labels where "Computer Occupations" is correct, reintroducing the pre-2026-06-12 duplicate-major-group bug the client reported.
+>
+> **`job.major_group`** — the BLS SOC major group title (23-row reference set; `RIGHT(SOCCode, 4) = '0000'` rows). Always present; renders `'Other'` if the join misses. Treated as the fallback bucket label when `minor_group` is null.
+>
+> **`job.label`** — `SOCCodes.SOCTitle` for the SOC-6 detail row. Falls back to the hyphenated SOC code (e.g. `"21-1018"`) when the dim is missing that SOC. The `data/soc-titles.json` client-side fallback patches the missing-from-dim cases.
+>
+> **`job.areas`** — keyed object, keys = `area.id` values from above. Per-cell wage data with `provenance` field (`'lwda'` / `'statewide_fallback'` / `'statewide'`). A LWDA area_id key MAY be missing if the SOC has no statewide cell to fall back from — front-end treats missing keys as "no data, skip rendering this cell."
 
 **Semantics:**
 - Annual percentiles (`p10`..`p90`) are dollar amounts, integer-rounded.
@@ -141,6 +168,8 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
 - `employment` is the OEWS `EmpCount` for the (occupation, area) cell — used to size the hiring pool KPI.
 - Top-code repair: BLS publishes `NULL` for p90 / p75 when the actual value exceeds the OEWS top-code threshold. The SQL applies a deterministic cap (`$239,200` annual / `$115.00` hourly) when the lower percentiles signal the cell is high-wage. This mirrors the v1 UI behavior — without it, high-wage management/medical SOCs would render with truncated bars.
 - The `aliases` array is currently `[]` from SQL because the O*NET reference table is not yet loaded on this WID install — the front end soft-augments it from a separate static `soc-aliases.json` (see Part 4). The SQL has the alias-building CTE pre-written and commented out for the day WID exposes ONET_TITLES.
+- **`counties[]` semantics**: sourced via `lwda_counties` CTE joining `SubGeographies` (vintage-pinned via `sgeo_vintage` MAX-anchor) → `GEOGRAPHIES` on the Sub* tuple. `SubAreaType='04'` lumps Virginia counties AND independent cities together by BLS convention (e.g. `Petersburg city` appears alongside `Dinwiddie County` in Crater LWDA's array). VA has 95 counties + 38 indep cities = 133 places total; the 14 LWDAs partition them exactly (no overlap, no gaps, verified by [Smoke Test 7](#smoke-test-7-lwda-tiling-partition-check) variant).
+- **`minor_code` / `minor_group` semantics**: SOC-2018's hierarchy doesn't always put minor groups at `XX-X000` (e.g. `15-1200` Computer Occupations, `51-5100` Printing Workers, `29-1200` Healthcare Diagnosing or Treating Practitioners). A naive code-pattern filter (`RIGHT(SOCCode, 3) = '000'`) misses these — `soc6_to_minor` walks `SOCParent` instead, which is the BLS hierarchical definition and structurally agnostic to code patterns. ~99% of SOC-6 details resolve; 8 of 721 emit `null` on the 2026-06-12 refresh (5 because the SOC code isn't loaded in this WID install's `SOCCodes` dim, 3 because they walk into the `'311100'` self-ref anomaly — see [punchlist items 1 and 6](#)).
 
 ### Q2 — `industries.json` (QCEW industry summaries)
 
@@ -153,11 +182,16 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
     "latest_year": 2025
   },
   "areas": [
-    // Same shape as wages.json — area.id is GEOGRAPHIES.Area, label is AreaName,
-    // areatype distinguishes LWDA ('15') from statewide ('01').
+    // Same shape as wages.json areas[] EXCEPT no counties[] field — Q2's Region
+    // dropdown was never replaced with county-first search (it serves the
+    // industry summary band, not the chart). If the front-end is ever extended
+    // so industries.json's Region filter also wants county search, mirror
+    // wages.json's lwda_counties splice into Q2.
+    // area.id is GEOGRAPHIES.Area (statewide is '000000' after Probe 12 dedupe,
+    // not the phantom '000051' — see Q1 contract callout above).
     { "id": "000452", "label": "Alexandria/Arlington Region (LWDA XII)", "areatype": "15" },
     ...
-    { "id": "<statewide-area-code>", "label": "Virginia", "areatype": "01" }
+    { "id": "000000", "label": "Virginia", "areatype": "01" }
   ],
   "sectors": [
     {
@@ -167,7 +201,7 @@ There is no separate "trend over time" view — OEWS is annual point-in-time, no
         // Keys = the lwda_code / statewide code, matching areas[].id above.
         "000452": { "mean_wage": 48235, "employment": 31,   "establishments": 7 },
         ...
-        "<statewide-area-code>": { "mean_wage": 50912, "employment": 9842, "establishments": 1421 }
+        "000000": { "mean_wage": 50912, "employment": 9842, "establishments": 1421 }
       }
     },
     ...
@@ -257,10 +291,24 @@ erDiagram
         varchar SectorDesc "sector label, Q2 `label` field"
     }
 
-    IOWAGE      }o--|| GEOGRAPHIES  : "(StFips, AreaType, Area) — Q1 LWDA cells"
-    INDUSTRY    }o--|| GEOGRAPHIES  : "(StFips, AreaType, Area) — Q2 LWDA cells"
-    IOWAGE      }o--|| SOCCodes     : "Q1: REPLACE(OccCode,'-','') = RTRIM(SOCCode), SOCCodeType anchored to MAX"
-    INDUSTRY    }o--|| NAICSSectors : "Q2: naics_sectors.naics_code = RTRIM(NAICSSector) (after wid_code-→-2-digit mapping)"
+    SubGeographies {
+        char StFips PK "= '51'"
+        char AreaType PK "= '15' for LWDA→child edges"
+        char AreaTypeVersion PK "anchor to MAX() via sgeo_vintage CTE — 3 vintages on this install (0000/0001/0002)"
+        char Area PK "= the LWDA code (parent)"
+        char SubStFips "= '51' (same state)"
+        char SubAreaType "= '04' for counties + VA indep cities (BLS lumps both here)"
+        char SubAreaTypeVersion "matches GEOGRAPHIES.AreaTypeVersion for the child row (used in JOIN)"
+        char SubArea "= the county/city code (child)"
+    }
+
+    IOWAGE         }o--|| GEOGRAPHIES    : "(StFips, AreaType, Area) — Q1 LWDA cells"
+    INDUSTRY       }o--|| GEOGRAPHIES    : "(StFips, AreaType, Area) — Q2 LWDA cells"
+    IOWAGE         }o--|| SOCCodes       : "Q1: REPLACE(OccCode,'-','') = RTRIM(SOCCode), SOCCodeType anchored to '19'"
+    INDUSTRY       }o--|| NAICSSectors   : "Q2: naics_sectors.naics_code = RTRIM(NAICSSector) (after wid_code-→-2-digit mapping)"
+    SubGeographies }o--|| GEOGRAPHIES    : "(Area, AreaType='15') = LWDA parent row"
+    SubGeographies }o--|| GEOGRAPHIES    : "(SubStFips, SubAreaType, SubAreaTypeVersion, SubArea) = county/city child row"
+    SOCCodes       }o--|| SOCCodes       : "SOCParent self-join: SOC detail → broad → minor → major walk (soc6_to_minor CTE)"
 ```
 
 **Join-key cheat sheet** (this is the most error-prone part of the codebase):
@@ -278,6 +326,11 @@ erDiagram
 | `IOWAGE` ↔ `soc_dim` (Q1 SOC title) | `REPLACE(LTRIM(RTRIM(IOWAGE.OccCode)),'-','') = RTRIM(SOCCodes.SOCCode)` | IOWAGE stores SOC in either hyphenated or unhyphenated 6-digit form; SOCCodes is CHAR(6) unhyphenated. RTRIM is safe-by-default. |
 | `soc_dim` → `major_group_dim` (Q1) | `RIGHT(soc_code,4)='0000' AND LEFT(soc_code,2)<>'00'` | The 23 SOC majors are derived from soc_dim itself — no separate table. The hardcoded 23-row VALUES CTE in prior versions is retired. |
 | `naics_sectors` ↔ `naics_dim` (Q2 sector title) | `naics_sectors.naics_code = RTRIM(NAICSSectors.NAICSSector)` | naics_sectors still provides the IndCode → 2-digit mapping (wid_code/naics_code); naics_dim provides the SectorDesc label. No vintage column. |
+| `SubGeographies` ↔ `sgeo_vintage` (anchor, Q1 only) | `(StFips, AreaType='15', AreaTypeVersion)` | Pins SubGeographies to its own `MAX(AreaTypeVersion)` per (StFips, AreaType). 3 vintages coexist on this install (`'0000'`/`'0001'`/`'0002'`, ~133 rows each) — without the pin, the 3× cartesian shows up as triplicated county names in `area.counties`. AreaType `'15'` only — we use SubGeographies only for the LWDA→child relationship; other parent tiers (PDC, MSA, etc.) aren't relevant. |
+| `SubGeographies` ↔ `lwda_dim` (`lwda_counties` parent side) | `(SubGeographies.Area = lwda_dim.lwda_code)` after `WHERE AreaType='15'` | Identifies which LWDA each SubGeographies row points at. Pins to `sgeo_vintage`'s MAX. |
+| `SubGeographies` ↔ `GEOGRAPHIES` (`lwda_counties` child side) | `(SubStFips, SubAreaType, SubAreaTypeVersion, SubArea)` → `(StFips, AreaType, AreaTypeVersion, Area)` | The full 4-column geo identity, BUT pinning to the **child** SubAreaTypeVersion column directly (not via a separate `geo_vintage_county` MAX-anchor). That's because SubGeographies's xwalk row stipulates "this LWDA points at THIS sub-area at THIS sub-vintage" — the child vintage tuple is authoritative for the relationship. AreaType `'04'` for counties + indep cities (BLS lumps both). Aliased `AreaName` flows through verbatim to `area.counties[]`. |
+| `SOCCodes` ↔ `soc_dim` (Q1 minor-group dim) | `WHERE SOCCodeType='19' AND RIGHT(SOCParent, 4) = '0000' AND SOCCode <> SOCParent` | BLS-canonical definition of a SOC minor group: any row whose `SOCParent` is a major (parent ends in `'0000'`). NOT a code-pattern filter (`RIGHT(SOCCode,3)='000'`) — SOC-2018 has minor groups outside that pattern (`15-1200` Computer Occupations, `51-5100` Printing Workers, `29-1200` Healthcare Diagnosing or Treating Practitioners). The `SOCCode <> SOCParent` guard excludes the `'311100'` self-ref anomaly — see [punchlist item 6](../client-tickets/wid-data-quality-punchlist.md). Returns 97 rows (BLS spec: 98; missing Military `55-X000` which OEWS doesn't carry). |
+| `SOCCodes` ↔ `SOCCodes` (self-join, `soc6_to_minor` walk) | 1-hop (`detail.SOCParent = minor.SOCCode`) OR 2-hop (`detail.SOCParent = broad.SOCCode AND broad.SOCParent = minor.SOCCode`) | The SOC hierarchy is fixed-depth — detail → broad → minor → major. Some details point directly at a minor (BLS skips the broad level), others through a broad. Two `LEFT JOIN`s + `COALESCE` cover both cases. ~99% of SOC-6 details resolve cleanly; 8 of 721 emit `null` on 2026-06-12 (5 because the SOC isn't in `SOCCodes` at all — [punchlist item 1](../client-tickets/wid-data-quality-punchlist.md); 3 because they walk through `'311100'` — [item 6](../client-tickets/wid-data-quality-punchlist.md)). |
 
 ### Q1 call-out — `wages.json`
 
