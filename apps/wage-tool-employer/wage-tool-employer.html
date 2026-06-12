@@ -946,7 +946,10 @@
         placeholder: "Select an industry...",
         options: state.sectors.map(s => ({
           value: s.naics,
-          text: `${s.naics} · ${s.label}`,
+          /* Name-first with the NAICS code in parens: "Utilities (22)".
+             Sort order unchanged — state.sectors is pre-sorted by NAICS
+             code and Tom Select preserves insertion order via $order. */
+          text: `${s.label} (${s.naics})`,
         })),
       });
 
@@ -1053,7 +1056,15 @@
         ],
         options: state.families.map(f => ({
           value: f.code,
-          text: `${f.code} · ${f.label}`,
+          /* Name-first with the SOC-3 code in parens: "Healthcare Support
+             Occupations (31-1000)". Search on the 'text' field still
+             matches both tokens because the code is embedded in the
+             string; the post-filter `\b<token>\b` regex below also matches
+             the digits inside parens (e.g. "31-1000" passes \b boundaries
+             between the parens and the digits). Sort order unchanged —
+             state.families is pre-sorted by f.code and Tom Select
+             preserves insertion order via $order. */
+          text: `${f.label} (${f.code})`,
           jobs:    f.jobs.map(j => j.label).join(' | '),
           aliases: f.jobs.flatMap(j => j.aliases || []).join(' | '),
         })),
