@@ -182,6 +182,17 @@ geo_vintage AS (
     WHERE StFips = '51' AND AreaType IN ('01','15')
     GROUP BY StFips, AreaType
 ),
+sgeo_vintage AS (
+    -- SubGeographies carries 3 vintages on this install (0000/0001/0002) per
+    -- validate.sql Probe 6 follow-up on 2026-06-12. MAX-pin to dodge the 3x
+    -- vintage cartesian. AreaType='15' only — we're using SubGeographies for
+    -- LWDA→child membership; other tiers (PDC, MSA, etc.) aren't part of the
+    -- Employer Wage Tool's region model.
+    SELECT StFips, AreaType, MAX(AreaTypeVersion) AS AreaTypeVersion
+    FROM WID.dbo.SubGeographies
+    WHERE StFips = '51' AND AreaType = '15'
+    GROUP BY StFips, AreaType
+),
 
 -- ─── LWDA DIMENSION — fully dynamic from GEOGRAPHIES ─────────────────────────
 -- Both the LWDA code (= GEOGRAPHIES.Area) and the display label
@@ -212,6 +223,15 @@ lwda_dim AS (
 -- code), NOT the legacy hardcoded literal 'virginia'. Front-end identifies
 -- statewide by area.areatype === '01'.
 state_area AS (
+    -- GEOGRAPHIES has 2 statewide rows on this install at AreaType='01' MAX
+    -- vintage: Area='000000' and Area='000051' (validate.sql Probe 6a, 11
+    -- 2026-06-12). Both labeled "Virginia", same lat/long, NULL AreaDesc.
+    -- Probe 12 (2026-06-12) proved IOWAGE and INDUSTRY exclusively reference
+    -- '000000' (231,736 OEWS rows + 50,653 QCEW rows; '000051' has zero of
+    -- both). '000051' is therefore a phantom GEOGRAPHIES dup — flagged for
+    -- the WID owner's data-QA backlog, NOT patched at load. Filter to
+    -- '000000' explicitly so CROSS JOIN state_area downstream doesn't double
+    -- every statewide row.
     SELECT
         g.Area      AS state_code,
         g.AreaName  AS state_label
@@ -220,6 +240,54 @@ state_area AS (
       ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
      AND g.AreaTypeVersion = gv.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '01'
+      AND g.Area = '000000'                            -- dedupe: see header comment
+),
+
+-- ─── LWDA → COUNTY/CITY MEMBERSHIP — JSON array per LWDA ────────────────────
+-- Sources county + independent-city names per LWDA from WID.dbo.SubGeographies
+-- (vintage-pinned via sgeo_vintage above). Used to power the Region filter's
+-- county-first search UX in the front-end — a user typing "Henrico" surfaces
+-- counties starting with those letters; selecting a county resolves to its
+-- parent LWDA for the report scope. Mirrors the alias-aware Job Family filter
+-- pattern.
+--
+-- VA-SPECIFIC NUANCE: BLS lumps Virginia counties AND independent cities
+-- together under SubAreaType='04' in this xwalk (validate.sql Probe 6d
+-- 2026-06-12 confirmed: e.g. LWDA 000455 Crater Region returns 5 counties +
+-- 4 independent cities — Colonial Heights, Emporia, Hopewell, Petersburg —
+-- all with sub_areatype='04'). The GEOGRAPHIES AreaType='11' tier holds
+-- independent cities as a separate cut for other purposes but SubGeographies
+-- doesn't reference it for LWDA membership. SubAreaType='04' alone is
+-- correct and complete.
+--
+-- VINTAGE JOIN: GEOGRAPHIES is pinned via the SubAreaTypeVersion that the
+-- SubGeographies row itself stipulates — that's the authoritative vintage
+-- tuple ("this LWDA points at THIS sub-area at THIS sub-vintage"). NOT
+-- re-anchored via geo_vintage at the dim level, because the dim's MAX vintage
+-- for AreaType='04' may not match what SubGeographies references.
+--
+-- STRING_AGG cast to NVARCHAR(MAX) to dodge the 8000-char truncation;
+-- alphabetical WITHIN GROUP for deterministic output.
+lwda_counties AS (
+    SELECT
+        sg.Area AS lwda_code,
+        '[' + STRING_AGG(
+            CAST('"' + STRING_ESCAPE(g.AreaName, 'json') + '"' AS NVARCHAR(MAX)),
+            ','
+        ) WITHIN GROUP (ORDER BY g.AreaName) + ']' AS counties_json
+    FROM WID.dbo.SubGeographies sg
+    JOIN sgeo_vintage sgv
+      ON sg.StFips = sgv.StFips AND sg.AreaType = sgv.AreaType
+     AND sg.AreaTypeVersion = sgv.AreaTypeVersion
+    JOIN WID.dbo.GEOGRAPHIES g
+      ON g.StFips          = sg.SubStFips
+     AND g.AreaType        = sg.SubAreaType
+     AND g.AreaTypeVersion = sg.SubAreaTypeVersion
+     AND g.Area            = sg.SubArea
+    WHERE sg.StFips = '51'
+      AND sg.AreaType = '15'
+      AND sg.SubAreaType = '04'      -- counties + VA independent cities (BLS lumps both here)
+    GROUP BY sg.Area
 ),
 
 -- ─── SOC DIMENSION — live SOC-6 + major-group labels from WID.dbo.SOCCodes ──
@@ -264,6 +332,74 @@ major_group_dim AS (
     FROM soc_dim
     WHERE RIGHT(soc_code, 4) = '0000'
       AND LEFT(soc_code, 2) <> '00'
+),
+
+-- ─── SOC MINOR GROUP DIMENSION — SOCParent-based, NOT pattern-based ─────────
+-- A SOC-2018 MINOR group is defined hierarchically as any row whose SOCParent
+-- is a major (parent ends in '0000'). This is the BLS-canonical definition,
+-- NOT a code-pattern assumption.
+--
+-- WHY NOT JUST FILTER `RIGHT(SOCCode, 3) = '000'`:
+--   SOC-2018 has minor groups whose codes DON'T fit the XX-X000 mold —
+--   e.g. '151200' Computer Occupations, '515100' Printing Workers, '111000'
+--   Top Executives (the last fits the pattern, the first two don't). A
+--   structural pattern filter misses the non-classical ones, causing the
+--   front-end to fall back to MAJOR group labels for those jobs (the
+--   "duplicate descriptions at SOC3" bug the client reported 2026-06-12).
+--   validate.sql Probe 9b/9c on 2026-06-12 confirmed: SOCParent-based
+--   approach returns 97 minor groups; pattern-based returns only 95.
+--   (BLS spec is 98; the 1 missing is Military 55-X000, which this WID
+--   install intentionally excludes and which OEWS doesn't carry either.)
+--
+-- DATA ANOMALY HANDLED:
+--   311100 (Home Health and Personal Care Aides...) has a self-referencing
+--   SOCParent on this install — load anomaly, probably should be a broad
+--   pointing at minor '311000'. The SOCCode <> SOCParent filter excludes it;
+--   if/when the WID owner fixes the load it'll start matching this CTE
+--   without code changes here.
+minor_group_dim AS (
+    SELECT
+        sc.SOCCode  AS minor_code,
+        sc.SOCTitle AS minor_title
+    FROM WID.dbo.SOCCodes sc
+    WHERE sc.SOCCodeType = '19'        -- pinned per soc_dim header; do NOT swap to MAX
+      AND RIGHT(sc.SOCParent, 4) = '0000'
+      AND sc.SOCCode <> sc.SOCParent
+),
+
+-- ─── SOC-6 → MINOR GROUP RESOLUTION — SOCParent walk ────────────────────────
+-- For each SOC-6 row in SOCCodes, walks SOCParent up 1 or 2 hops to find the
+-- minor. Two paths to cover, picked by COALESCE:
+--   depth-1 (m_direct):    detail.SOCParent IS itself a minor — happens
+--                          when BLS skips the broad level for some details.
+--   depth-2 (m_via_broad): detail.SOCParent is a broad — walk one more hop
+--                          via that broad's SOCParent (which is the minor).
+-- Common case is depth-2: detail → broad → minor (e.g. 11-3121 HR Managers
+-- → 11-3120 HR Managers broad → 11-3000 Operations Specialties Managers
+-- minor → 11-0000 Management major). COALESCE prefers m_direct when both
+-- match — both can populate when detail.SOCParent is itself a minor (the
+-- broad LEFT JOIN happens to match the same row), but m_via_broad's hop
+-- to broad.SOCParent then walks to the major which isn't in minor_group_dim,
+-- so m_via_broad ends up null anyway. Either way COALESCE resolves.
+--
+-- If a SOC-6 detail can't be resolved by either path (SOCCodes missing a
+-- parent row, etc.), minor_code/minor_title come through as NULL and the
+-- final SELECT's emit treats them as null — front-end falls back to
+-- j.major_group, same behavior as before this fix for the unmatched cases.
+soc6_to_minor AS (
+    SELECT
+        d.SOCCode AS detail_code,
+        COALESCE(m_direct.minor_code,  m_via_broad.minor_code)  AS minor_code,
+        COALESCE(m_direct.minor_title, m_via_broad.minor_title) AS minor_title
+    FROM WID.dbo.SOCCodes d
+    LEFT JOIN minor_group_dim m_direct
+        ON m_direct.minor_code = d.SOCParent
+    LEFT JOIN WID.dbo.SOCCodes broad
+        ON broad.SOCCode = d.SOCParent
+       AND broad.SOCCodeType = '19'
+    LEFT JOIN minor_group_dim m_via_broad
+        ON m_via_broad.minor_code = broad.SOCParent
+    WHERE d.SOCCodeType = '19'
 ),
 
 -- ─── LATEST YEAR IN STATEWIDE OEWS ───────────────────────────────────────────
@@ -529,12 +665,21 @@ SELECT
         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
     )) AS meta,
     JSON_QUERY((
-        SELECT id, label, areatype
+        SELECT id, label, areatype, JSON_QUERY(counties) AS counties
         FROM (
-            SELECT ld.lwda_code AS id, ld.lwda_label AS label, '15' AS areatype, ld.lwda_code AS sortk
+            SELECT ld.lwda_code AS id,
+                   ld.lwda_label AS label,
+                   '15' AS areatype,
+                   ld.lwda_code AS sortk,
+                   ISNULL(lc.counties_json, '[]') AS counties
             FROM lwda_dim ld
+            LEFT JOIN lwda_counties lc ON lc.lwda_code = ld.lwda_code
             UNION ALL
-            SELECT sa.state_code, sa.state_label, '01' AS areatype, 'zzz-' + sa.state_code AS sortk
+            -- Statewide row gets counties:[] — the Region filter's county-first
+            -- search shouldn't surface "Virginia" when a user types a county
+            -- name (statewide is its own deliberate scope, not a county hit).
+            SELECT sa.state_code, sa.state_label, '01' AS areatype,
+                   'zzz-' + sa.state_code AS sortk, '[]' AS counties
             FROM state_area sa
         ) src
         ORDER BY src.sortk
@@ -546,6 +691,13 @@ SELECT
             STUFF(sw.soc_code, 3, 0, '-')                                       AS soc_code,
             COALESCE(sd.soc_title, STUFF(sw.soc_code, 3, 0, '-'))               AS label,
             ISNULL(mgd.major_group_name, 'Other')                               AS major_group,
+            -- minor_code/minor_group resolved via SOCParent walk (see
+            -- soc6_to_minor CTE). minor_code is hyphenated to match the
+            -- front-end's existing SOC code display convention; NULL when
+            -- the walk fails (front-end falls back to major_group on null).
+            CASE WHEN s2m.minor_code IS NOT NULL
+                 THEN STUFF(s2m.minor_code, 3, 0, '-') END                      AS minor_code,
+            s2m.minor_title                                                     AS minor_group,
             JSON_QUERY('[]')                                                    AS aliases,
             -- aliases stays [] from SQL by design — data/soc-aliases.json is
             -- the LIVE alias source (see header note + commented onet_aliases
@@ -558,6 +710,7 @@ SELECT
         JOIN job_areas_blob jb ON jb.soc_code = sw.soc_code
         LEFT JOIN soc_dim sd ON sd.soc_code = sw.soc_code
         LEFT JOIN major_group_dim mgd ON mgd.mg_prefix = LEFT(sw.soc_code, 2)
+        LEFT JOIN soc6_to_minor s2m ON s2m.detail_code = sw.soc_code
         -- LEFT JOIN onet_aliases oa ON oa.soc_code = sw.soc_code
         ORDER BY sw.soc_code
         FOR JSON PATH
@@ -627,6 +780,15 @@ lwda_dim AS (
 -- ─── STATEWIDE AREA — same dynamic pattern, AreaType='01' ───────────────────
 -- See Q1 state_area header. Same pattern, redefined here for the Q2 batch.
 state_area AS (
+    -- GEOGRAPHIES has 2 statewide rows on this install at AreaType='01' MAX
+    -- vintage: Area='000000' and Area='000051' (validate.sql Probe 6a, 11
+    -- 2026-06-12). Both labeled "Virginia", same lat/long, NULL AreaDesc.
+    -- Probe 12 (2026-06-12) proved IOWAGE and INDUSTRY exclusively reference
+    -- '000000' (231,736 OEWS rows + 50,653 QCEW rows; '000051' has zero of
+    -- both). '000051' is therefore a phantom GEOGRAPHIES dup — flagged for
+    -- the WID owner's data-QA backlog, NOT patched at load. Filter to
+    -- '000000' explicitly so CROSS JOIN state_area downstream doesn't double
+    -- every statewide row.
     SELECT
         g.Area      AS state_code,
         g.AreaName  AS state_label
@@ -635,6 +797,7 @@ state_area AS (
       ON g.StFips = gv.StFips AND g.AreaType = gv.AreaType
      AND g.AreaTypeVersion = gv.AreaTypeVersion
     WHERE g.StFips = '51' AND g.AreaType = '01'
+      AND g.Area = '000000'                            -- dedupe: see header comment
 ),
 
 -- ─── LATEST ANNUAL YEAR IN INDUSTRY (statewide) ──────────────────────────────
