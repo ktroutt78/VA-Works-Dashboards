@@ -129,6 +129,29 @@
     .ts-dropdown .dropdown-input-wrap { padding: 8px; box-sizing: border-box; }
     .ts-dropdown .dropdown-input { width: 100%; box-sizing: border-box; }
 
+    /* Region dropdown: counties + indep cities render as two-line options.
+       Primary line = county/city name. Secondary line = parent LWDA (the
+       actual scope the report runs at — user picks the place they know
+       and the tool resolves to the right region). Statewide is a single
+       line (it IS its own scope, no LWDA subtitle to show). */
+    .region-option-dual,
+    .region-item-dual {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .region-option-dual .region-county,
+    .region-item-dual .region-county {
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .region-option-dual .region-lwda,
+    .region-item-dual .region-lwda {
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
     /* ─── Controls (two rows) ────────────────────────────────────────── */
     .controls { padding: 14px 20px 12px; display: grid; gap: 14px; }
     .controls-1, .controls-2 { grid-template-columns: 1.7fr 1fr; }
@@ -846,39 +869,17 @@
   </div>
 
   <script>
-    /* ──────────────────────────────────────────────────────────────────
-       SOC-3 minor-group labels for the families present in the skeleton.
-       Fallback for any code not listed here is the job's major_group.
-       (When real data lands with proper SOC-3 hierarchy, this dict is
-       superseded by a column on each row.)
-    ────────────────────────────────────────────────────────────────────── */
-    const SOC3_LABELS = {
-      "11-2000": "Marketing, Sales, & PR Managers",
-      "11-3000": "Operations Specialties Managers",
-      "13-1000": "Business Operations Specialists",
-      "13-2000": "Financial Specialists",
-      "15-2000": "Mathematical Science Occupations",
-      "17-2000": "Engineers",
-      "17-3000": "Drafters & Engineering Technicians",
-      "19-4000": "Life, Physical & Social Science Technicians",
-      "23-1000": "Lawyers, Judges & Related Workers",
-      "25-1000": "Postsecondary Teachers",
-      "25-3000": "Other Teachers & Instructors",
-      "41-3000": "Sales Representatives, Services",
-      "45-2000": "Agricultural Workers",
-      "49-3000": "Vehicle & Mobile Equipment Mechanics",
-      "51-9000": "Other Production Occupations",
-      "53-1000": "Supervisors of Transportation Workers",
-      "53-2000": "Air Transportation Workers",
-      "53-6000": "Other Transportation Workers",
-      /* Design exemplars (for future skeleton refreshes) */
-      "43-3000": "Financial Clerks",
-      "43-4000": "Information & Record Clerks",
-      "15-1200": "Computer Occupations",
-      "21-1000": "Counselors & Social Workers",
-    };
-
-    /* SOC-3 derivation: "13-2011" → "13-2000" */
+    /* SOC-3 family-bucket KEY derivation: "15-1211" → "15-1000".
+       Used purely as a grouping key in buildState — every SOC-6 detail
+       whose 4-digit prefix matches goes into the same family bucket. The
+       BLS SOC-2018 hierarchy doesn't always use this XX-X000 mold for its
+       minor-group CODE (e.g. Computer Occupations is published as
+       '15-1200', not '15-1000'), but the BUCKETING is internally consistent
+       — all 15-1XXX details share the same SOC-2018 minor by construction.
+       The family LABEL is sourced from j.minor_group (resolved server-side
+       via SOCParent walk in RUN.sql's soc6_to_minor CTE) — see buildState
+       below. Hand-curated SOC3_LABELS dict removed 2026-06-12; replaced by
+       the data contract that ships j.minor_group per job. */
     function soc3of(soc6) { return soc6.substring(0, 4) + "000"; }
 
     /* ──────────────────────────────────────────────────────────────────
@@ -893,7 +894,13 @@
         if (!familyMap[code]) {
           familyMap[code] = {
             code,
-            label: SOC3_LABELS[code] || j.major_group,
+            /* Family label: prefer the SQL-resolved minor_group (BLS
+               SOC-2018 minor title via SOCParent walk), fall back to
+               major_group when the walk couldn't resolve (jobs whose
+               SOC code isn't loaded in WID's SOCCodes dim, or that
+               walk into the '311100' self-ref anomaly). About 8 of
+               721 jobs hit the fallback on the 2026-06-12 refresh. */
+            label: j.minor_group || j.major_group,
             jobs: [],
           };
         }
@@ -943,14 +950,83 @@
         })),
       });
 
-      /* Region — browse-only too. 14 LWDAs + statewide is a short list,
-         search adds friction without payoff. controlInput:null suppresses
-         the search input so the selected item sits centered in the control
-         without the typing cursor showing below it. */
+      /* Region — county-first searchable dropdown. Employers know counties
+         and independent cities, not LWDA boundaries — so the dropdown options
+         are the ~133 counties+cities (flattened from each area.counties[])
+         plus the statewide row, and selecting a county RESOLVES to its
+         parent LWDA's id behind the scenes for the report scope.
+         dropdown_input plugin moves the search input into the panel (same
+         pattern as the family dropdown). Tom Select requires unique option
+         values, but multiple counties share the same lwda_code — so the
+         option's `value` is the county name (unique in VA across the 95
+         counties + 38 indep cities) and we store the LWDA code in a hidden
+         lwda_id field. The change handler (line ~1487) translates value
+         → lwda_id when setting state.sel.regionId. */
       window.__regionSel = new TomSelect("#region-select", {
         ...tsOpts,
-        controlInput: null,
-        options: state.areas.map(a => ({ value: a.id, text: a.label })),
+        plugins: ['dropdown_input'],
+        placeholder: "Type a county or city...",
+        /* Search across county name (primary) + LWDA name (secondary, so
+           typing "Capital" surfaces all 8 Capital Region members). */
+        searchField: [
+          { field: 'text',       weight: 4.0 },
+          { field: 'lwda_label', weight: 1.0 },
+        ],
+        options: (() => {
+          const opts = [];
+          /* Statewide row first — its own scope, no LWDA subtitle.
+             Identify by areatype rather than literal id. */
+          const stateRow = state.areas.find(a => a.areatype === '01');
+          if (stateRow) {
+            opts.push({
+              value: stateRow.id,
+              text: stateRow.label + ' (statewide)',
+              lwda_id: stateRow.id,
+              lwda_label: '',
+              isStatewide: true,
+              sortk: '0',
+            });
+          }
+          /* Then every county/city, flattened from each LWDA's counties
+             array (sourced from WID.dbo.SubGeographies; SubAreaType='04'
+             lumps counties + indep cities). Alphabetical. */
+          state.areas
+            .filter(a => a.areatype === '15')
+            .forEach(a => {
+              (a.counties || []).forEach(c => {
+                opts.push({
+                  value: c,                      /* county name — unique in VA */
+                  text: c,
+                  lwda_id: a.id,
+                  lwda_label: a.label,
+                  isStatewide: false,
+                  sortk: '1' + c,
+                });
+              });
+            });
+          opts.sort((x, y) => x.sortk.localeCompare(y.sortk));
+          return opts;
+        })(),
+        render: {
+          option: function (data, escape) {
+            if (data.isStatewide) {
+              return '<div>' + escape(data.text) + '</div>';
+            }
+            return '<div class="region-option-dual">' +
+                     '<div class="region-county">' + escape(data.text) + '</div>' +
+                     '<div class="region-lwda">' + escape(data.lwda_label) + '</div>' +
+                   '</div>';
+          },
+          item: function (data, escape) {
+            if (data.isStatewide) {
+              return '<div>' + escape(data.text) + '</div>';
+            }
+            return '<div class="region-item-dual">' +
+                     '<div class="region-county">' + escape(data.text) + '</div>' +
+                     '<div class="region-lwda">' + escape(data.lwda_label) + '</div>' +
+                   '</div>';
+          },
+        },
       });
 
       /* Family dropdown — combobox with the search input MOVED into the
@@ -1483,9 +1559,18 @@
 
       /* Region — affects the summary band, family sub-line, KPI strip, and
          chart. The summary band only re-renders if there's an industry; the
-         family-driven UI only re-renders if there's a family. */
+         family-driven UI only re-renders if there's a family.
+
+         val is the dropdown option's value, which under the county-first
+         setup is the COUNTY NAME (e.g. "Henrico County") for county rows
+         and the statewide area id (e.g. "000000") for the statewide row.
+         The chart/report logic everywhere downstream keys on
+         state.sel.regionId = the LWDA area id (or statewide id), so we
+         translate via the option's hidden lwda_id field. Statewide rows
+         have lwda_id = stateRow.id so the lookup is uniform. */
       window.__regionSel.on('change', (val) => {
-        state.sel.regionId = val;
+        const opt = window.__regionSel.options[val];
+        state.sel.regionId = (opt && opt.lwda_id) || val;
         if (state.sel.industryCode) updateIndustryBand(state);
         if (state.sel.familyCode) {
           updateFamilyHeader(state);
