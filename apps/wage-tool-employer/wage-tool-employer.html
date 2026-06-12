@@ -459,13 +459,6 @@
       margin-top: 12px;
     }
     .footer-source { font-size: 11px; color: var(--muted); }
-    .footer-export {
-      font-size: 12.5px; padding: 7px 14px; border-radius: 6px;
-      border: 1px solid var(--range-dk); color: var(--range-dk);
-      background: #fff; cursor: pointer;
-      font-family: var(--sans); font-weight: 500;
-    }
-    .footer-export:hover { background: var(--industry-bg); }
 
     /* ─── Loading state ──────────────────────────────────────────────── */
     .frame.loading .card,
@@ -714,10 +707,10 @@
           <span class="legend-fallback"><span class="star">*</span>Statewide fallback (regional cell suppressed)</span>
         </div>
 
-        <!-- Card footer -->
+        <!-- Card footer. Save/export deliberately omitted — see "Scope:
+             intentionally no save/export" note in docs/handover/employer-wage-tool.md. -->
         <div class="card-footer">
           <div class="footer-source">Industry summary: BLS QCEW (mean) · Pay band: BLS OEWS (percentiles)</div>
-          <button class="footer-export">Save this pay band ↓</button>
         </div>
       </div>
 

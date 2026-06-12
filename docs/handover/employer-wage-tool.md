@@ -16,6 +16,14 @@ The **Pay-Band Planner** is a self-service tool for Virginia employers building 
 
 The tool replaces the spreadsheet workflow that VEC's employer outreach team historically maintained — the same OEWS percentile tables, but interactive, regionally aware, and tied to a refreshable data pipeline.
 
+### Scope: intentionally no save/export
+
+The tool **does not** provide any save, export, download, print-to-file, share-link, CSV, or PDF affordance — by **explicit client decision** (recorded 2026-06-12). The Pay-Band Planner is a read-only browse tool; users are expected to consult it interactively, not extract results.
+
+A "Save this pay band ↓" button was present in the initial UI skeleton (alongside the chart's card footer) but was never wired up to a save handler — it was a placeholder pending a feature decision. The decision came back as "no save capability at all," and the button + its styling were removed in the same change that recorded this note.
+
+**Implication for maintainers:** if you find yourself implementing an export button, CSV download, PDF render, or any equivalent affordance, **stop and re-confirm with the client first**. This is a documented product-scope boundary, not an oversight. The implementation cost would be minor (the data is all in the browser); the boundary is a deliberate product decision about how employers should engage with the tool.
+
 ### Where the data comes from
 
 All data flows out of the **WID 3.0 SQL Server** (Workforce Information Database, read-only Azure SQL Server instance hosted by VEC). The tool does **not** call the database at page load. A scheduled job runs the two SQL queries in `queries/employer_wage_tool_mssql_RUN.sql`, captures each `FOR JSON PATH` result as a static `.json` file, and deploys those files alongside the HTML/JS bundle.
