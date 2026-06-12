@@ -412,17 +412,31 @@ latest_oews_year AS (
     WHERE w.StFips = '51' AND w.AreaType = '01'
 ),
 
--- ─── STATEWIDE OEWS (fallback source + 'virginia' area row) ──────────────────
+-- ─── SINGLE IOWAGE SCAN — perf restructure 2026-06-12 ────────────────────────
+-- Replaces the prior two separate aggregations (state_wages, lwda_wages) that
+-- each scanned IOWAGE end-to-end. Both tiers (statewide AreaType='01' and LWDA
+-- AreaType='15') aggregate in ONE pass, with GROUP BY (soc_code, Area,
+-- AreaType) so each (soc × area) cell becomes one row. Downstream tier
+-- filters (state_wages, lwda_wages below) are pure in-memory projections of
+-- this materialized set — no further IOWAGE IO.
+--
+-- WHY: prior version had state_wages_repaired referenced 3x (all_cells branches
+-- B, C, and the final jobs SELECT) and lwda_wages_repaired 2x (branch A, branch
+-- B's NOT EXISTS). T-SQL CTEs are inlined per reference, so each reference
+-- re-aggregated IOWAGE — minutes against the prod VA dataset. After this
+-- restructure, IOWAGE is scanned once for wage data; each derived CTE is
+-- referenced once downstream. The only remaining IOWAGE scan beyond this is
+-- latest_oews_year's MAX(PeriodYear) — unavoidable since all_wages_raw needs
+-- it as a filter, but bounded (~232k statewide rows).
+--
 -- IOWAGE shape: one row per (OccCode, Area, RateType). Pivot annual/hourly via
 -- conditional aggregation on RateType ('4' = annual, '1' = hourly).
 -- EmpCount is the same on both rate-type rows; MAX() pulls it deterministically.
-state_wages AS (
+all_wages_raw AS (
     SELECT
         REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')                                                          AS soc_code,
-        -- OccName column does not exist in this WID install's IOWAGE table; label
-        -- defaults to soc_code in the final SELECT. Production fix: load BLS SOC
-        -- occupation-name reference (separate WID load-gap ticket — parallel to
-        -- the AvgAnnualPay gap flagged above).
+        w.Area                                                                                             AS area_id,
+        w.AreaType                                                                                         AS areatype,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile10Wage AS INT) END)     AS p10,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile25Wage AS INT) END)     AS p25,
         MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.MedianWage       AS INT) END)     AS p50,
@@ -440,54 +454,48 @@ state_wages AS (
      AND w.AreaTypeVersion = iv.AreaTypeVersion
     CROSS JOIN latest_oews_year ly
     WHERE w.StFips = '51'
-      AND w.AreaType = '01'
-      AND w.PeriodYear = ly.yr
-      AND w.RateType IN ('1','4')
-      AND w.IndCodeType = '10' AND w.IndCode = '000000'   -- all-industries cross-industry row
-      AND LEN(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')) = 6   -- SOC-6 (WID stores 6 digits; hyphen-tolerant via REPLACE)         -- SOC-6 only (XX-XXXX)
-      AND RIGHT(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), 1) <> '0'   -- SOC-6 detail only (BLS aggregates end in 0)              -- exclude major group totals
-    GROUP BY REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')
-),
-
--- ─── LWDA-LEVEL OEWS ─────────────────────────────────────────────────────────
--- Joins on lwda_dim (GEOGRAPHIES only — no seed table). area_id is the
--- 6-digit lwda_code sourced live from GEOGRAPHIES.Area. If IOWAGE has no
--- LWDA-level rows in this WID install, this CTE returns 0 rows and EVERY
--- cell falls back to statewide — provenance flips to 'statewide_fallback'.
-lwda_wages AS (
-    SELECT
-        REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')                                                          AS soc_code,
-        ld.lwda_code                                                                     AS area_id,
-        MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile10Wage AS INT) END)     AS p10,
-        MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile25Wage AS INT) END)     AS p25,
-        MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.MedianWage       AS INT) END)     AS p50,
-        MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile75Wage AS INT) END)     AS p75,
-        MAX(CASE WHEN w.RateType = '4' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile90Wage AS INT) END)     AS p90,
-        MAX(CASE WHEN w.RateType = '1' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile10Wage AS DECIMAL(6,2)) END) AS p10_h,
-        MAX(CASE WHEN w.RateType = '1' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile25Wage AS DECIMAL(6,2)) END) AS p25_h,
-        MAX(CASE WHEN w.RateType = '1' AND w.SuppressWage = '0' THEN TRY_CAST(w.MedianWage       AS DECIMAL(6,2)) END) AS p50_h,
-        MAX(CASE WHEN w.RateType = '1' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile75Wage AS DECIMAL(6,2)) END) AS p75_h,
-        MAX(CASE WHEN w.RateType = '1' AND w.SuppressWage = '0' THEN TRY_CAST(w.Percentile90Wage AS DECIMAL(6,2)) END) AS p90_h,
-        MAX(CASE WHEN w.SuppressEmp = '0' THEN TRY_CAST(w.EmpCount AS INT) END)                                       AS employment
-    FROM WID.dbo.IOWAGE w
-    JOIN iowage_vintage iv
-      ON w.StFips = iv.StFips AND w.AreaType = iv.AreaType
-     AND w.AreaTypeVersion = iv.AreaTypeVersion
-    JOIN lwda_dim ld                                          -- 3-col composite (StFips+AreaType+Area).
-      ON w.StFips = ld.StFips AND w.AreaType = ld.AreaType    -- AreaTypeVersion is intentionally NOT in the
-     AND w.Area = ld.lwda_code                                -- join condition: fact vs dim vintages are
-                                                              -- independent. iowage_vintage pins IOWAGE to its
-                                                              -- MAX, geo_vintage pins GEOGRAPHIES to its MAX;
-                                                              -- they may differ.
-    CROSS JOIN latest_oews_year ly
-    WHERE w.StFips = '51'
-      AND w.AreaType = '15'                        -- LWDA (confirm via validate.sql)
+      AND w.AreaType IN ('01','15')                       -- statewide + LWDA in one scan
       AND w.PeriodYear = ly.yr
       AND w.RateType IN ('1','4')
       AND w.IndCodeType = '10' AND w.IndCode = '000000'   -- all-industries cross-industry row
       AND LEN(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', '')) = 6   -- SOC-6 (WID stores 6 digits; hyphen-tolerant via REPLACE)
       AND RIGHT(REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), 1) <> '0'   -- SOC-6 detail only (BLS aggregates end in 0)
-    GROUP BY REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), ld.lwda_code
+    GROUP BY REPLACE(LTRIM(RTRIM(w.OccCode)), '-', ''), w.Area, w.AreaType
+),
+
+-- ─── TIER FILTERS — statewide & LWDA projections of all_wages_raw ───────────
+-- state_wages: filter to AreaType='01' and Area='000000' (the Probe 12 dedupe).
+-- The Area='000000' filter is redundant against IOWAGE alone (Probe 12 showed
+-- IOWAGE has no '000051' rows), but kept explicit so the intent reads clearly
+-- and the query stays defensive if BLS ever loads alternate codes.
+state_wages AS (
+    SELECT
+        soc_code, p10, p25, p50, p75, p90,
+        p10_h, p25_h, p50_h, p75_h, p90_h, employment
+    FROM all_wages_raw
+    WHERE areatype = '01' AND area_id = '000000'
+),
+
+-- ─── LWDA-LEVEL OEWS — projection of all_wages_raw + lwda_dim filter ────────
+-- INNER JOIN lwda_dim excludes the synthetic Combined-Projections row
+-- (AreaName LIKE '%Combined%' filter applied in lwda_dim itself). If IOWAGE
+-- has no LWDA-level rows in this WID install, this CTE returns 0 rows and
+-- EVERY cell falls back to statewide — provenance flips to
+-- 'statewide_fallback' via the all_cells LEFT JOIN below.
+--
+-- area_id flows through directly from IOWAGE.Area (= the GEOGRAPHIES.Area
+-- code matched in lwda_dim) — same shape as the prior CTE's ld.lwda_code.
+lwda_wages AS (
+    SELECT
+        awr.soc_code,
+        awr.area_id,
+        awr.p10, awr.p25, awr.p50, awr.p75, awr.p90,
+        awr.p10_h, awr.p25_h, awr.p50_h, awr.p75_h, awr.p90_h,
+        awr.employment
+    FROM all_wages_raw awr
+    INNER JOIN lwda_dim ld
+        ON ld.lwda_code = awr.area_id
+    WHERE awr.areatype = '15'
 ),
 
 -- ─── TOP-CODE REPAIR ─────────────────────────────────────────────────────────
@@ -576,53 +584,74 @@ lwda_wages_repaired AS (
 --     GROUP BY soc_code
 -- ),
 
--- ─── RESOLVE EVERY (soc_code, area_id) CELL ──────────────────────────────────
+-- ─── ENUMERATE SOCS + TARGET AREAS ──────────────────────────────────────────
+-- all_soc_codes — every SOC observed in IOWAGE (either statewide or LWDA
+-- tier). Sourced from all_wages_raw rather than state_wages_repaired so
+-- LWDA-only SOCs (no statewide row) still get emitted with their LWDA
+-- cells — matches prior Branch A semantic.
+--
+-- target_areas — the 14 LWDAs + statewide row. area_sort_key keeps the
+-- prior ordering ('zzz-' prefix on statewide so it sorts last within
+-- job_areas_blob's WITHIN GROUP).
+all_soc_codes AS (
+    SELECT DISTINCT soc_code FROM all_wages_raw
+),
+target_areas AS (
+    SELECT ld.lwda_code  AS area_id, '15' AS areatype, ld.lwda_code AS area_sort_key
+    FROM lwda_dim ld
+    UNION ALL
+    SELECT sa.state_code, '01' AS areatype, 'zzz-' + sa.state_code AS area_sort_key
+    FROM state_area sa
+),
+
+-- ─── RESOLVE EVERY (soc_code, area_id) CELL — consolidated 2026-06-12 ───────
+-- Prior version: 3 UNION ALL branches that referenced state_wages_repaired 3x
+-- and lwda_wages_repaired 2x. Each reference triggered an inlined re-aggregate
+-- of IOWAGE up the CTE chain — the perf hot spot diagnosed against prod.
+--
+-- Consolidated form: cross (all_soc_codes × target_areas), LEFT JOIN
+-- state_wages_repaired and lwda_wages_repaired ONCE each, COALESCE on the
+-- wage fields, CASE on provenance. Semantically identical to the prior
+-- branches A/B/C:
+--   LWDA area, lw matches with non-null p50  → COALESCE picks lw → 'lwda'
+--   LWDA area, no lw match (or lw p50 NULL)  → COALESCE picks sw → 'statewide_fallback'
+--   Statewide area                           → ta.areatype='15' guard excludes lw
+--                                              → COALESCE picks sw → 'statewide'
+-- WHERE filter drops rows where neither tier carries data — matches the prior
+-- behavior of simply omitting cells with no source data (Branch A required
+-- lw.p50 IS NOT NULL; Branch B required sw to exist for fallback to fire;
+-- Branch C required sw to exist for statewide row).
 all_cells AS (
-    -- Native LWDA cells
     SELECT
-        lw.soc_code, lw.area_id,
-        lw.p10, lw.p25, lw.p50, lw.p75, lw.p90,
-        lw.p10_h, lw.p25_h, lw.p50_h, lw.p75_h, lw.p90_h,
-        lw.employment,
-        'lwda'      AS provenance,
-        lw.area_id  AS area_sort_key
-    FROM lwda_wages_repaired lw
-    WHERE lw.p50 IS NOT NULL
-
-    UNION ALL
-
-    -- Statewide fallback for missing LWDA cells
-    SELECT
-        sw.soc_code, ld.lwda_code AS area_id,
-        sw.p10, sw.p25, sw.p50, sw.p75, sw.p90,
-        sw.p10_h, sw.p25_h, sw.p50_h, sw.p75_h, sw.p90_h,
-        sw.employment,
-        'statewide_fallback'    AS provenance,
-        ld.lwda_code            AS area_sort_key
-    FROM state_wages_repaired sw
-    CROSS JOIN lwda_dim ld
-    WHERE NOT EXISTS (
-        SELECT 1 FROM lwda_wages_repaired lw2
-        WHERE lw2.soc_code = sw.soc_code
-          AND lw2.area_id  = ld.lwda_code
-          AND lw2.p50 IS NOT NULL
-    )
-
-    UNION ALL
-
-    -- The statewide row itself (always native). area_id = the statewide
-    -- area code sourced live from GEOGRAPHIES at AreaType='01' — NOT the
-    -- legacy hardcoded 'virginia' literal. Front-end identifies this row
-    -- by areatype === '01' in the areas[] dropdown.
-    SELECT
-        sw.soc_code, sa.state_code     AS area_id,
-        sw.p10, sw.p25, sw.p50, sw.p75, sw.p90,
-        sw.p10_h, sw.p25_h, sw.p50_h, sw.p75_h, sw.p90_h,
-        sw.employment,
-        'statewide'                    AS provenance,
-        'zzz-' + sa.state_code         AS area_sort_key
-    FROM state_wages_repaired sw
-    CROSS JOIN state_area sa
+        soc.soc_code,
+        ta.area_id,
+        COALESCE(lw.p10,        sw.p10)        AS p10,
+        COALESCE(lw.p25,        sw.p25)        AS p25,
+        COALESCE(lw.p50,        sw.p50)        AS p50,
+        COALESCE(lw.p75,        sw.p75)        AS p75,
+        COALESCE(lw.p90,        sw.p90)        AS p90,
+        COALESCE(lw.p10_h,      sw.p10_h)      AS p10_h,
+        COALESCE(lw.p25_h,      sw.p25_h)      AS p25_h,
+        COALESCE(lw.p50_h,      sw.p50_h)      AS p50_h,
+        COALESCE(lw.p75_h,      sw.p75_h)      AS p75_h,
+        COALESCE(lw.p90_h,      sw.p90_h)      AS p90_h,
+        COALESCE(lw.employment, sw.employment) AS employment,
+        CASE
+            WHEN ta.areatype = '01'  THEN 'statewide'
+            WHEN lw.p50 IS NOT NULL  THEN 'lwda'
+            ELSE                          'statewide_fallback'
+        END                                    AS provenance,
+        ta.area_sort_key
+    FROM all_soc_codes soc
+    CROSS JOIN target_areas ta
+    LEFT JOIN state_wages_repaired sw
+        ON sw.soc_code = soc.soc_code
+    LEFT JOIN lwda_wages_repaired lw
+        ON lw.soc_code = soc.soc_code
+       AND lw.area_id  = ta.area_id
+       AND ta.areatype = '15'
+       AND lw.p50 IS NOT NULL
+    WHERE lw.p50 IS NOT NULL OR sw.soc_code IS NOT NULL
 ),
 
 -- ─── HAND-BUILD job.areas KEYED OBJECT ───────────────────────────────────────
@@ -686,10 +715,17 @@ SELECT
         FOR JSON PATH
     )) AS areas,
     JSON_QUERY((
+        -- Source SOC enumeration from job_areas_blob (rather than
+        -- state_wages_repaired, as the pre-2026-06-12 version did) — keeps
+        -- state_wages_repaired referenced exactly once (in all_cells), which
+        -- is what lets the optimizer evaluate the IOWAGE aggregation once
+        -- instead of re-inlining per CTE reference. job_areas_blob.soc_code
+        -- carries the same SOC set as state_wages_repaired.soc_code did,
+        -- plus any LWDA-only SOCs that all_soc_codes now preserves.
         SELECT
-            STUFF(sw.soc_code, 3, 0, '-')                                       AS id,
-            STUFF(sw.soc_code, 3, 0, '-')                                       AS soc_code,
-            COALESCE(sd.soc_title, STUFF(sw.soc_code, 3, 0, '-'))               AS label,
+            STUFF(jb.soc_code, 3, 0, '-')                                       AS id,
+            STUFF(jb.soc_code, 3, 0, '-')                                       AS soc_code,
+            COALESCE(sd.soc_title, STUFF(jb.soc_code, 3, 0, '-'))               AS label,
             ISNULL(mgd.major_group_name, 'Other')                               AS major_group,
             -- minor_code/minor_group resolved via SOCParent walk (see
             -- soc6_to_minor CTE). minor_code is hyphenated to match the
@@ -706,13 +742,12 @@ SELECT
             -- the current ONETCodes-direct lossy proxy), swap the line above
             -- for:  JSON_QUERY(ISNULL(oa.aliases_json, '[]')) AS aliases,
             JSON_QUERY(jb.areas_json)                                           AS areas
-        FROM state_wages_repaired sw
-        JOIN job_areas_blob jb ON jb.soc_code = sw.soc_code
-        LEFT JOIN soc_dim sd ON sd.soc_code = sw.soc_code
-        LEFT JOIN major_group_dim mgd ON mgd.mg_prefix = LEFT(sw.soc_code, 2)
-        LEFT JOIN soc6_to_minor s2m ON s2m.detail_code = sw.soc_code
-        -- LEFT JOIN onet_aliases oa ON oa.soc_code = sw.soc_code
-        ORDER BY sw.soc_code
+        FROM job_areas_blob jb
+        LEFT JOIN soc_dim sd ON sd.soc_code = jb.soc_code
+        LEFT JOIN major_group_dim mgd ON mgd.mg_prefix = LEFT(jb.soc_code, 2)
+        LEFT JOIN soc6_to_minor s2m ON s2m.detail_code = jb.soc_code
+        -- LEFT JOIN onet_aliases oa ON oa.soc_code = jb.soc_code
+        ORDER BY jb.soc_code
         FOR JSON PATH
     )) AS jobs
 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER;
