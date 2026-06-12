@@ -1500,8 +1500,19 @@
       const budgetLo  = Math.min(...tgtA), budgetHi  = Math.max(...tgtA);
       const budgetLoH = Math.min(...tgtH), budgetHiH = Math.max(...tgtH);
       const medLo     = Math.min(...med),  medHi     = Math.max(...med);
+      /* Market Position: mean-of-targets minus mean-of-medians across the
+         family's occupations. Equivalent to averaging the per-occupation
+         (target - median) gap — i.e. "the average $ premium/discount the
+         offered pay band represents over each occupation's market median."
+         At targetPct=50, target_annual === p50 per row (wageAtPct lands
+         exactly on the p50 point), so the two means equal and the position
+         nets to 0 — which is the right answer at "the median band."
+         Budget and Median Range cards stay as min–max (the displayed
+         endpoints); only Market Position uses means, because midrange-vs-
+         mean was the prior bug (asymmetric distributions made midrange
+         drift from mean even when comparing identical data sets). */
       const marketMid = med.reduce((s, m) => s + m, 0) / med.length;
-      const bandMid   = (budgetLo + budgetHi) / 2;
+      const bandMid   = tgtA.reduce((s, t) => s + t, 0) / tgtA.length;
       const positionDlt = bandMid - marketMid;
 
       $('budget-pct-label').textContent = state.sel.targetPct + 'th';
@@ -1509,7 +1520,10 @@
       $('budget-hourly').textContent    = `$${budgetLoH.toFixed(2)}–$${budgetHiH.toFixed(2)}/hr`;
       $('median-range').textContent     = `${fmtK(medLo)}–${fmtK(medHi)}`;
       $('position-delta').textContent   = (positionDlt >= 0 ? '+' : '−') + fmtK(Math.abs(positionDlt));
-      $('position-sub').textContent     = `vs. median (${fmtK(marketMid)})`;
+      /* Sub-line: "avg market median" makes it explicit the baseline is the
+         mean of the family's per-occupation medians, not a single number.
+         Prior wording "vs. median ($X)" read as if $X were THE median. */
+      $('position-sub').textContent     = `vs. avg market median (${fmtK(marketMid)})`;
       $('hiring-pool').textContent      = fmtEmp(emp);
 
       $('legend-pct').textContent       = state.sel.targetPct + 'th';
