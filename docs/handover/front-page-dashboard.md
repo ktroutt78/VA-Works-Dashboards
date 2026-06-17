@@ -893,4 +893,4 @@ HighCharts/
     └── labor_market_dashboard_mssql_RUN_v8.sql  ← all 3 SQL queries (this doc's canonical reference)
 ```
 
-The legacy Highcharts implementation lives at `apps/dashboard-front-page-original/` and consumes the same 3 JSON files — switching JS frameworks did not change the data contract. Both can read the same scheduled refresh output.
+The dashboard is built on Apache ECharts at `apps/dashboard-front-page-echarts/` (the sole front-page app). It previously had a Highcharts implementation; that variant has been retired, but the framework switch did not change the data contract — the same 3 JSON files from the scheduled refresh drive the charts.
