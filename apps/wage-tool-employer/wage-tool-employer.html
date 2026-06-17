@@ -70,11 +70,8 @@
     .header-guide:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
     .header-guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
     .header-guide .q {
-      width: 16px; height: 16px; border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.55);
-      display: inline-flex; align-items: center; justify-content: center;
-      font-family: var(--sans); font-size: 10.5px; font-weight: 600;
-      line-height: 1; padding-bottom: 1px;
+      font-family: var(--sans); font-size: 14px; font-weight: 700;
+      line-height: 1;
     }
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .header-reset {
@@ -526,6 +523,7 @@
     .section-industry .section-eyebrow { color: #34537d; }
     .section-payband  .section-eyebrow { color: var(--accent); }
     .section-source { font-size: 11px; color: var(--muted); }
+    .section-region { font-weight: 600; color: #46506a; }
     .section-body { padding: 14px 16px 16px; }
 
     /* Pay-band content lives directly in its section now — strip the old
@@ -641,7 +639,7 @@
         <section class="section section-industry">
           <div class="section-head">
             <span class="section-eyebrow">Industry summary</span>
-            <span class="section-source">BLS QCEW · for the region above</span>
+            <span class="section-source">BLS QCEW · <span id="ind-region-label" class="section-region">—</span></span>
           </div>
           <div class="section-body">
             <div class="field">
@@ -680,7 +678,7 @@
         <section class="section section-payband">
           <div class="section-head">
             <span class="section-eyebrow">Pay bands</span>
-            <span class="section-source">BLS OEWS percentiles · region applies</span>
+            <span class="section-source">BLS OEWS percentiles · <span id="pay-region-label" class="section-region">—</span></span>
           </div>
           <div class="section-body">
 
@@ -1593,6 +1591,16 @@
       $('target-value').textContent = pct + 'th';
     }
 
+    /* Region label echoed on each section header. Always reflects the
+       current scope (the LWDA the picked county resolves to, or statewide)
+       so each card is self-describing without reading the bar above. */
+    function updateSectionRegions(state) {
+      const region = state.areas.find(a => a.id === state.sel.regionId);
+      const label = region ? region.label : '—';
+      $('ind-region-label').textContent = label;
+      $('pay-region-label').textContent = label;
+    }
+
     /* Set body[data-state] from current selections. CSS uses this to
        toggle the empty-state card, industry band, and pay-band card.
        Four states because either selection is independently meaningful:
@@ -1613,6 +1621,7 @@
     function render(state) {
       updateUIState(state);
       updateSlider(state);
+      updateSectionRegions(state);
       if (state.sel.industryCode) updateIndustryBand(state);
       if (state.sel.familyCode) {
         updateFamilyHeader(state);
@@ -1651,6 +1660,7 @@
       window.__regionSel.on('change', (val) => {
         const opt = window.__regionSel.options[val];
         state.sel.regionId = (opt && opt.lwda_id) || val;
+        updateSectionRegions(state);
         if (state.sel.industryCode) updateIndustryBand(state);
         if (state.sel.familyCode) {
           updateFamilyHeader(state);
