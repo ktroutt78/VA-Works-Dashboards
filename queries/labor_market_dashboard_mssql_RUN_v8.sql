@@ -3,7 +3,7 @@
 --
 -- Same three queries as queries/labor_market_dashboard_mssql.sql (v3, tabular),
 -- but each final SELECT is wrapped with FOR JSON PATH so SQL Server emits the
--- exact JSON the Highcharts front-end (apps/dashboard-front-page-original) reads.
+-- exact JSON the ECharts front-end (apps/dashboard-front-page-echarts) reads.
 -- Each query returns ONE NVARCHAR(MAX) cell = one .json file:
 --
 --   Q1 -> employment_by_locality.json
