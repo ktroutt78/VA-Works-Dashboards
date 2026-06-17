@@ -76,6 +76,18 @@
       font-family: var(--sans); font-size: 10.5px; font-weight: 600;
       line-height: 1; padding-bottom: 1px;
     }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-reset {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
+      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      letter-spacing: 1.2px; text-transform: uppercase; cursor: pointer;
+      background: transparent; font-family: inherit;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .header-reset:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
+    .header-reset:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .header-reset .ic { font-size: 14px; line-height: 1; }
 
     /* ─── Guide modal ────────────────────────────────────────────────── */
     .modal-backdrop {
@@ -152,16 +164,36 @@
       margin-top: 1px;
     }
 
-    /* ─── Controls (two rows) ────────────────────────────────────────── */
-    .controls { padding: 14px 20px 12px; display: grid; gap: 14px; }
-    .controls-1, .controls-2 { grid-template-columns: 1.7fr 1fr; }
-    .controls-2 { padding-top: 0; }
+    /* ─── Global region bar ──────────────────────────────────────────── */
+    /* Region drives the WHOLE page, so it lives in its own full-width band
+       directly under the header — visually OUTSIDE and ABOVE the two section
+       cards. The distinct slate fill + the 2px divider make it read as
+       page-level chrome, not as the first field of the section below. */
+    .region-bar {
+      display: flex; align-items: center; gap: 18px;
+      padding: 13px 20px;
+      background: #e6eaf2;
+      border-bottom: 2px solid #c4ccda;
+    }
+    .region-field { width: 340px; }
+    .region-bar-label { gap: 5px; color: #46506a; }
+    .region-pin { width: 11px; height: 13px; fill: #5b6577; flex-shrink: 0; }
+    .region-bar-note {
+      margin-left: auto; text-align: right;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .region-bar-note-strong { font-size: 11.5px; font-weight: 600; color: #3a4458; }
+    .region-bar-note-sub { font-size: 10.5px; color: var(--muted); }
+
+    /* ─── Controls ───────────────────────────────────────────────────── */
+    .controls { display: grid; gap: 14px; }
+    .controls-2 { grid-template-columns: 1.7fr 1fr; }
 
     /* Each field cell is itself a 2-row grid so the label and the control
        sit in fixed-height tracks. This guarantees the box (Tom Select or
        slider) starts at exactly the same y on every column, regardless of
        which label has an (i) icon or which control type fills row 2. */
-    .controls > div {
+    .controls > div, .field {
       display: grid;
       grid-template-rows: 16px var(--ctl-h);
       row-gap: 5px;
@@ -461,117 +493,93 @@
     .footer-source { font-size: 11px; color: var(--muted); }
 
     /* ─── Loading state ──────────────────────────────────────────────── */
-    .frame.loading .card,
-    .frame.loading .industry-band { opacity: 0.4; pointer-events: none; }
+    .frame.loading .section { opacity: 0.45; pointer-events: none; }
 
-    /* ─── Empty / partial-empty state card ────────────────────────────── */
-    .empty-state {
-      display: grid;
-      grid-template-columns: 56px 1fr;
-      gap: 18px;
-      margin: 0 16px 16px;
-      padding: 18px 20px 18px 18px;
+    /* ─── Section cards (two boxed reports under the global region bar) ── */
+    /* Each "report" is its own visually-contained card. With the region bar
+       sitting full-width ABOVE both, the spanning relationship is structural:
+       one control on top, two boxes beneath = region governs both. The two
+       cards carry different accent colors (slate=QCEW, red=OEWS) so they read
+       as two distinct datasets, not one continuous form. */
+    .page-content { padding: 16px 20px 20px; }
+    .section {
       background: #fff;
       border: 1px solid var(--card-line);
-      border-left: 4px solid var(--you);
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      border-radius: 8px;
+      margin: 0 0 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
-    .empty-state-icon {
-      width: 56px; height: 56px;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding-top: 2px;
+    .section:last-child { margin-bottom: 0; }
+    .section-industry { border-left: 4px solid #34537d; }     /* QCEW blue */
+    .section-payband  { border-left: 4px solid var(--accent); } /* OEWS red  */
+    .section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; padding: 11px 16px;
+      border-bottom: 1px solid var(--faint);
+      background: #fcfbf9;
     }
-    .empty-state-icon svg { width: 44px; height: 44px; }
-    .empty-state-intro { margin-bottom: 14px; }
+    .section-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.1px;
+      text-transform: uppercase;
+    }
+    .section-industry .section-eyebrow { color: #34537d; }
+    .section-payband  .section-eyebrow { color: var(--accent); }
+    .section-source { font-size: 11px; color: var(--muted); }
+    .section-body { padding: 14px 16px 16px; }
+
+    /* Pay-band content lives directly in its section now — strip the old
+       inner card chrome so we don't double-box. */
+    .section-payband .card {
+      border: none; border-left: none; border-radius: 0;
+      margin: 0; padding: 14px 0 0; background: transparent;
+    }
+    .section-industry .industry-band { margin: 12px 0 0; }
+
+    /* ─── Empty / hint states ─────────────────────────────────────────── */
+    .industry-empty {
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+      padding: 12px 2px 2px;
+    }
+    .payband-empty {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 16px 2px 6px;
+    }
+    .payband-empty-icon svg { width: 40px; height: 40px; display: block; }
     .empty-state-eyebrow {
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 1.2px; color: var(--you);
-      text-transform: uppercase; margin-bottom: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      color: var(--you); text-transform: uppercase; margin-bottom: 4px;
     }
     .empty-state-heading {
-      font-family: var(--serif);
-      font-size: 19px; font-weight: 600;
-      color: var(--ink); margin: 0 0 6px;
-      line-height: 1.25;
+      font-family: var(--serif); font-size: 18px; font-weight: 600;
+      color: var(--ink); margin: 0 0 6px; line-height: 1.25;
     }
-    .empty-state-desc {
-      font-size: 13px; line-height: 1.5; color: #3a4153;
-      margin: 0;
-    }
-    .empty-state-steps {
-      list-style: none; padding: 0; margin: 0;
-      display: grid; gap: 10px;
-    }
-    .step {
-      display: grid; grid-template-columns: 26px 1fr; gap: 12px;
-      align-items: start;
-    }
-    .step-num {
-      width: 22px; height: 22px;
-      background: var(--you); color: #fff;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center; justify-content: center;
-      font-size: 11.5px; font-weight: 700;
-      flex-shrink: 0; margin-top: 1px;
-    }
-    .step-body { line-height: 1.3; }
-    .step-title {
-      font-size: 13.5px; font-weight: 600; color: var(--ink);
-    }
-    .step-sub {
-      font-size: 12px; color: var(--muted); margin-top: 2px;
-      line-height: 1.4;
-    }
+    .empty-state-desc { font-size: 13px; line-height: 1.5; color: #3a4153; margin: 0; }
     .empty-state-cta {
-      margin-top: 16px;
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     }
     .empty-state-btn {
-      background: var(--you); color: #fff;
-      border: none; padding: 9px 16px;
-      border-radius: 4px;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer;
+      background: var(--you); color: #fff; border: none; padding: 9px 16px;
+      border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer;
       font-family: var(--sans);
     }
     .empty-state-btn:hover { background: #9d2f23; }
-    .empty-state-cta-note {
-      font-size: 11.5px; color: var(--muted);
-    }
+    .empty-state-cta-note { font-size: 11.5px; color: var(--muted); }
 
-    /* Step-2's "industry-only" copy is hidden by default; revealed by data-state below. */
-    .step-only { display: none; }
-
-    /* ─── State-driven visibility ──────────────────────────────────────── */
-    /* State: empty (nothing picked yet) — hide industry band and pay-band card. */
+    /* ─── State-driven visibility ─────────────────────────────────────── */
+    /* Industry band shows only when an industry is picked; otherwise its hint.
+       Pay-band card shows only when a family is picked; otherwise its hint.
+       Region bar + both section shells are ALWAYS visible — the page never
+       collapses, so the region's page-level scope is always on screen. */
+    .industry-empty, .payband-empty { display: none; }
     body[data-state="empty"] .industry-band,
-    body[data-state="empty"] .card { display: none; }
-
-    /* State: industry-only (industry picked, family not) — hide pay-band card,
-       collapse the empty card to just step 2 with its compact copy. */
+    body[data-state="family-only"] .industry-band { display: none; }
+    body[data-state="empty"] .industry-empty,
+    body[data-state="family-only"] .industry-empty { display: block; }
+    body[data-state="empty"] .card,
     body[data-state="industry-only"] .card { display: none; }
-    body[data-state="industry-only"] .empty-state-intro,
-    body[data-state="industry-only"] .step[data-step="1"],
-    body[data-state="industry-only"] .step[data-step="3"],
-    body[data-state="industry-only"] .empty-state-cta { display: none; }
-    body[data-state="industry-only"] .step[data-step="2"] .step-default { display: none; }
-    body[data-state="industry-only"] .step[data-step="2"] .step-only { display: block; }
-    body[data-state="industry-only"] .empty-state-icon { display: none; }
-    body[data-state="industry-only"] .empty-state {
-      grid-template-columns: 1fr;
-      padding: 16px 20px;
-    }
-
-    /* State: family-only (family picked, no industry) — show the pay-band
-       card, hide the industry band, hide the empty card. The 1-2-3 step
-       order is a suggestion; picking only a family is a valid entry too. */
-    body[data-state="family-only"] .industry-band,
-    body[data-state="family-only"] .empty-state { display: none; }
-
-    /* State: ready (both picked) — hide the empty card entirely. */
-    body[data-state="ready"] .empty-state { display: none; }
+    body[data-state="empty"] .payband-empty,
+    body[data-state="industry-only"] .payband-empty { display: flex; }
 
     /* Industry uses controlInput:null so Tom Select's `placeholder` prop has
        no search input to host the text. Paint the placeholder via CSS while
@@ -601,22 +609,45 @@
           <div class="header-title">Wage Comparison Tool</div>
           <div class="header-sub">Build a competitive pay band · BLS OEWS + QCEW</div>
         </div>
-        <button id="help-btn" class="header-guide" type="button" aria-haspopup="dialog" aria-controls="help-modal" title="How to read this page">
-          <span class="q">?</span>Guide
-        </button>
+        <div class="header-actions">
+          <button id="reset-btn" class="header-reset" type="button" title="Reset all selections">
+            <span class="ic">↺</span>Reset
+          </button>
+          <button id="help-btn" class="header-guide" type="button" aria-haspopup="dialog" aria-controls="help-modal" title="How to read this page">
+            <span class="q">?</span>Guide
+          </button>
+        </div>
       </div>
 
-      <!-- Controls row 1: Industry + Region (drive only the summary band below) -->
-      <div class="controls controls-1">
-        <div>
-          <div class="field-label">Industry · NAICS</div>
-          <select id="industry-select"></select>
-        </div>
-        <div>
-          <div class="field-label">Region</div>
+      <!-- Global region bar — drives the WHOLE page. Sits above both section
+           cards so the spanning relationship is structural, not just textual. -->
+      <div class="region-bar">
+        <div class="field region-field">
+          <div class="field-label region-bar-label">
+            <svg class="region-pin" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0C3.24 0 1 2.24 1 5c0 3.5 5 9 5 9s5-5.5 5-9c0-2.76-2.24-5-5-5zm0 6.8A1.8 1.8 0 116 3.2a1.8 1.8 0 010 3.6z"/></svg>
+            Region
+          </div>
           <select id="region-select"></select>
         </div>
+        <div class="region-bar-note">
+          <span class="region-bar-note-strong">Applies to both sections below</span>
+          <span class="region-bar-note-sub">Industry summary &amp; pay bands update together</span>
+        </div>
       </div>
+
+      <div class="page-content">
+
+        <!-- Section A · Industry summary (QCEW) -->
+        <section class="section section-industry">
+          <div class="section-head">
+            <span class="section-eyebrow">Industry summary</span>
+            <span class="section-source">BLS QCEW · for the region above</span>
+          </div>
+          <div class="section-body">
+            <div class="field">
+              <div class="field-label">Industry · NAICS</div>
+              <select id="industry-select"></select>
+            </div>
 
       <!-- Industry summary band -->
       <div class="industry-band" id="industry-band">
@@ -638,6 +669,20 @@
           <div class="ind-stat-value" id="ind-est">—</div>
         </div>
       </div>
+
+            <div class="industry-empty" id="industry-empty">
+              Pick an industry to see its workforce summary for the region above.
+            </div>
+          </div><!-- /.section-body -->
+        </section><!-- /.section-industry -->
+
+        <!-- Section B · Pay bands (OEWS) -->
+        <section class="section section-payband">
+          <div class="section-head">
+            <span class="section-eyebrow">Pay bands</span>
+            <span class="section-source">BLS OEWS percentiles · region applies</span>
+          </div>
+          <div class="section-body">
 
       <!-- Controls row 2: Job Family + Target Percentile (drive the pay-band card) -->
       <div class="controls controls-2">
@@ -714,53 +759,31 @@
         </div>
       </div>
 
-      <!-- Empty / partial-empty state card. Visibility controlled by body[data-state]. -->
-      <div class="empty-state" id="empty-state">
-        <div class="empty-state-icon" aria-hidden="true">
-          <svg viewBox="0 0 44 44" width="44" height="44">
-            <circle cx="22" cy="22" r="20" fill="none" stroke="#b5392b" stroke-width="1.5"/>
-            <line x1="8" y1="22" x2="36" y2="22" stroke="#aab9d6" stroke-width="6" stroke-linecap="round"/>
-            <line x1="16" y1="22" x2="28" y2="22" stroke="#34537d" stroke-width="6" stroke-linecap="round"/>
-            <polygon points="24,16 30,22 24,28 18,22" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
-          </svg>
-        </div>
-        <div class="empty-state-content">
-          <div class="empty-state-intro">
-            <div class="empty-state-eyebrow">GET STARTED</div>
-            <h2 class="empty-state-heading">Build a pay band for any job family in Virginia</h2>
-            <p class="empty-state-desc">See full wage distributions for every occupation in a SOC-3 minor group, set a target percentile, and get a recommended pay range backed by BLS data.</p>
-          </div>
-          <ol class="empty-state-steps">
-            <li class="step" data-step="1">
-              <span class="step-num">1</span>
-              <div class="step-body">
-                <div class="step-title">Pick an industry</div>
-                <div class="step-sub">Sets your industry context · drives the summary band</div>
+            <!-- Pay-band empty hint. Shown when no job family is picked. -->
+            <div class="payband-empty" id="payband-empty">
+              <div class="payband-empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 44 44" width="44" height="44">
+                  <circle cx="22" cy="22" r="20" fill="none" stroke="#b5392b" stroke-width="1.5"/>
+                  <line x1="8" y1="22" x2="36" y2="22" stroke="#aab9d6" stroke-width="6" stroke-linecap="round"/>
+                  <line x1="16" y1="22" x2="28" y2="22" stroke="#34537d" stroke-width="6" stroke-linecap="round"/>
+                  <polygon points="24,16 30,22 24,28 18,22" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
+                </svg>
               </div>
-            </li>
-            <li class="step" data-step="2">
-              <span class="step-num">2</span>
-              <div class="step-body">
-                <div class="step-title step-default">Choose a job family</div>
-                <div class="step-title step-only">Choose a job family to see the pay band</div>
-                <div class="step-sub step-default">A SOC-3 minor group · 3–7 related occupations</div>
-                <div class="step-sub step-only">A SOC-3 minor group gives you 3–7 related occupations to benchmark against. The recommended pay range will appear here.</div>
+              <div class="payband-empty-content">
+                <div class="empty-state-eyebrow">Get started</div>
+                <h2 class="empty-state-heading">Build a pay band for any job family</h2>
+                <p class="empty-state-desc">Choose a job family to see full wage distributions for its occupations, then drag the target percentile to set a recommended range — all for the region above.</p>
+                <div class="empty-state-cta">
+                  <button id="try-example-btn" class="empty-state-btn" type="button">Try an example →</button>
+                  <span class="empty-state-cta-note">Loads a Financial Clerks sample</span>
+                </div>
               </div>
-            </li>
-            <li class="step" data-step="3">
-              <span class="step-num">3</span>
-              <div class="step-body">
-                <div class="step-title">Drag the percentile slider</div>
-                <div class="step-sub">See the recommended pay range update live</div>
-              </div>
-            </li>
-          </ol>
-          <div class="empty-state-cta">
-            <button id="try-example-btn" class="empty-state-btn" type="button">Try an example →</button>
-            <span class="empty-state-cta-note">Loads a Financial Clerks sample in Virginia</span>
-          </div>
-        </div>
-      </div>
+            </div>
+
+          </div><!-- /.section-body -->
+        </section><!-- /.section-payband -->
+
+      </div><!-- /.page-content -->
 
     </div><!-- /.frame -->
   </div><!-- /.page-wrap -->
@@ -1110,6 +1133,7 @@
          the areatype field is stable enough to identify "the statewide
          row" without knowing the install's actual statewide code. */
       const defaultRegion = state.areas.find(a => a.areatype === "01") || state.areas[0];
+      state.defaultRegionId = defaultRegion.id;   /* used by the header Reset button */
       window.__regionSel.setValue(defaultRegion.id, true);
 
       state.sel.industryCode = null;
@@ -1675,6 +1699,23 @@
         tryBtn.addEventListener('click', () => {
           window.__industrySel.setValue('52');
           window.__familySel.setValue('43-3000');
+        });
+      }
+
+      /* Reset — return to the initial empty state: clear industry + family,
+         restore the statewide default region, and reset the slider to 60th.
+         clear() / setValue() fire the normal change handlers; render() then
+         settles every dependent region back to its empty presentation. */
+      const resetBtn = document.getElementById('reset-btn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          window.__industrySel.clear();
+          window.__familySel.clear();
+          window.__regionSel.setValue(state.defaultRegionId, false);
+          state.sel.targetPct = 60;
+          $('target-slider').value = 60;
+          updateSlider(state);
+          render(state);
         });
       }
     }
