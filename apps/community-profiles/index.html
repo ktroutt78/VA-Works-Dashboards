@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community Profile · Virginia Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:96px}
+  body{font-family:'Barlow',system-ui,sans-serif;color:#1A1A1A;background:#fff;line-height:1.55;-webkit-font-smoothing:antialiased}
+  @keyframes vw-spin{to{transform:rotate(360deg)}}
+  @keyframes vw-fade{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<!-- ================================================================
+  Community Profile — Virginia Works (LMI)
+  Ported from the Claude-Design "Design Component" handoff to a
+  self-contained static page. The <x-dc> markup is inlined below; the
+  support.js DC runtime is replaced by the pseudo-style helper +
+  bootstrap at the bottom of this file. ALL DATA IS ILLUSTRATIVE
+  placeholder, generated deterministically per region by
+  Component.genData() — there is no backend.
+================================================================= -->
+<div style="background:#fff;color:#1A1A1A;min-width:0">
+
+  <!-- gov utility bar -->
+  <div style="background:#1A1A1A;color:#cfd3da;font-size:.74rem;padding:.5rem 1.5rem;display:flex;align-items:center;gap:.6rem">
+    <b style="color:#fff;font-weight:600">Virginia Works</b>
+    <span>An official website of the Commonwealth of Virginia</span>
+    <span style="margin-left:auto;display:flex;gap:1.4rem;align-items:center"><span>English ▾</span><span>Find a Commonwealth Resource</span></span>
+  </div>
+
+  <!-- site header -->
+  <div style="display:flex;align-items:center;padding:1.05rem 1.5rem;gap:1rem;border-bottom:1px solid #E2E0D8;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:.85rem">
+      <div style="width:46px;height:46px;flex:none;border-radius:8px;background:linear-gradient(135deg,#0A2463,#2E6BD6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Barlow Condensed';font-weight:800;font-size:1.5rem">VW</div>
+      <div>
+        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:1.5rem;line-height:.95;color:#0A2463;text-transform:uppercase">Virginia<br>Works</div>
+      </div>
+      <div style="font-size:.62rem;font-weight:600;letter-spacing:.08em;color:#5A6472;text-transform:uppercase;border-left:2px solid #E2E0D8;padding-left:.7rem;line-height:1.25">Department of<br>Workforce<br>Development</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:1.3rem;font-size:.82rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#5A6472;align-items:center">
+      <span>About</span><span>Locations</span><span>Newsroom</span><span>Events</span><span style="color:#1B4DB1">LMI</span><span>Contact</span>
+    </div>
+  </div>
+
+  <!-- HERO with interactive map -->
+  <section data-screen-label="Hero — region picker &amp; map" style="background:linear-gradient(120deg,#0A2463 0%,#1B4DB1 58%,#2E6BD6 128%);color:#fff;position:relative;overflow:hidden">
+    <div style="max-width:1240px;margin:0 auto;padding:2.8rem 1.5rem 2.4rem;display:grid;grid-template-columns:minmax(0,0.62fr) minmax(0,1.38fr);gap:1rem;align-items:center">
+      <!-- left -->
+      <div style="position:relative;z-index:3">
+        <div style="font-size:.82rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.7rem">Labor Market Information</div>
+        <h1 style="font-family:'Barlow Condensed';font-size:clamp(2.1rem,4vw,3.4rem);font-weight:800;text-transform:uppercase;line-height:.95;margin-bottom:.5rem;white-space:nowrap">Community Profile</h1>
+        <div id="crumb" style="font-size:.78rem;color:#B9CDEE;display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.6rem"><span style="opacity:.85">Home</span><span style="opacity:.5">›</span><span style="opacity:.85">LMI</span><span style="opacity:.5">›</span><span style="opacity:.85">Community Profiles</span><span style="opacity:.5">›</span><span id="crumb-region" style="color:#fff;font-weight:600">—</span></div>
+
+        <div style="font-size:1.04rem;color:#D7E3F6;max-width:46ch;margin-bottom:1.2rem">Choose a geography from the map or the selector. Every chart below re-frames to the place you pick: a county or city, a metro area, a workforce region, or the whole Commonwealth.</div>
+
+        <div id="heroMeta" style="font-size:.8rem;color:#B9CDEE;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- right: map -->
+      <div style="position:relative;z-index:2;margin-right:-1.5rem">
+        <div style="margin-bottom:.7rem">
+          <div style="font-size:.66rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.5rem">Choose a geography level</div>
+          <div style="display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">
+            <div id="levelbar" style="display:contents"></div>
+            <div id="geoSearchWrap" style="position:relative;flex:1 1 180px;min-width:168px">
+              <input id="geoSearch" type="text" autocomplete="off" placeholder="Search a place…" style="width:100%;box-sizing:border-box;font-family:'Barlow',sans-serif;font-size:.92rem;line-height:1.15;color:#fff;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.4);border-radius:8px;padding:.46rem 1.9rem .46rem .8rem;outline:none" style-focus="background:rgba(255,255,255,.2);border-color:#fff">
+              <span id="geoCaret" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:#CBDAF2;font-size:.7rem;pointer-events:none;transition:transform .18s">▾</span>
+              <div id="geoResults" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:#fff;border:1px solid #E2E0D8;border-radius:10px;box-shadow:0 18px 44px rgba(10,36,99,.3);max-height:320px;overflow-y:auto;color:#1A1A1A"></div>
+            </div>
+          </div>
+        </div>
+        <div style="position:relative">
+          <div id="vamap" style="width:100%;height:498px"></div>
+          <div id="mapLoad" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;color:#cfe0fb">
+            <div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:vw-spin 1s linear infinite"></div>
+            <div style="font-size:.8rem;letter-spacing:.04em">Loading Virginia geography…</div>
+          </div>
+        </div>
+        <div id="mapHint" style="text-align:center;font-size:.72rem;color:#9DC0F2;margin-top:.4rem;letter-spacing:.03em">Pick a level above, then click a region on the map to load its profile</div>
+      </div>
+    </div>
+    <div style="position:absolute;right:-70px;top:-70px;width:340px;height:340px;border:2px solid rgba(255,255,255,.07);border-radius:50%"></div>
+  </section>
+
+  <!-- STICKY collapsed mini-map bar -->
+  <div id="stickybar" style="position:sticky;top:0;z-index:60;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid #E2E0D8;box-shadow:0 4px 18px rgba(10,36,99,.06)">
+    <div style="max-width:1240px;margin:0 auto;padding:.5rem 1.5rem;display:flex;align-items:center;gap:1rem">
+      <div id="minimap" style="width:58px;height:62px;flex:none"></div>
+      <div style="min-width:0">
+        <div id="stickyName" style="font-family:'Barlow Condensed';font-weight:700;font-size:1.15rem;color:#0A2463;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+        <div id="stickyType" style="font-size:.66rem;color:#5A6472;font-weight:600;letter-spacing:.06em;text-transform:uppercase"></div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:1.4rem">
+        <div style="display:none;gap:1.4rem" id="stickyKpis"></div>
+        <button id="stickyPick" type="button" style="background:#0A2463;color:#fff;border:none;border-radius:8px;font-family:'Barlow Condensed';font-weight:700;font-size:.95rem;letter-spacing:.03em;text-transform:uppercase;padding:.5rem 1.05rem;cursor:pointer;white-space:nowrap" style-hover="background:#1B4DB1">Change geography</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <section data-screen-label="Report" style="max-width:1240px;margin:0 auto;padding:2.4rem 1.5rem 4rem">
+
+    <!-- intro + KPI strip -->
+    <div style="border-bottom:1px solid #E2E0D8;padding-bottom:1.6rem;margin-bottom:2rem">
+      <div style="font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.4rem">Community Profile</div>
+      <h2 id="reportTitle" style="font-family:'Barlow Condensed';font-size:clamp(1.9rem,3.4vw,2.8rem);font-weight:800;text-transform:uppercase;color:#0A2463;line-height:1;margin-bottom:1.3rem">—</h2>
+      <div id="kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:236px 1fr;gap:3rem;align-items:start">
+      <!-- rail -->
+      <nav id="rail" style="position:sticky;top:88px;align-self:start"></nav>
+
+      <!-- scenes -->
+      <div id="scenes" style="min-width:0"></div>
+    </div>
+  </section>
+
+  <!-- PICKER overlay -->
+  <div id="pickerBack" style="display:none;position:fixed;inset:0;z-index:90;background:rgba(10,16,32,.45);backdrop-filter:blur(2px)"></div>
+  <div id="picker" style="display:none;position:fixed;z-index:91;left:50%;top:84px;transform:translateX(-50%);width:min(560px,92vw);max-height:78vh;background:#fff;border-radius:14px;box-shadow:0 28px 80px rgba(10,36,99,.4);overflow:hidden;flex-direction:column;color:#1A1A1A">
+    <div style="padding:1.1rem 1.25rem .9rem;border-bottom:1px solid #E2E0D8">
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.85rem">
+        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:1.3rem;color:#0A2463;text-transform:uppercase">Choose a geography</div>
+        <button id="pickerClose" type="button" style="margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid #E2E0D8;background:#fff;cursor:pointer;color:#5A6472;font-size:1rem">✕</button>
+      </div>
+      <div id="pickTabs" style="display:flex;gap:.4rem;flex-wrap:wrap"></div>
+      <input id="pickSearch" type="text" placeholder="Search…" style="margin-top:.7rem;width:100%;border:1px solid #E2E0D8;border-radius:8px;padding:.55rem .75rem;font-family:'Barlow',sans-serif;font-size:.92rem;color:#1A1A1A;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.14)">
+    </div>
+    <div id="pickList" style="overflow-y:auto;padding:.5rem"></div>
+  </div>
+
+</div>
+
+<script>
+/* --- pseudo-style runtime ---------------------------------------
+   The DC prototype used support.js to turn style-hover="…" /
+   style-focus="…" attributes into real :hover / :focus CSS rules.
+   This reproduces that: each unique (pseudo,css) pair gets one
+   generated class+rule; a MutationObserver applies it to nodes the
+   app renders dynamically (level buttons, search/picker rows, rail). */
+(function(){
+  var sheet=document.createElement('style'); document.head.appendChild(sheet);
+  var cache=Object.create(null), n=0;
+  function cls(pseudo,css){ var k=pseudo+'|'+css; if(cache[k]) return cache[k];
+    var c='pf'+(n++); try{ sheet.sheet.insertRule('.'+c+':'+pseudo+'{'+css+'}', sheet.sheet.cssRules.length); }catch(e){} cache[k]=c; return c; }
+  function apply(el){ if(!el.getAttribute) return;
+    ['hover','focus'].forEach(function(p){ var v=el.getAttribute('style-'+p); if(v){ el.classList.add(cls(p,v)); el.removeAttribute('style-'+p); } }); }
+  function scan(node){ if(!node||node.nodeType!==1) return;
+    apply(node); if(node.querySelectorAll) node.querySelectorAll('[style-hover],[style-focus]').forEach(apply); }
+  new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(scan); }); }).observe(document.body,{childList:true,subtree:true});
+  scan(document.body);
+})();
+
+/* --- Component (ported verbatim from the DC logic block) --------- */
+class Component {
+  componentDidMount(){
+    this.C = { cobalt:'#0A2463', blue:'#1B4DB1', blueBright:'#2E6BD6', green:'#3A8A1E', greenDark:'#2C6916', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
+    this.PALETTE = ['#1B4DB1','#3A8A1E','#5BA3D0','#E8A33D','#9B6FB5','#D0596B','#7A8794'];
+    this.FONT = "'Barlow', sans-serif";
+    this.charts = {};
+    this.popCache = {};   // cache for MOCK per-county populations (see "MOCK DATA" seam below)
+    this.activeTab = 'Metro Area (MSA)';
+    this.boot();
+  }
+
+  fmt(n){ return Math.round(n).toLocaleString('en-US'); }
+
+  async boot(){
+    const t0=Date.now();
+    while((!window.echarts || !window.topojson) && Date.now()-t0<12000){ await new Promise(r=>setTimeout(r,80)); }
+    this.ec = window.echarts;
+    if(!this.ec){ document.getElementById('mapLoad').innerHTML='<div style="color:#cfe0fb;font-size:.85rem">Map library unavailable.</div>'; return; }
+    let topo;
+    try{
+      topo = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/counties-10m.json').then(r=>r.json());
+    }catch(e){ document.getElementById('mapLoad').innerHTML='<div style="color:#cfe0fb;font-size:.85rem">Could not load geography.</div>'; return; }
+
+    this.topo = topo;
+    this.vaGeoms = topo.objects.counties.geometries.filter(g=>String(g.id).startsWith('51'));
+    let fc = window.topojson.feature(topo, topo.objects.counties);
+    this.features = fc.features.filter(f=>String(f.id).startsWith('51'));
+    // build registry + geometry helpers
+    this.prepFeatures();
+    this.buildRegions();
+    this.buildLevelToolbar();
+    this.wireGeoSearch();
+    this.initHeroMap();
+    this.initMiniMap();
+    this.wirePicker();
+    this.buildRail();
+    this.buildScenes();
+    this.wireScroll();
+    document.getElementById('mapLoad').style.display='none';
+    // default selection
+    const def = this.regionById['state'] ? 'state' : (this.regions[0] && this.regions[0].id);
+    this.selectRegion(def);
+    window.addEventListener('resize', ()=>{ Object.values(this.charts).forEach(c=>c&&c.resize()); this.heroChart&&this.heroChart.resize(); this.miniChart&&this.miniChart.resize(); });
+  }
+
+  prepFeatures(){
+    let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+    this.features.forEach(f=>{
+      const fips=String(f.id);
+      f.properties = f.properties||{};
+      f.properties.pretty = f.properties.name || fips;
+      f.properties.name = fips; // unique key for echarts matching
+      // centroid (avg of all coords)
+      let sx=0,sy=0,n=0;
+      const walk=(c)=>{ if(typeof c[0]==='number'){ sx+=c[0]; sy+=c[1]; n++; } else c.forEach(walk); };
+      walk(f.geometry.coordinates);
+      const cx=sx/n, cy=sy/n; f._cx=cx; f._cy=cy;
+      minx=Math.min(minx,cx); maxx=Math.max(maxx,cx); miny=Math.min(miny,cy); maxy=Math.max(maxy,cy);
+    });
+    const W=maxx-minx||1, H=maxy-miny||1, eps=1e-6;
+    this.features.forEach(f=>{
+      const cx=(f._cx-minx)/(W+eps), cy=(maxy-f._cy)/(H+eps); // cy 0=north
+      const gcol=Math.min(2,Math.floor(cx*3)), grow=Math.min(2,Math.floor(cy*3));
+      f._gov = grow*3+gcol+1; // 1..9
+      const lcol=Math.min(4,Math.floor(cx*5)), lrow=Math.min(2,Math.floor(cy*3));
+      f._lwda = lrow*5+lcol+1; // 1..15
+    });
+  }
+
+  buildRegions(){
+    const F=this.features, byFips={}; F.forEach(f=>byFips[String(f.id)]=f);
+    this.byFips=byFips;
+    const exist=arr=>arr.filter(x=>byFips[x]);
+    const regions=[]; const push=r=>{ if(r.fips.length) regions.push(r); };
+
+    // STATE
+    push({ id:'state', type:'State', name:'Commonwealth of Virginia', fips:F.map(f=>String(f.id)) });
+
+    // MSAs (curated, real-ish membership by FIPS)
+    const MSA={
+      'msa-richmond':['Richmond MSA',['51760','51087','51041','51085','51075','51145','51036','51127','51570','51730','51149','51053','51670','51181','51007','51049','51101']],
+      'msa-hamptonroads':['Virginia Beach–Norfolk–Newport News MSA',['51810','51710','51700','51650','51740','51800','51550','51735','51830','51095','51199','51093','51073','51115','51175','51620']],
+      'msa-nova':['Washington–Arlington–Alexandria MSA (VA)',['51013','51510','51059','51600','51610','51153','51683','51685','51107','51179','51177','51630','51061','51187','51043','51157','51139']],
+      'msa-roanoke':['Roanoke MSA',['51770','51161','51775','51067','51023','51045']],
+      'msa-charlottesville':['Charlottesville MSA',['51540','51003','51065','51079','51125']],
+      'msa-lynchburg':['Lynchburg MSA',['51680','51009','51011','51019','51031']],
+      'msa-blacksburg':['Blacksburg–Christiansburg MSA',['51121','51071','51155','51750']]
+    };
+    Object.keys(MSA).forEach(id=>push({ id, type:'Metro Area (MSA)', name:MSA[id][0], fips:exist(MSA[id][1]) }));
+
+    // GO Virginia — official 9-region composition by locality FIPS
+    const P=a=>a.map(x=>'51'+x);
+    const GOVA={
+      1:['105','169','195','720','051','027','167','185','191','520','173','021','197','077','640','035'],
+      2:['005','580','023','045','161','770','775','067','063','071','121','750','155'],
+      3:['089','690','141','143','590','083','117','025','037','111','135','147','029','049'],
+      4:['760','087','041','085','075','145','127','036','007','053','149','730','670','570','181','183','081','595'],
+      5:['810','710','550','740','800','700','650','830','095','199','735','073','093','175','620','115','001','131'],
+      6:['033','057','099','101','097','103','119','133','159','193','177','179','630'],
+      7:['013','059','107','153','510','600','610','683','685'],
+      8:['015','017','091','163','165','171','069','043','139','187','530','678','790','820','660','840'],
+      9:['003','065','079','109','125','113','137','047','061','157','009','011','031','019','540','680']
+    };
+    const GNAME={1:'Southwest Virginia',2:'Roanoke & New River Valley',3:'Southern Virginia',4:'Greater Richmond & Crater',5:'Hampton Roads',6:'Northern Neck & Fredericksburg',7:'Northern Virginia',8:'Shenandoah Valley',9:'Central Virginia & Piedmont'};
+    for(let n=1;n<=9;n++){ push({ id:'gov-'+n, type:'GO Virginia Region', name:'GO Virginia Region '+n, sub:GNAME[n], fips:exist(P(GOVA[n])) }); }
+
+    // LWDA (grid-derived)
+    const LW=['Capital Region','Hampton Roads','Northern Virginia','Greater Richmond','Shenandoah Valley','Piedmont Crescent','Southwest Virginia','New River / Mount Rogers','West Piedmont','South Central','Crater Area','Bay Consortium','Greater Peninsula','Western Virginia','Valley Workforce'];
+    for(let n=1;n<=15;n++){ const fips=F.filter(f=>f._lwda===n).map(f=>String(f.id)); push({ id:'lwda-'+n, type:'Local Workforce Area (LWDA)', name:(LW[n-1]||('Local Area '+n))+' LWDA', fips }); }
+
+    // Counties / cities (all)
+    F.slice().sort((a,b)=>a.properties.pretty.localeCompare(b.properties.pretty)).forEach(f=>{
+      push({ id:'c-'+f.id, type:'County / City', name:f.properties.pretty, fips:[String(f.id)] });
+    });
+
+    this.regions=regions;
+    this.regionById={}; regions.forEach(r=>this.regionById[r.id]=r);
+  }
+
+  /* ---------- level boundary maps (topojson merge) ---------- */
+  LEVELS(){ return [
+    {type:'County / City', label:'County / City'},
+    {type:'Metro Area (MSA)', label:'Metro (MSA)'},
+    {type:'GO Virginia Region', label:'GO Virginia'},
+    {type:'Local Workforce Area (LWDA)', label:'Workforce (LWDA)'},
+    {type:'State', label:'Statewide'}
+  ]; }
+  levelMapName(level){ return 'va-'+level.replace(/[^a-z]/gi,'').toLowerCase(); }
+  _mergeFips(fipsArr){
+    const set=new Set(fipsArr.map(String));
+    const geoms=this.vaGeoms.filter(g=>set.has(String(g.id)));
+    if(!geoms.length) return null;
+    try{ return window.topojson.merge(this.topo, geoms); }catch(e){ return null; }
+  }
+  ensureLevelMap(level){
+    const name=this.levelMapName(level);
+    this._levelReg=this._levelReg||{};
+    if(this._levelReg[name]) return name;
+    const regions=this.regions.filter(r=>r.type===level);
+    const assigned=new Set();
+    const feats=regions.map(r=>{
+      r.fips.forEach(f=>assigned.add(String(f)));
+      const geometry=this._mergeFips(r.fips);
+      return geometry ? { type:'Feature', properties:{ name:r.id, pretty:r.name }, geometry } : null;
+    }).filter(Boolean);
+    // remainder: every VA locality not covered by this level (e.g. non-metro areas) → light base so the full state always shows
+    const restFips=this.vaGeoms.map(g=>String(g.id)).filter(f=>!assigned.has(f));
+    if(restFips.length){ const g=this._mergeFips(restFips); if(g) feats.push({ type:'Feature', properties:{ name:'__rest', pretty:'Other Virginia' }, geometry:g }); }
+    this.ec.registerMap(name, { type:'FeatureCollection', features:feats });
+    this._levelReg[name]=true;
+    return name;
+  }
+
+  initHeroMap(){
+    const el=document.getElementById('vamap');
+    this.heroChart=this.ec.init(el);
+    this.heroChart.on('click', p=>{ if(p.componentType==='series' && p.name && this.regionById[p.name]){ this.selectRegion(p.name); } });
+  }
+  initMiniMap(){
+    this.miniChart=this.ec.init(document.getElementById('minimap'));
+  }
+
+  mapOption(level, opts){
+    const o=opts||{};
+    const name=this.ensureLevelMap(level);
+    const regions=this.regions.filter(r=>r.type===level);
+    const county=level==='County / City';
+    const REGION=o.region||(county?'#C5D3E5':'#93B4DE');
+    const REST=o.rest||(o.silent?'#D8E0EC':'#DCE4F0');
+    const SEL=o.sel||'#57B23A', BORD=o.border||'#FFFFFF', RESTBORD=o.restBorder||(o.silent?'#C7D2E1':'rgba(255,255,255,.3)'), EMPH=o.emph||'#B9D0EE';
+    const selId=this.current&&this.current.id;
+    const data=regions.map(r=>({ name:r.id, itemStyle:{ areaColor: r.id===selId?SEL:REGION } }));
+    // remainder area: light, not interactive
+    data.push({ name:'__rest', itemStyle:{ areaColor:REST, borderColor:RESTBORD, borderWidth:0.5 }, emphasis:{ disabled:true } });
+    return {
+      tooltip: o.tooltip ? {
+        trigger:'item', backgroundColor:'#0A2463', borderColor:'#0A2463',
+        textStyle:{color:'#fff',fontFamily:this.FONT,fontSize:12},
+        formatter:p=>{ const r=this.regionById[p.name]; if(!r) return ''; const sub=r.sub?'<br><span style="opacity:.7;font-size:11px">'+r.sub+'</span>':''; return '<b>'+r.name+'</b>'+sub+'<br><span style="opacity:.8">'+(p.name===selId?'Currently selected':'Click to load this profile')+'</span>'; }
+      } : {show:false},
+      series:[{
+        type:'map', map:name, roam:false, zoom:o.zoom||1.1,
+        aspectScale:o.aspect||0.82,
+        layoutCenter:o.layoutCenter||['50%','50%'], layoutSize:o.layoutSize||'112%',
+        selectedMode:false, silent:!!o.silent,
+        label:{show:false}, emphasis:{ label:{show:false}, itemStyle:{areaColor: o.silent?undefined:EMPH} },
+        itemStyle:{ borderColor:BORD, borderWidth:(o.bw!=null?o.bw:(county?0.6:1.5)) },
+        data
+      }]
+    };
+  }
+
+  levelLabel(type){ const m=this.LEVELS().find(l=>l.type===type); return m?m.label:type; }
+  levelTag(type){ return type==='Metro Area (MSA)'?'MSA':type==='GO Virginia Region'?'GOVA':type==='Local Workforce Area (LWDA)'?'LWDA':type==='State'?'STATE':'COUNTY'; }
+
+  /* ---------- inline geography search (scoped to the selected level) ---------- */
+  geoPlaceholder(type){ return {
+    'County / City':'Search a county or city…',
+    'Metro Area (MSA)':'Search a metro area…',
+    'GO Virginia Region':'Search a GO Virginia region…',
+    'Local Workforce Area (LWDA)':'Search a workforce area…',
+    'State':'Search statewide…'
+  }[type] || 'Search a place…'; }
+  wireGeoSearch(){
+    const inp=document.getElementById('geoSearch'), res=document.getElementById('geoResults'), wrap=document.getElementById('geoSearchWrap'), caret=document.getElementById('geoCaret');
+    if(!inp) return;
+    const render=(openAll)=>{
+      const q=(inp.value||'').trim().toLowerCase();
+      const selId=this.current&&this.current.id;
+      let list=this.regions.filter(r=>r.type===this.level);
+      if(q) list=list.filter(r=> r.name.toLowerCase().includes(q) || (r.sub&&r.sub.toLowerCase().includes(q)) );
+      const shown=list.slice(0,120);
+      res.innerHTML = shown.length ? shown.map(r=>{
+        const meta = r.sub ? r.sub : (r.type!=='County / City'&&r.type!=='State' ? r.fips.length+' localities' : '');
+        const on = r.id===selId;
+        return `<button data-rid="${r.id}" type="button" style="display:flex;width:100%;align-items:center;gap:.6rem;text-align:left;background:${on?'#EAF3E4':'#fff'};border:none;border-bottom:1px solid #F2F0EA;padding:.5rem .7rem;cursor:pointer;font-family:${this.FONT}" style-hover="background:#F5F1E8">
+          <span style="min-width:0;flex:1"><span style="display:block;font-family:'Barlow Condensed';font-weight:700;font-size:1.02rem;color:#0A2463;line-height:1.05">${r.name}</span>${meta?`<span style="font-size:.72rem;color:#5A6472">${meta}</span>`:''}</span>
+          ${on?`<span style="flex:none;color:#3A8A1E;font-weight:700">✓</span>`:''}
+        </button>`;
+      }).join('') + (list.length>shown.length?`<div style="padding:.5rem .7rem;color:#9DB4D6;font-size:.74rem">Showing first ${shown.length} — type to narrow…</div>`:'') : `<div style="padding:.8rem;color:#5A6472;font-size:.86rem">No matches</div>`;
+      res.style.display='block'; if(caret) caret.style.transform='translateY(-50%) rotate(180deg)';
+      res.querySelectorAll('button[data-rid]').forEach(b=>b.onclick=()=>{ this.selectRegion(b.dataset.rid); inp.value=''; this.closeGeoSearch(); inp.blur(); });
+    };
+    const close=()=>{ res.style.display='none'; if(caret) caret.style.transform='translateY(-50%)'; };
+    this._geoRender=render; this._geoInp=inp; this._geoClose=close;
+    inp.oninput=()=>render();
+    inp.onfocus=()=>render(true);
+    inp.onkeydown=(e)=>{ if(e.key==='Enter'){ const f=res.querySelector('button[data-rid]'); if(f) f.click(); } else if(e.key==='Escape'){ close(); inp.blur(); } };
+    document.addEventListener('click',(e)=>{ if(e.target.closest && e.target.closest('#levelbar')) return; if(wrap && !wrap.contains(e.target)) close(); });
+    inp.placeholder=this.geoPlaceholder(this.level);
+  }
+  closeGeoSearch(){ if(this._geoClose) this._geoClose(); }
+
+  /* ---------- level toolbar ---------- */
+  buildLevelToolbar(){
+    const el=document.getElementById('levelbar'); if(!el) return;
+    el.innerHTML=this.LEVELS().map(L=>
+      `<button data-level="${L.type}" type="button" style="font-family:'Barlow Condensed';font-weight:700;font-size:.95rem;letter-spacing:.02em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.10);color:#EaF1FB;border-radius:8px;padding:.42rem .85rem;cursor:pointer;transition:.16s;white-space:nowrap" style-hover="background:rgba(255,255,255,.22)">${L.label}</button>`
+    ).join('');
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>this.setLevel(b.dataset.level));
+  }
+  updateLevelToolbar(){
+    if(this._geoInp) this._geoInp.placeholder=this.geoPlaceholder(this.level);
+    const el=document.getElementById('levelbar'); if(!el) return;
+    el.querySelectorAll('button').forEach(b=>{ const on=b.dataset.level===this.level;
+      b.style.background=on?'#F5F1E8':'rgba(255,255,255,.10)';
+      b.style.color=on?'#0A2463':'#EaF1FB';
+      b.style.borderColor=on?'#F5F1E8':'rgba(255,255,255,.4)';
+      b.style.boxShadow=on?'0 4px 14px rgba(0,0,0,.18)':'none';
+    });
+  }
+  setLevel(level){
+    this.level=level; this.activeTab=level;
+    const layout={zoom:1.1,aspect:0.82,layoutCenter:['50%','50%'],layoutSize:'112%'};
+    this.heroChart.clear();
+    this.heroChart.setOption(this.mapOption(level,{tooltip:true,...layout}),true);
+    setTimeout(()=>this.heroChart.resize(),20);
+    this.updateLevelToolbar();
+    // turn the search into a dropdown of this level's members and open it
+    if(this._geoInp){ this._geoInp.value=''; this._geoInp.placeholder=this.geoPlaceholder(level); if(this._geoRender) this._geoRender(true); }
+    // hint when nothing of this level is selected yet
+    const hasSel=this.current && this.current.type===level;
+    const cap=document.getElementById('mapHint');
+    if(cap) cap.textContent = hasSel ? 'Showing '+this.LEVELS().find(l=>l.type===level).label+' boundaries — click any region to switch' : 'Showing '+this.LEVELS().find(l=>l.type===level).label+' boundaries — click a region to load its profile';
+  }
+
+  /* ---------- picker ---------- */
+  wirePicker(){
+    const back=document.getElementById('pickerBack'), pick=document.getElementById('picker');
+    const open=()=>{ back.style.display='block'; pick.style.display='flex'; this.renderTabs(); this.renderList(); document.getElementById('pickSearch').value=''; };
+    const close=()=>{ back.style.display='none'; pick.style.display='none'; };
+    const hp=document.getElementById('heroPick'); if(hp) hp.onclick=open;
+    document.getElementById('stickyPick').onclick=open;
+    document.getElementById('pickerClose').onclick=close;
+    back.onclick=close;
+    document.getElementById('pickSearch').oninput=()=>this.renderList();
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+    this._closePicker=close;
+  }
+  renderTabs(){
+    const types=['Metro Area (MSA)','GO Virginia Region','Local Workforce Area (LWDA)','County / City','State'];
+    const lbl={'Metro Area (MSA)':'Metro (MSA)','GO Virginia Region':'GO Virginia','Local Workforce Area (LWDA)':'Workforce (LWDA)','County / City':'County / City','State':'Statewide'};
+    const el=document.getElementById('pickTabs');
+    el.innerHTML=types.map(t=>{ const on=t===this.activeTab;
+      return `<button data-tab="${t}" style="font-family:'Barlow Condensed';font-weight:700;font-size:.9rem;letter-spacing:.02em;text-transform:uppercase;border:1px solid ${on?'#0A2463':'#E2E0D8'};background:${on?'#0A2463':'#fff'};color:${on?'#fff':'#5A6472'};border-radius:7px;padding:.4rem .7rem;cursor:pointer">${lbl[t]}</button>`;
+    }).join('');
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{ this.activeTab=b.dataset.tab; this.renderTabs(); this.renderList(); });
+  }
+  renderList(){
+    const q=(document.getElementById('pickSearch').value||'').toLowerCase();
+    const list=this.regions.filter(r=>r.type===this.activeTab && r.name.toLowerCase().includes(q));
+    const el=document.getElementById('pickList');
+    el.innerHTML=list.map(r=>{
+      const sub = r.type==='County / City' ? '' : r.fips.length+' localities';
+      return `<button data-rid="${r.id}" style="display:flex;width:100%;align-items:center;gap:.7rem;text-align:left;background:#fff;border:none;border-radius:8px;padding:.6rem .7rem;cursor:pointer;font-family:${this.FONT}" style-hover="background:#F5F1E8">
+        <span style="min-width:0;flex:1"><span style="display:block;font-family:'Barlow Condensed';font-weight:700;font-size:1.12rem;color:#0A2463;line-height:1.05">${r.name}</span>${sub?`<span style="font-size:.72rem;color:#5A6472">${sub}</span>`:''}</span>
+        <span style="flex:none;color:#9DB4D6;font-weight:700">›</span>
+      </button>`;
+    }).join('') || `<div style="padding:1.4rem;text-align:center;color:#5A6472;font-size:.9rem">No matches.</div>`;
+    el.querySelectorAll('button[data-rid]').forEach(b=>b.onclick=()=>{ this.selectRegion(b.dataset.rid); this._closePicker(); });
+  }
+
+  /* ---------- selection ---------- */
+  selectRegion(id){
+    const r=this.regionById[id]; if(!r) return;
+    this.current=r; this.level=r.type; this.activeTab=r.type;
+    this.heroChart.clear();
+    this.heroChart.setOption(this.mapOption(r.type,{tooltip:true,sel:'#57B23A',base:'#C2D0E2',border:'#FFFFFF',emph:'#9DB8D9',zoom:1.1,aspect:0.82,layoutCenter:['50%','50%'],layoutSize:'112%'}),true);
+    this.miniChart.clear();
+    this.miniChart.setOption(this.mapOption(r.type,{silent:true,sel:'#1B4DB1',base:'#CBD7E8',border:'#FFFFFF',bw:0.5,emph:'#CBD7E8',zoom:1.16,aspect:0.92,layoutCenter:['50%','50%'],layoutSize:'112%'}),true);
+    setTimeout(()=>{this.heroChart.resize();this.miniChart.resize();},30);
+    this.updateLevelToolbar();
+    const d=this.genData(r);
+    this.data=d;
+    // labels
+    const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+    set('crumb-region',r.name);
+    set('stickyName',r.name);
+    set('stickyType',r.type);
+    set('reportTitle',r.name);
+    const hm=document.getElementById('heroMeta');
+    if(hm) hm.innerHTML =
+      `<span style="font-family:'Barlow Condensed';font-weight:700;font-size:1rem;color:#fff;letter-spacing:.02em">${r.name}</span>`+
+      (r.sub?`<span style="opacity:.85">${r.sub}</span>`:'')+
+      (r.fips.length>1?`<span style="opacity:.45">·</span><span><b style="color:#fff">${r.fips.length}</b> localities</span>`:'')+
+      `<span style="opacity:.45">·</span><span>Updated Q4 2025</span>`+
+      `<span style="display:inline-block;background:#E8A33D;color:#3a2400;font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.12rem.45rem;border-radius:4px">Illustrative data</span>`;
+    this.renderKpis(d);
+    this.renderCharts(d);
+  }
+
+  renderKpis(d){
+    const items=[
+      ['Total population', this.fmt(d.population)],
+      ["Median household income", '$'+this.fmt(d.medianIncome)],
+      ["Bachelor's or higher", d.baPct+'%'],
+      ['Net daily in-commuters', (d.netIn>=0?'+':'')+this.fmt(d.netIn)]
+    ];
+    document.getElementById('kpis').innerHTML=items.map(([l,v],i)=>
+      `<div style="background:#F5F1E8;border:1px solid #E2E0D8;border-radius:10px;padding:1rem 1.1rem">
+        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:2rem;color:${i===2?'#3A8A1E':'#0A2463'};line-height:1">${v}</div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5A6472;margin-top:.3rem">${l}</div>
+      </div>`).join('');
+    document.getElementById('stickyKpis').innerHTML='';
+  }
+
+  /* ===================================================================
+     MOCK DATA — replace with SQL
+     -------------------------------------------------------------------
+     Everything from here to "END MOCK DATA" is ILLUSTRATIVE placeholder.
+     There is no backend. genData(region) is the SINGLE swap seam: to wire
+     real LMI data, replace genData's body with a query/fetch that returns
+     an object with the SAME field names, types, and grain documented below
+     — every KPI and chart then updates with no other code change.
+
+     hash()/rng()/countyPop() are deterministic-RNG plumbing used only to
+     fabricate stable per-region placeholder numbers; they retire with the
+     real-data swap.
+
+     NOTE: there is no community-profiles SQL Server schema defined yet.
+     This contract IS the spec the future query must satisfy (align the
+     SELECT column aliases to these field names / types / grain).
+
+     genData(region) → {
+       population:         int    persons, region grain
+       ageCohorts:         [{age:str, male:int, female:int}]   18 cohorts
+       populationChange:   [{year:str, value:int}]             2010..2030
+       projectedFrom:      str    first projected year ('2024')
+       race:               [{name:str, value:int}]             persons
+       industryEmployment: [{name:str, value:int}]             jobs by sector
+       weeklyWage:         [{name:str, value:int}]             $/week by sector
+       wageAll:            int    all-industries avg weekly wage ($)
+       unemployment:       {years:[str], msa:[num %], va:[num %], us:[num %]}
+       uiPayments:         {years:[str], amount:[int $]}
+       educationCompare:   {categories:[str], msa:[num %], va:[num %], us:[num %]}
+       baPct:              int    bachelor's-or-higher share (%)
+       medianIncome:       int    median household income ($)
+       netIn:              int    net daily in-commuters (signed)
+       topEmployers:       [str]  ranked employer names
+       householdIncome:    [{name:str, value:num %}]           income brackets
+       housing:            {owner:num %, renter:num %, vacant:num %, medianHomeValue:int $, medianRent:int $}
+       costOfLiving:       {categories:[str], values:[num]}    US=100 index
+       laborForce:         {years:[str], participation:[num %], unemployment:[num %]}
+       occupations:        [{name:str, value:int}]             workers by SOC group
+       commute:            {modes:[{name:str, value:num %}], meanTravelMin:int}
+       business:           {years:[str], formations:[int]}
+       apprenticeships:    {years:[str], active:[int], completions:[int]}
+     }
+     =================================================================== */
+  hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+  rng(seed){ let a=seed>>>0; return function(){ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  countyPop(fips){ if(this.popCache[fips]!=null) return this.popCache[fips]; const r=this.rng(this.hash('p'+fips))(); const v=Math.round(6000+Math.pow(r,3)*1080000); this.popCache[fips]=v; return v; }
+  genData(region){
+    const rnd=this.rng(this.hash(region.id)); const j=(c)=>1+(rnd()-0.5)*2*c;
+    const population = region.type==='State'?8650000:region.fips.reduce((a,f)=>a+this.countyPop(f),0);
+    // age pyramid (18 cohorts)
+    const ages=['0-4','5-9','10-14','15-19','20-24','25-29','30-34','35-39','40-44','45-49','50-54','55-59','60-64','65-69','70-74','75-79','80-84','85+'];
+    const baseW=[6,6.2,6.4,6.6,7.2,7,6.8,6.6,6.4,6.6,6.8,6.6,6,5,3.8,2.6,1.6,1.2];
+    const wj=baseW.map(w=>w*j(0.18)); const ws=wj.reduce((a,b)=>a+b,0);
+    const ageCohorts=ages.map((a,i)=>{ const tot=population*wj[i]/ws; const mShare=0.485+(rnd()-0.5)*0.04; return {age:a, male:Math.round(tot*mShare), female:Math.round(tot*(1-mShare))}; });
+    // growth
+    const rate=0.004+rnd()*0.016; const years=[]; for(let y=2010;y<=2030;y++) years.push(y);
+    const mid=2024; const populationChange=years.map(y=>({year:String(y), value:Math.round(population*Math.pow(1+rate,(y-mid)))}));
+    // race
+    const raceNames=['White','Black or African American','Hispanic or Latino','Asian','Two or More Races','American Indian','Other'];
+    const raceBase=[0.58,0.19,0.10,0.06,0.04,0.006,0.024].map(v=>v*j(0.22)); const rs=raceBase.reduce((a,b)=>a+b,0);
+    const race=raceNames.map((n,i)=>({name:n, value:Math.round(population*raceBase[i]/rs)}));
+    // industry
+    const indNames=['Government','Health Care & Social Assistance','Retail Trade','Professional & Technical','Accommodation & Food Services','Manufacturing','Construction','Administrative & Support','Finance & Insurance','Educational Services','Transportation & Warehousing','Wholesale Trade','Other Services','Information','Real Estate','Arts & Recreation','Management of Companies','Agriculture & Forestry','Utilities','Mining'];
+    const indW=[12,11,9,8.5,7.5,6,5.5,5,4.8,4,3.6,3.2,3,2.2,2,1.6,1.4,1,0.7,0.3].map(w=>w*j(0.3));
+    const iws=indW.reduce((a,b)=>a+b,0); const jobs=Math.round(population*0.46);
+    const industryEmployment=indNames.map((n,i)=>({name:n, value:Math.round(jobs*indW[i]/iws)}));
+    // wages
+    const wageBase=[['Utilities',2780],['Finance & Insurance',2510],['Information',2390],['Federal Government',2150],['Professional & Technical',2090],['Management of Companies',1980],['Wholesale Trade',1810],['Mining',1700],['State Government',1620],['Health Care & Social Assistance',1480],['Construction',1390],['Total, All Industries',1395],['Manufacturing',1310],['Real Estate',1250],['Educational Services',1150],['Transportation & Warehousing',1090],['Administrative & Support',1010],['Agriculture & Forestry',860],['Retail Trade',790],['Arts & Recreation',640],['Accommodation & Food Services',590]];
+    const costf=0.82+rnd()*0.4; const weeklyWage=wageBase.map(([n,v])=>({name:n, value:Math.round(v*costf*j(0.05))})); const wageAll=weeklyWage.find(w=>w.name.includes('Total')).value;
+    // unemployment
+    const uy=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+    const u0=3.4+rnd()*1.8; const mk=(off,spike)=>uy.map((y,i)=>{ let v; if(y==='2020') v=spike; else { v=u0+off+ (i<5? (5-i)*0.25 : -(i-5)*0.15) + (rnd()-0.5)*0.4; } return +Math.max(2,v).toFixed(1); });
+    const unemployment={years:uy, msa:mk(0,8.5+rnd()*4), va:mk(0.2,9.8), us:mk(0.6,11.1)};
+    // UI payments
+    const uiBase=jobs*55; const uiPayments={years:uy, amount:uy.map(y=> y==='2020'?Math.round(uiBase*9*j(0.1)): Math.round(uiBase*j(0.18)) )};
+    // education compare (%)
+    const eduCats=['8th Grade or Less','Some High School','High School/GED','Some College','Associate\u2019s','Bachelor\u2019s','Graduate/Professional'];
+    const eduBase=[3.5,5.8,26,21,8,22,13.7].map(v=>v*j(0.25)); const es=eduBase.reduce((a,b)=>a+b,0); const msaPct=eduBase.map(v=>+(v/es*100).toFixed(1));
+    const vaPct=[3.6,6.1,25.9,21.0,7.9,21.8,13.7]; const usPct=[4.9,6.9,27.0,20.3,8.7,20.2,12.0];
+    const baPct=Math.round(msaPct[5]+msaPct[6]);
+    // employers
+    const empPool=['Walmart','Amazon','HCA Healthcare','Sentara Health','Bon Secours','Dominion Energy','Bank of America','Capital One','Northrop Grumman','Huntington Ingalls','VCU Health','UVA Health','Carilion Clinic','Food Lion','Kroger','Target','FedEx','UPS','Lowe\u2019s','Booz Allen','Leidos','Navy Federal','Anthem','Costco','Smithfield Foods','Volvo','Micron','Local Public Schools','County Government','Regional Hospital'];
+    const pool=empPool.slice(); const topEmployers=[]; for(let i=0;i<12 && pool.length;i++){ topEmployers.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
+    const medianIncome=Math.round((58000+rnd()*42000)/500)*500;
+    const netIn=Math.round((rnd()-0.35)*population*0.06);
+    // household income distribution
+    const incBrackets=['<$25k','$25\u201350k','$50\u201375k','$75\u2013100k','$100\u2013150k','$150\u2013200k','$200k+'];
+    const incShift=(medianIncome-78000)/8000;
+    const incW=[14,17,16,14,18,11,10].map((w,i)=>Math.max(1.5, w*(1+(i-3)*incShift*0.05)*j(0.12)));
+    const incTot=incW.reduce((a,b)=>a+b,0);
+    const householdIncome=incBrackets.map((b,i)=>({name:b, value:+(incW[i]/incTot*100).toFixed(1)}));
+    // housing
+    const owner=Math.round(Math.min(82,Math.max(38,(60+rnd()*16)*j(0.05)))); const vacant=Math.round(2+rnd()*5);
+    const housing={ owner, vacant, renter:100-owner-vacant, medianHomeValue:Math.round((240000+rnd()*280000)/1000)*1000, medianRent:Math.round((1050+rnd()*950)/10)*10 };
+    // cost of living index (US = 100)
+    const colCenter=90+rnd()*28;
+    const costOfLiving={ categories:['Overall','Housing','Groceries','Utilities','Transportation','Health','Goods & Svc'],
+      values:[ +colCenter.toFixed(1), +(colCenter+(rnd()*34-14)).toFixed(1), +(96+rnd()*8).toFixed(1), +(95+rnd()*12).toFixed(1), +(96+rnd()*10).toFixed(1), +(97+rnd()*8).toFixed(1), +(98+rnd()*6).toFixed(1) ] };
+    // labor force participation + unemployment
+    const lfpr0=60+rnd()*8;
+    const laborForce={ years:uy, participation:uy.map((y,i)=>+Math.min(72,Math.max(55,lfpr0+(i-5)*0.2+(y==='2020'?-2.6:0)+(rnd()-0.5)*0.6)).toFixed(1)), unemployment:unemployment.msa };
+    // occupation profile
+    const occNames=['Management','Business & Financial','Computer & Math','Architecture & Engineering','Healthcare','Education & Training','Sales','Office & Admin','Food & Personal Service','Construction & Extraction','Production','Transportation & Material'];
+    const occW=[10,8,7,4,11,9,10,12,9,7,7,6].map(w=>w*j(0.3)); const occS=occW.reduce((a,b)=>a+b,0);
+    const occupations=occNames.map((n,i)=>({name:n, value:Math.round(jobs*occW[i]/occS)}));
+    // commuting
+    const wfh=Math.round((6+rnd()*15)*j(0.1));
+    const cmRaw=[['Drove alone',Math.max(48,72-wfh)],['Carpooled',9],['Public transit',Math.round(1+rnd()*6)],['Walked',Math.round(1+rnd()*3)],['Worked from home',wfh],['Other',2]];
+    const cmS=cmRaw.reduce((a,b)=>a+b[1],0);
+    const commute={ modes:cmRaw.map(([n,v])=>({name:n, value:+(v/cmS*100).toFixed(1)})), meanTravelMin:Math.round(20+rnd()*15) };
+    // new business formations + apprenticeships
+    const byrs=['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+    const biz0=Math.max(120,Math.round(jobs*0.018));
+    const business={ years:byrs, formations:byrs.map((y,i)=>Math.round(biz0*(1+i*0.05)*(y>='2021'?1.32:1)*j(0.12))) };
+    const ap0=Math.max(40,Math.round(jobs*0.004));
+    const apprenticeships={ years:byrs, active:byrs.map((y,i)=>Math.round(ap0*(1+i*0.06)*j(0.12))), completions:byrs.map((y,i)=>Math.round(ap0*0.22*(1+i*0.05)*j(0.14))) };
+    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct, us:usPct}, baPct, medianIncome, netIn, topEmployers,
+      householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships };
+  }
+  /* ===================== END MOCK DATA ===================== */
+
+  /* ---------- charts ---------- */
+  mk(id){ const el=document.getElementById(id); if(!el) return null; if(this.charts[id]) this.charts[id].dispose(); const c=this.ec.init(el); this.charts[id]=c; return c; }
+  axis(){ return { axisLine:{lineStyle:{color:this.C.line}}, axisLabel:{color:this.C.slate,fontFamily:this.FONT}, splitLine:{lineStyle:{color:'#F0EEE7'}} }; }
+
+  renderCharts(d){
+    const C=this.C, F=this.FONT, fmt=n=>this.fmt(n), ax=this.axis(), grid={left:8,right:24,top:28,bottom:8,containLabel:true};
+    // pyramid
+    let c=this.mk('c-pyramid'); if(c) c.setOption({
+      grid:{...grid,left:8,right:8}, legend:{data:['Male','Female'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const a=p[0].axisValue;const m=Math.abs(p.find(x=>x.seriesName==='Male').value);const f=p.find(x=>x.seriesName==='Female').value;return `<b>${a}</b><br/>Male: ${fmt(m)}<br/>Female: ${fmt(f)}`;}},
+      xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(Math.abs(v))}},
+      yAxis:{type:'category',data:d.ageCohorts.map(r=>r.age),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11}},
+      series:[ {name:'Male',type:'bar',stack:'t',itemStyle:{color:C.blue,borderRadius:[3,0,0,3]},data:d.ageCohorts.map(r=>-r.male),emphasis:{itemStyle:{color:C.cobalt}}},
+               {name:'Female',type:'bar',stack:'t',itemStyle:{color:C.green,borderRadius:[0,3,3,0]},data:d.ageCohorts.map(r=>r.female),emphasis:{itemStyle:{color:C.greenDark}}} ]
+    });
+    // growth
+    c=this.mk('c-growth'); if(c){ const split=d.populationChange.findIndex(r=>r.year===d.projectedFrom);
+      const actual=d.populationChange.map((r,i)=>i<=split?r.value:null), proj=d.populationChange.map((r,i)=>i>=split?r.value:null);
+      c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>v?fmt(v):''},
+        legend:{data:['Recorded','Projected'],top:0,textStyle:{fontFamily:F,color:C.slate}},
+        xAxis:{type:'category',data:d.populationChange.map(r=>r.year),...ax,boundaryGap:false},
+        yAxis:{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>(v/1000).toFixed(0)+'k'}},
+        series:[ {name:'Recorded',type:'line',data:actual,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.22)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
+                 {name:'Projected',type:'line',data:proj,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.green,type:'dashed'},itemStyle:{color:C.green},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(58,138,30,.18)'},{offset:1,color:'rgba(58,138,30,0)'}])}} ] }); }
+    // race
+    c=this.mk('c-race'); if(c) c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> (${p.percent}%)`},
+      legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
+      series:[{type:'pie',radius:['44%','70%'],center:['50%','45%'],avoidLabelOverlap:true,itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:this.PALETTE,data:d.race}] });
+    // industry
+    c=this.mk('c-industry'); if(c){ const rows=[...d.industryEmployment].sort((a,b)=>a.value-b.value);
+      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' jobs'},
+        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
+        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
+        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); }
+    // wages
+    c=this.mk('c-wages'); if(c){ const rows=[...d.weeklyWage].sort((a,b)=>a.value-b.value); const avg=d.wageAll;
+      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>'$'+fmt(v)+'/wk'},
+        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v>=1000?(v/1000)+'k':v)}},
+        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:r.name.includes('Total')?C.cobalt:(r.value>=avg?C.green:'#9DB4D6'),borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>'$'+fmt(p.value),color:C.slate,fontFamily:F,fontSize:10},
+          markLine:{symbol:'none',silent:true,lineStyle:{color:C.cobalt,type:'dashed',width:1.5},data:[{xAxis:avg}],label:{formatter:'avg $'+fmt(avg),color:C.cobalt,fontFamily:F,fontWeight:700,position:'insideEndTop'}}}] }); }
+    // unemployment
+    c=this.mk('c-unemp'); if(c){ const u=d.unemployment;
+      c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
+        legend:{data:[this.current.name,'Virginia','United States'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:18,itemHeight:3},
+        xAxis:{type:'category',data:u.years,...ax,boundaryGap:false}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
+        series:[ {name:this.current.name,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:C.green},itemStyle:{color:C.green}},
+                 {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',lineStyle:{width:2,color:'#D0596B'},itemStyle:{color:'#D0596B'}},
+                 {name:'United States',type:'line',data:u.us,smooth:true,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}} ] }); }
+    // education
+    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,C.green],['Virginia',e.va,C.blue],['United States',e.us,'#9DB4D6']];
+      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+        legend:{top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
+        xAxis:{type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:24,fontSize:10}},
+        yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
+        series:S.map(([n,arr,col])=>({name:n,type:'bar',data:arr,itemStyle:{color:col,borderRadius:[3,3,0,0]},barMaxWidth:24})) }); }
+    // UI payments
+    c=this.mk('c-ui'); if(c){ const peak=Math.max(...d.uiPayments.amount), pi=d.uiPayments.amount.indexOf(peak);
+      c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>'$'+fmt(v)},
+        xAxis:{type:'category',data:d.uiPayments.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v/1e6).toFixed(0)+'M'}},
+        series:[{type:'line',data:d.uiPayments.amount,smooth:true,symbol:'circle',symbolSize:7,lineStyle:{width:3.5,color:'#7A2E8E'},itemStyle:{color:'#7A2E8E'},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(122,46,142,.3)'},{offset:1,color:'rgba(122,46,142,0)'}])},
+          markPoint:{symbol:'pin',symbolSize:52,data:[{coord:[pi,peak],value:'$'+(peak/1e6).toFixed(0)+'M',itemStyle:{color:'#D0596B'}}],label:{color:'#fff',fontFamily:F,fontWeight:700,fontSize:11}}}] }); }
+    // household income distribution
+    c=this.mk('c-income'); if(c){ const hi=d.householdIncome;
+      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+        xAxis:{type:'category',data:hi.map(b=>b.name),...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:18,fontSize:10}},
+        yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
+        series:[{type:'bar',barMaxWidth:38,data:hi.map(b=>b.value),itemStyle:{color:C.blue,borderRadius:[3,3,0,0]},label:{show:true,position:'top',formatter:p=>p.value+'%',color:C.slate,fontFamily:F,fontSize:10}}] }); }
+    // housing tenure
+    c=this.mk('c-housing'); if(c){ const h=d.housing;
+      c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${p.value}%</b>`},
+        legend:{bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
+        title:{ text:'$'+fmt(h.medianHomeValue), subtext:'Median home value · $'+fmt(h.medianRent)+'/mo rent', left:'center', top:'37%', textStyle:{fontFamily:'Barlow Condensed',fontSize:24,color:C.cobalt}, subtextStyle:{fontFamily:F,fontSize:11,color:C.slate} },
+        series:[{type:'pie',radius:['54%','75%'],center:['50%','45%'],itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:[C.green,C.blue,'#C4CEDB'],data:[{name:'Owner-occupied',value:h.owner},{name:'Renter-occupied',value:h.renter},{name:'Vacant',value:h.vacant}]}] }); }
+    // cost of living
+    c=this.mk('c-col'); if(c){ const co=d.costOfLiving;
+      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+' (US=100)'},
+        xAxis:{type:'category',data:co.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:20,fontSize:10}},
+        yAxis:{type:'value',...ax,scale:true},
+        series:[{type:'bar',barMaxWidth:34,data:co.values.map(v=>({value:v,itemStyle:{color:v>100?'#D0596B':C.green,borderRadius:[3,3,0,0]}})),label:{show:true,position:'top',formatter:p=>p.value,color:C.slate,fontFamily:F,fontSize:10},
+          markLine:{symbol:'none',silent:true,lineStyle:{color:C.cobalt,type:'dashed',width:1.5},data:[{yAxis:100}],label:{formatter:'U.S. = 100',color:C.cobalt,fontFamily:F,fontWeight:700,position:'insideEndTop'}}}] }); }
+    // labor force participation + unemployment
+    c=this.mk('c-labor'); if(c){ const lf=d.laborForce;
+      c.setOption({ grid:{...grid,right:42}, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
+        legend:{data:['Labor force participation','Unemployment rate'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:18,itemHeight:3},
+        xAxis:{type:'category',data:lf.years,...ax,boundaryGap:false},
+        yAxis:[{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},{type:'value',...ax,position:'right',splitLine:{show:false},axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}}],
+        series:[ {name:'Labor force participation',type:'line',yAxisIndex:0,data:lf.participation,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.18)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
+                 {name:'Unemployment rate',type:'line',yAxisIndex:1,data:lf.unemployment,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3,color:'#D0596B'},itemStyle:{color:'#D0596B'}} ] }); }
+    // occupation profile
+    c=this.mk('c-occ'); if(c){ const rows=[...d.occupations].sort((a,b)=>a.value-b.value);
+      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' workers'},
+        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
+        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:170,overflow:'truncate'}},
+        series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); }
+    // commuting
+    c=this.mk('c-commute'); if(c){ const cm=d.commute;
+      c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${p.value}%</b>`},
+        legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
+        title:{ text:cm.meanTravelMin+' min', subtext:'Mean commute', left:'center', top:'37%', textStyle:{fontFamily:'Barlow Condensed',fontSize:24,color:C.cobalt}, subtextStyle:{fontFamily:F,fontSize:11,color:C.slate} },
+        series:[{type:'pie',radius:['52%','73%'],center:['50%','45%'],itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:this.PALETTE,data:cm.modes}] }); }
+    // new business formations
+    c=this.mk('c-business'); if(c){ const b=d.business;
+      c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
+        xAxis:{type:'category',data:b.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(v)}},
+        series:[{type:'bar',barMaxWidth:26,data:b.formations,itemStyle:{color:C.green,borderRadius:[3,3,0,0]}}] }); }
+    // apprenticeships
+    c=this.mk('c-appr'); if(c){ const a=d.apprenticeships;
+      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)},
+        legend:{data:['Active apprentices','Completions'],top:0,textStyle:{fontFamily:F,color:C.slate}},
+        xAxis:{type:'category',data:a.years,...ax}, yAxis:{type:'value',...ax},
+        series:[ {name:'Active apprentices',type:'bar',barMaxWidth:18,data:a.active,itemStyle:{color:C.blue,borderRadius:[3,3,0,0]}},
+                 {name:'Completions',type:'bar',barMaxWidth:18,data:a.completions,itemStyle:{color:C.green,borderRadius:[3,3,0,0]}} ] }); }
+    // employers list
+    const emp=document.getElementById('c-employers'); if(emp) emp.innerHTML=d.topEmployers.map((e,i)=>`<div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .7rem;background:${i%2?'#fff':'#F8F6F0'};border-radius:7px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:#0A2463;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed';font-weight:700;font-size:.78rem">${i+1}</span><span style="font-weight:600;font-size:.92rem">${e}</span></div>`).join('');
+    requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize()));
+  }
+
+  /* ---------- themes / scenes / rail ---------- */
+  themes(){ return [
+    { id:'th-demo', name:'Demographic Profile', blurb:'Who lives in this geography. These measures describe the size, age, and educational makeup of the population — the foundation for understanding the available workforce and the community it supports.', scenes:[
+      {id:'s-pop', eyebrow:'Population', title:'Population & Age', chart:'c-pyramid',
+       lede:'The age structure sets the stage — a broad working-age core over a slowly aging base shapes housing, schools, and the future labor force.'},
+      {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu',
+       lede:'Educational attainment compared with the state and the nation — a read on the skills supply employers can draw from.'} ]},
+    { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here. Household income, housing tenure and values, and the cost of living together gauge economic well-being and whether wages keep pace with the price of staying in the community.', scenes:[
+      {id:'s-income', eyebrow:'Income', title:'Household Income', chart:'c-income',
+       lede:'How household income is distributed across the community, and where the typical household lands.'},
+      {id:'s-housing', eyebrow:'Housing', title:'Housing Profile', chart:'c-housing',
+       lede:'Owner- versus renter-occupied housing and the typical home value — the backdrop to how affordable it is to live here.'},
+      {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', chart:'c-col',
+       lede:'A cost-of-living index against the U.S. average of 100. Housing usually swings the furthest from the national baseline.'} ]},
+    { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How the community works. Participation and unemployment, the mix of occupations, and commuting patterns show how fully the population is engaged in the labor market and how it connects to jobs.', scenes:[
+      {id:'s-labor', eyebrow:'Participation', title:'Labor Status & Participation', chart:'c-labor',
+       lede:'Labor force participation alongside the unemployment rate over the past decade — who is working, and who is looking.'},
+      {id:'s-occ', eyebrow:'Occupations', title:'Occupation Profile', chart:'c-occ',
+       lede:'The workforce by major occupation group — the mix of roles people actually hold across employers.'},
+      {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', chart:'c-commute',
+       lede:'How people get to work and how far they travel — a signal of regional connectivity and remote-work adoption.'} ]},
+    { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
+      {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', chart:'c-industry',
+       lede:'Employment by industry sector. The largest bars are the region\u2019s economic anchors; the highlighted bar is the single biggest employer of people.'},
+      {id:'s-business', eyebrow:'Formation', title:'New Business Growth', chart:'c-business',
+       lede:'New business formations registered each year — an early indicator of entrepreneurial momentum.'},
+      {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', chart:'c-appr',
+       lede:'Registered apprentices in training and program completions — the earn-while-you-learn pipeline into skilled work.'},
+      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', chart:null,
+       lede:'The organizations that employ the most people across this geography.'} ]}
+  ]; }
+
+  jumpTo(id){ const t=document.getElementById(id); if(!t) return; const y=t.getBoundingClientRect().top+window.pageYOffset-92; window.scrollTo({top:y,behavior:'smooth'}); }
+
+  buildRail(){
+    const el=document.getElementById('rail'); let n=0;
+    let html='<div style="font-family:\'Barlow Condensed\';font-weight:700;font-size:1.05rem;text-transform:uppercase;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
+    // spine container — one continuous vertical line with nodes
+    html+='<div style="position:relative">';
+    html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
+    this.themes().forEach((th,ti)=>{
+      const first='theme-'+th.id;
+      html+=`<div data-theme-node="${th.id}">
+        <div data-theme-head="${th.id}" data-target="${first}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+          <span data-theme-node-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.92rem;height:.92rem;border-radius:50%;background:#0A2463;border:2px solid #F5F1E8;box-shadow:0 0 0 2px #0A2463;transition:.16s"></span>
+          <span data-theme-label style="font-family:'Barlow Condensed';font-weight:700;font-size:1.05rem;letter-spacing:.02em;text-transform:uppercase;color:#0A2463;line-height:1">${th.name}</span>
+          <span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>
+        </div>
+        <ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
+      th.scenes.forEach(s=>{ n++; html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+        <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
+      html+='</ol></div>';
+    });
+    html+='</div>';
+    el.innerHTML=html;
+
+    this.railItems=[...el.querySelectorAll('[data-rail]')];
+    this.themeHeads=[...el.querySelectorAll('[data-theme-head]')];
+    this.collapsed={};
+    // scene click → jump
+    this.railItems.forEach(li=>li.onclick=()=>this.jumpTo(li.dataset.target));
+    // theme head: chevron toggles collapse, label/row jumps
+    this.themeHeads.forEach(head=>{
+      const tid=head.dataset.themeHead;
+      head.onclick=(e)=>{
+        if(e.target.closest('[data-chev]')){ this.toggleTheme(tid); return; }
+        this.jumpTo(head.dataset.target);
+      };
+    });
+    this.railLists={}; el.querySelectorAll('[data-theme-list]').forEach(o=>{ this.railLists[o.dataset.themeList]=o; o.style.maxHeight=o.scrollHeight+'px'; });
+  }
+
+  toggleTheme(tid){
+    const ol=this.railLists[tid]; if(!ol) return;
+    const head=this.themeHeads.find(h=>h.dataset.themeHead===tid);
+    const chev=head&&head.querySelector('[data-chev]');
+    this.collapsed[tid]=!this.collapsed[tid];
+    if(this.collapsed[tid]){ ol.style.maxHeight='0px'; if(chev) chev.style.transform='rotate(-90deg)'; }
+    else { ol.style.maxHeight=ol.scrollHeight+'px'; if(chev) chev.style.transform='none'; }
+  }
+
+  buildScenes(){
+    const el=document.getElementById('scenes'); let html=''; let n=0;
+    const themes=this.themes(); const tot=String(themes.length).padStart(2,'0');
+    themes.forEach((th,ti)=>{
+      const tnum=String(ti+1).padStart(2,'0');
+      // theme banner — clean, full width (no content spine)
+      html+=`<div id="theme-${th.id}" data-theme-anchor="${th.id}" style="padding:${ti===0?'0':'1.6rem'} 0 .6rem;scroll-margin-top:96px">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.15rem">Section ${tnum} of ${tot}</div>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <div style="font-family:'Barlow Condensed';font-weight:800;font-size:1.9rem;text-transform:uppercase;color:#0A2463;line-height:1;white-space:nowrap">${th.name}</div>
+          <div style="flex:1;height:2px;background:linear-gradient(90deg,#3A8A1E,rgba(58,138,30,0))"></div>
+        </div>${th.blurb?`<p style="font-size:1.02rem;color:#5A6472;max-width:74ch;margin-top:.7rem;text-wrap:pretty">${th.blurb}</p>`:''}
+      </div>`;
+      th.scenes.forEach((s,si)=>{ n++;
+        const body = s.id==='s-emp'
+          ? `<div id="c-employers" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.2rem"></div>`
+          : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
+        html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}</div>
+          <h3 style="font-family:'Barlow Condensed';font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem;text-transform:uppercase">${s.title}</h3>
+          <p style="font-size:1.02rem;color:#5A6472;max-width:62ch;margin-bottom:1rem;text-wrap:pretty">${s.lede}</p>
+          ${body}
+        </section>`;
+      });
+    });
+    el.innerHTML=html;
+    this.scenes=[...el.querySelectorAll('[data-scene]')];
+  }
+
+  wireScroll(){
+    const io=new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting){ e.target.style.opacity='1'; e.target.style.transform='none';
+      const id=e.target.id; const activeTheme=e.target.dataset.theme;
+      this.railItems.forEach(li=>{ const on=li.dataset.target===id; li.style.color=on?'#0A2463':'#5A6472'; li.style.fontWeight=on?'700':'400'; li.style.background=on?'#EAF3E4':'transparent'; const dot=li.querySelector('[data-dot]'); if(dot){ dot.style.background=on?'#3A8A1E':'#fff'; dot.style.borderColor=on?'#3A8A1E':'#C4CEDB'; dot.style.boxShadow=on?'0 0 0 3px #EAF3E4':'0 0 0 3px #fff'; } });
+      if(this.themeHeads) this.themeHeads.forEach(h=>{ const on=h.dataset.themeHead===activeTheme; const lab=h.querySelector('[data-theme-label]'); if(lab) lab.style.color=on?'#3A8A1E':'#0A2463'; const nd=h.querySelector('[data-theme-node-dot]'); if(nd){ nd.style.background=on?'#3A8A1E':'#0A2463'; nd.style.boxShadow=on?'0 0 0 2px #3A8A1E':'0 0 0 2px #0A2463'; } });
+      requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize())); } }); },{threshold:.18,rootMargin:'-8% 0px -45% 0px'});
+    this.scenes.forEach(s=>io.observe(s));
+  }
+
+  renderVals(){ return {}; }
+}
+
+/* --- boot -------------------------------------------------------- */
+new Component().componentDidMount();
+</script>
+</body>
+</html>
