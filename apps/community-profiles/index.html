@@ -108,11 +108,16 @@
   <!-- REPORT -->
   <section data-screen-label="Report" style="max-width:1240px;margin:0 auto;padding:2.4rem 1.5rem 4rem">
 
-    <!-- intro + KPI strip -->
-    <div style="border-bottom:1px solid #E2E0D8;padding-bottom:1.6rem;margin-bottom:2rem">
-      <div style="font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.4rem">Community Profile</div>
-      <h2 id="reportTitle" style="font-family:'Barlow Condensed';font-size:clamp(1.9rem,3.4vw,2.8rem);font-weight:800;text-transform:uppercase;color:#0A2463;line-height:1;margin-bottom:1.3rem">—</h2>
-      <div id="kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem"></div>
+    <!-- intro + overview dashboard -->
+    <div data-screen-label="Overview" style="border-bottom:1px solid #E2E0D8;padding-bottom:1.8rem;margin-bottom:2rem">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.3rem">
+        <div>
+          <div style="font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.4rem">Overview · At a glance</div>
+          <h2 id="reportTitle" style="font-family:'Barlow Condensed';font-size:clamp(1.9rem,3.4vw,2.8rem);font-weight:800;text-transform:uppercase;color:#0A2463;line-height:1">—</h2>
+        </div>
+        <div style="font-size:.78rem;color:#5A6472;max-width:40ch;text-wrap:pretty">A high-level snapshot of the selected geography before the detailed profile below.</div>
+      </div>
+      <div id="overview" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:1rem;align-items:stretch"></div>
     </div>
 
     <div style="display:grid;grid-template-columns:236px 1fr;gap:3rem;align-items:start">
@@ -488,23 +493,57 @@ class Component {
       (r.fips.length>1?`<span style="opacity:.45">·</span><span><b style="color:#fff">${r.fips.length}</b> localities</span>`:'')+
       `<span style="opacity:.45">·</span><span>Updated Q4 2025</span>`+
       `<span style="display:inline-block;background:#E8A33D;color:#3a2400;font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.12rem.45rem;border-radius:4px">Illustrative data</span>`;
-    this.renderKpis(d);
+    this.renderOverview(d);
     this.renderCharts(d);
   }
 
-  renderKpis(d){
-    const items=[
-      ['Total population', this.fmt(d.population)],
-      ["Median household income", '$'+this.fmt(d.medianIncome)],
-      ["Bachelor's or higher", d.baPct+'%'],
-      ['Net daily in-commuters', (d.netIn>=0?'+':'')+this.fmt(d.netIn)]
-    ];
-    document.getElementById('kpis').innerHTML=items.map(([l,v],i)=>
-      `<div style="background:#F5F1E8;border:1px solid #E2E0D8;border-radius:10px;padding:1rem 1.1rem">
-        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:2rem;color:${i===2?'#3A8A1E':'#0A2463'};line-height:1">${v}</div>
-        <div style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5A6472;margin-top:.3rem">${l}</div>
-      </div>`).join('');
-    document.getElementById('stickyKpis').innerHTML='';
+  rgba(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+
+  renderOverview(d){
+    const C=this.C, fmt=n=>this.fmt(n);
+    const gdpStr = d.gdp>=1e9 ? '$'+(d.gdp/1e9).toFixed(1)+'B' : d.gdp>=1e6 ? '$'+(d.gdp/1e6).toFixed(0)+'M' : '$'+fmt(d.gdp);
+    const yrs=d.ovYears, span=yrs.length-1;
+    const popGrowthPct=(Math.pow(d.popTrend[span]/d.popTrend[0],1/span)-1)*100;
+    const gdpGrowthPct=(Math.pow(d.gdpTrend[span]/d.gdpTrend[0],1/span)-1)*100;
+    const totJobs=d.industryEmployment.reduce((a,b)=>a+b.value,0);
+    const top3=[...d.industryEmployment].sort((a,b)=>b.value-a.value).slice(0,3);
+    const u=d.unempLatest, uColor = u<=4? C.green : u<=6? '#E8A33D' : '#D0596B';
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.2rem;box-shadow:0 2px 20px rgba(10,36,99,.05);display:flex;flex-direction:column;min-width:0';
+    const eb=t=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.55rem">${t}</div>`;
+    const big='font-family:\'Barlow Condensed\';font-weight:800;font-size:3rem;line-height:.85';
+    const foot='font-size:.72rem;color:#5A6472;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem';
+    const html=`
+      <div style="${card}">
+        ${eb('Unemployment Rate')}
+        <div style="${big};color:${uColor}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
+        <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">Latest · ${d.unempLatestYear}</div>
+      </div>
+      <div style="${card}">
+        ${eb('Gross Domestic Product')}
+        <div style="${big};color:${C.cobalt}">${gdpStr}</div>
+        <div id="ov-gdp-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
+        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${C.green};font-weight:700">▲ ${gdpGrowthPct.toFixed(1)}%/yr</span></div>
+      </div>
+      <div style="${card}">
+        ${eb('Population')}
+        <div style="${big};color:${C.cobalt}">${fmt(d.population)}</div>
+        <div id="ov-pop-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
+        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${popGrowthPct>=0?C.green:'#D0596B'};font-weight:700">${popGrowthPct>=0?'▲':'▼'} ${Math.abs(popGrowthPct).toFixed(1)}%/yr</span></div>
+      </div>
+      <div style="${card}">
+        ${eb('Top 3 Industries')}
+        <div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.05rem">
+          ${top3.map((t,i)=>`<div style="display:flex;align-items:center;gap:.65rem">
+            <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?C.cobalt:'#EDE9DF'};color:${i===0?'#fff':'#5A6472'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed';font-weight:700;font-size:.82rem">${i+1}</span>
+            <span style="min-width:0;flex:1"><span style="display:block;font-family:'Barlow Condensed';font-weight:700;font-size:1.04rem;color:#0A2463;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</span><span style="font-size:.72rem;color:#5A6472">${fmt(t.value)} jobs · ${(t.value/totJobs*100).toFixed(0)}% of employment</span></span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    const el=document.getElementById('overview'); if(el) el.innerHTML=html;
+    const spark=(id,arr,color)=>{ const c=this.mk(id); if(!c) return; c.setOption({ grid:{left:2,right:2,top:6,bottom:4}, xAxis:{type:'category',show:false,boundaryGap:false,data:arr.map((_,i)=>i)}, yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false}, series:[{type:'line',data:arr,smooth:true,symbol:'none',lineStyle:{width:2.5,color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(color,.26)},{offset:1,color:this.rgba(color,0)}])}}] }); };
+    spark('ov-gdp-spark', d.gdpTrend, C.blue);
+    spark('ov-pop-spark', d.popTrend, C.green);
+    const sk=document.getElementById('stickyKpis'); if(sk) sk.innerHTML='';
   }
 
   /* ===================================================================
@@ -536,9 +575,13 @@ class Component {
        unemployment:       {years:[str], msa:[num %], va:[num %], us:[num %]}
        uiPayments:         {years:[str], amount:[int $]}
        educationCompare:   {categories:[str], msa:[num %], va:[num %], us:[num %]}
-       baPct:              int    bachelor's-or-higher share (%)
        medianIncome:       int    median household income ($)
-       netIn:              int    net daily in-commuters (signed)
+       ovYears:            [str]  overview sparkline year axis (2016..2025)
+       popTrend:           [int]  population series over ovYears
+       gdp:                int    latest GDP ($)
+       gdpTrend:           [int]  GDP series over ovYears
+       unempLatest:        num    latest unemployment rate (%)
+       unempLatestYear:    str    year of unempLatest
        topEmployers:       [str]  ranked employer names
        householdIncome:    [{name:str, value:num %}]           income brackets
        housing:            {owner:num %, renter:num %, vacant:num %, medianHomeValue:int $, medianRent:int $}
@@ -586,12 +629,21 @@ class Component {
     const eduCats=['8th Grade or Less','Some High School','High School/GED','Some College','Associate\u2019s','Bachelor\u2019s','Graduate/Professional'];
     const eduBase=[3.5,5.8,26,21,8,22,13.7].map(v=>v*j(0.25)); const es=eduBase.reduce((a,b)=>a+b,0); const msaPct=eduBase.map(v=>+(v/es*100).toFixed(1));
     const vaPct=[3.6,6.1,25.9,21.0,7.9,21.8,13.7]; const usPct=[4.9,6.9,27.0,20.3,8.7,20.2,12.0];
-    const baPct=Math.round(msaPct[5]+msaPct[6]);
     // employers
     const empPool=['Walmart','Amazon','HCA Healthcare','Sentara Health','Bon Secours','Dominion Energy','Bank of America','Capital One','Northrop Grumman','Huntington Ingalls','VCU Health','UVA Health','Carilion Clinic','Food Lion','Kroger','Target','FedEx','UPS','Lowe\u2019s','Booz Allen','Leidos','Navy Federal','Anthem','Costco','Smithfield Foods','Volvo','Micron','Local Public Schools','County Government','Regional Hospital'];
     const pool=empPool.slice(); const topEmployers=[]; for(let i=0;i<12 && pool.length;i++){ topEmployers.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
     const medianIncome=Math.round((58000+rnd()*42000)/500)*500;
-    const netIn=Math.round((rnd()-0.35)*population*0.06);
+    // overview: GDP + population sparkline series + latest unemployment
+    const ovYears=['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+    const popGrow=0.003+rnd()*0.015;
+    const popTrend=ovYears.map((y,i)=>Math.round(population*Math.pow(1+popGrow,(i-(ovYears.length-1)))));
+    const gdpPerWorker=92000+rnd()*78000;
+    const gdpNow=Math.round(jobs*gdpPerWorker);
+    const gdpGrow=0.018+rnd()*0.03;
+    const gdpTrend=ovYears.map((y,i)=>{ let v=gdpNow*Math.pow(1+gdpGrow,(i-(ovYears.length-1))); if(y==='2020') v*=0.965; return Math.round(v); });
+    const gdp=gdpTrend[gdpTrend.length-1];
+    const unempLatest=unemployment.msa[unemployment.msa.length-1];
+    const unempLatestYear=unemployment.years[unemployment.years.length-1];
     // household income distribution
     const incBrackets=['<$25k','$25\u201350k','$50\u201375k','$75\u2013100k','$100\u2013150k','$150\u2013200k','$200k+'];
     const incShift=(medianIncome-78000)/8000;
@@ -641,7 +693,7 @@ class Component {
       rentNow, rentYoY, rentTrend, homeNow, homeYoY, homeTrend,
       burdenCats:['Renting','Owning (mortgage)','Owning (no mortgage)'], burdenRegion, burdenVa:[29.1,21.5,10.4],
       medianIncome, vaMedianIncome, discretionary, vaDiscretionary };
-    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct, us:usPct}, baPct, medianIncome, netIn, topEmployers,
+    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct, us:usPct}, medianIncome, topEmployers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
       householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships, afford };
   }
   /* ===================== END MOCK DATA ===================== */
