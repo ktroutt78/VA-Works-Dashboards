@@ -623,8 +623,26 @@ class Component {
     const business={ years:byrs, formations:byrs.map((y,i)=>Math.round(biz0*(1+i*0.05)*(y>='2021'?1.32:1)*j(0.12))) };
     const ap0=Math.max(40,Math.round(jobs*0.004));
     const apprenticeships={ years:byrs, active:byrs.map((y,i)=>Math.round(ap0*(1+i*0.06)*j(0.12))), completions:byrs.map((y,i)=>Math.round(ap0*0.22*(1+i*0.05)*j(0.14))) };
+    // affordability & housing (section 03) — illustrative, derived from population/housing/medianIncome
+    const avgHHSize=+(2.30+rnd()*0.45).toFixed(2), vaHHSize=2.52;
+    const occupancyRate=+(100-housing.vacant).toFixed(1), vaOccupancy=92.5;
+    const occupied=Math.round(population/avgHHSize);
+    const totalUnits=Math.round(occupied/(occupancyRate/100));
+    const ownPct=Math.round(housing.owner/(housing.owner+housing.renter)*100), rentPct=100-ownPct;
+    const ownCount=Math.round(occupied*ownPct/100), rentCount=occupied-ownCount;
+    const rentNow=housing.medianRent, rentYoY=+(3.5+rnd()*2.5).toFixed(1);
+    const rentTrend=[]; for(let i=0;i<8;i++) rentTrend.push(Math.round(rentNow/Math.pow(1+rentYoY/100,7-i)*j(0.015)));
+    const homeNow=housing.medianHomeValue, homeYoY=+(4+rnd()*2.5).toFixed(1);
+    const homeTrend=[]; for(let i=0;i<8;i++) homeTrend.push(Math.round(homeNow/Math.pow(1+homeYoY/100,7-i)*j(0.012)));
+    const burdenRegion=[ +(28+rnd()*8).toFixed(1), +(20+rnd()*5).toFixed(1), +(9+rnd()*4).toFixed(1) ];
+    const vaMedianIncome=83200, discretionary=Math.round((medianIncome*0.33+(rnd()-0.5)*4000)/100)*100, vaDiscretionary=26100;
+    const afford={ totalUnits, occupied, occupancyRate, occVsVa:+(occupancyRate-vaOccupancy).toFixed(1), vaOccupancy,
+      avgHHSize, vaHHSize, ownPct, rentPct, ownCount, rentCount,
+      rentNow, rentYoY, rentTrend, homeNow, homeYoY, homeTrend,
+      burdenCats:['Renting','Owning (mortgage)','Owning (no mortgage)'], burdenRegion, burdenVa:[29.1,21.5,10.4],
+      medianIncome, vaMedianIncome, discretionary, vaDiscretionary };
     return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct, us:usPct}, baPct, medianIncome, netIn, topEmployers,
-      householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships };
+      householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships, afford };
   }
   /* ===================== END MOCK DATA ===================== */
 
@@ -690,25 +708,49 @@ class Component {
         xAxis:{type:'category',data:d.uiPayments.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v/1e6).toFixed(0)+'M'}},
         series:[{type:'line',data:d.uiPayments.amount,smooth:true,symbol:'circle',symbolSize:7,lineStyle:{width:3.5,color:'#7A2E8E'},itemStyle:{color:'#7A2E8E'},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(122,46,142,.3)'},{offset:1,color:'rgba(122,46,142,0)'}])},
           markPoint:{symbol:'pin',symbolSize:52,data:[{coord:[pi,peak],value:'$'+(peak/1e6).toFixed(0)+'M',itemStyle:{color:'#D0596B'}}],label:{color:'#fff',fontFamily:F,fontWeight:700,fontSize:11}}}] }); }
-    // household income distribution
-    c=this.mk('c-income'); if(c){ const hi=d.householdIncome;
-      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
-        xAxis:{type:'category',data:hi.map(b=>b.name),...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:18,fontSize:10}},
-        yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
-        series:[{type:'bar',barMaxWidth:38,data:hi.map(b=>b.value),itemStyle:{color:C.blue,borderRadius:[3,3,0,0]},label:{show:true,position:'top',formatter:p=>p.value+'%',color:C.slate,fontFamily:F,fontSize:10}}] }); }
-    // housing tenure
-    c=this.mk('c-housing'); if(c){ const h=d.housing;
-      c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${p.value}%</b>`},
-        legend:{bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
-        title:{ text:'$'+fmt(h.medianHomeValue), subtext:'Median home value · $'+fmt(h.medianRent)+'/mo rent', left:'center', top:'37%', textStyle:{fontFamily:'Barlow Condensed',fontSize:24,color:C.cobalt}, subtextStyle:{fontFamily:F,fontSize:11,color:C.slate} },
-        series:[{type:'pie',radius:['54%','75%'],center:['50%','45%'],itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:[C.green,C.blue,'#C4CEDB'],data:[{name:'Owner-occupied',value:h.owner},{name:'Renter-occupied',value:h.renter},{name:'Vacant',value:h.vacant}]}] }); }
-    // cost of living
-    c=this.mk('c-col'); if(c){ const co=d.costOfLiving;
-      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+' (US=100)'},
-        xAxis:{type:'category',data:co.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:20,fontSize:10}},
-        yAxis:{type:'value',...ax,scale:true},
-        series:[{type:'bar',barMaxWidth:34,data:co.values.map(v=>({value:v,itemStyle:{color:v>100?'#D0596B':C.green,borderRadius:[3,3,0,0]}})),label:{show:true,position:'top',formatter:p=>p.value,color:C.slate,fontFamily:F,fontSize:10},
-          markLine:{symbol:'none',silent:true,lineStyle:{color:C.cobalt,type:'dashed',width:1.5},data:[{yAxis:100}],label:{formatter:'U.S. = 100',color:C.cobalt,fontFamily:F,fontWeight:700,position:'insideEndTop'}}}] }); }
+    // ===== Affordability & Housing (section 03) =====
+    const A=d.afford;
+    const setTxt=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
+    const setHtml=(id,h)=>{ const e=document.getElementById(id); if(e) e.innerHTML=h; };
+    const kfmt=n=> n>=1000?(n/1000).toFixed(1)+'k':String(n);
+    // Housing Profile — Group A KPIs
+    setTxt('k-hh-total', fmt(A.totalUnits));
+    setHtml('k-hh-occupied', 'Occupied <b style="color:#1A1A1A">'+fmt(A.occupied)+'</b>');
+    setHtml('k-occ-rate', A.occupancyRate.toFixed(1)+'<span style="font-size:1.1rem">%</span>');
+    const occUp=A.occVsVa>=0;
+    setHtml('k-occ-vsva', '<span style="color:'+(occUp?C.green:'#D0596B')+';font-weight:700">'+(occUp?'▲':'▼')+' '+Math.abs(A.occVsVa).toFixed(1)+' pts</span> vs VA '+A.vaOccupancy+'%');
+    setTxt('k-hhsize', A.avgHHSize.toFixed(2));
+    const dev=Math.abs(A.avgHHSize-A.vaHHSize)<0.15?'little deviation':(A.avgHHSize>A.vaHHSize?'above VA':'below VA');
+    setHtml('k-hhsize-va', 'VA '+A.vaHHSize.toFixed(2)+' <span style="color:#9DB4D6">· '+dev+'</span>');
+    setTxt('k-own-pct', A.ownPct+'%'); setTxt('k-own-cnt', 'Own·'+kfmt(A.ownCount));
+    setTxt('k-rent-pct', A.rentPct+'%'); setTxt('k-rent-cnt', 'Rent·'+kfmt(A.rentCount));
+    setHtml('k-rent-hdr', '<b style="color:#0A2463">$'+fmt(A.rentNow)+'</b>/mo · <span style="color:#3A8A1E;font-weight:700">▲'+A.rentYoY+'%/yr</span>');
+    setHtml('k-home-hdr', '<b style="color:#0A2463">$'+(A.homeNow/1000).toFixed(0)+'k</b> · <span style="color:#3A8A1E;font-weight:700">▲'+A.homeYoY+'%/yr</span>');
+    // Group B — rent & home-price trend lines
+    const ayrs=['2018','2019','2020','2021','2022','2023','2024','2025'];
+    const trendLine=(id,arr,color,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
+      cc.setOption({ grid:{left:6,right:12,top:14,bottom:6,containLabel:true}, tooltip:{trigger:'axis',valueFormatter:vfmt},
+        xAxis:{type:'category',data:ayrs,boundaryGap:false,...ax}, yAxis:{type:'value',scale:true,axisLabel:{...ax.axisLabel,formatter:vfmt},splitLine:ax.splitLine},
+        series:[{type:'line',data:arr,smooth:true,symbol:'circle',symbolSize:5,lineStyle:{width:3,color},itemStyle:{color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:color+'33'},{offset:1,color:color+'00'}])}}] }); };
+    trendLine('c-rent', A.rentTrend, C.green, v=>'$'+fmt(v));
+    trendLine('c-home', A.homeTrend, C.blue, v=>'$'+(v/1000).toFixed(0)+'k');
+    // Group B — housing cost burden vs Virginia (grouped bar + 30% threshold)
+    c=this.mk('c-burden'); if(c) c.setOption({
+      legend:{data:['This region','Virginia'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:16,itemHeight:8},
+      grid:{left:6,right:18,top:38,bottom:6,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'% of income'},
+      xAxis:{type:'category',data:A.burdenCats,...ax,axisLabel:{...ax.axisLabel,fontSize:11,fontWeight:600}},
+      yAxis:{type:'value',max:40,axisLabel:{...ax.axisLabel,formatter:'{value}%'},splitLine:ax.splitLine},
+      series:[ {name:'This region',type:'bar',data:A.burdenRegion,barMaxWidth:38,itemStyle:{color:C.green,borderRadius:[4,4,0,0]},
+          markLine:{symbol:'none',silent:true,data:[{yAxis:30,label:{formatter:'30% cost-burden threshold',color:'#D0596B',fontSize:10,position:'insideEndTop'},lineStyle:{color:'#D0596B',type:'dashed',width:1.5}}]}},
+        {name:'Virginia',type:'bar',data:A.burdenVa,barMaxWidth:38,itemStyle:{color:C.blueBright,borderRadius:[4,4,0,0]}} ] });
+    // Household Income — horizontal compare bars (region vs VA)
+    const compareBar=(id,region,va,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
+      cc.setOption({ grid:{left:6,right:70,top:8,bottom:6,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:vfmt},
+        xAxis:{type:'value',axisLabel:{show:false},splitLine:{show:false},axisLine:{show:false}},
+        yAxis:{type:'category',data:['Virginia','This region'],axisLine:{lineStyle:{color:C.line}},axisLabel:{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600}},
+        series:[{type:'bar',data:[{value:va,itemStyle:{color:C.blueBright}},{value:region,itemStyle:{color:C.green}}],barMaxWidth:30,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>vfmt(p.value),fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,color:C.cobalt}}] }); };
+    compareBar('c-medinc', A.medianIncome, A.vaMedianIncome, v=>'$'+fmt(v));
+    compareBar('c-disc', A.discretionary, A.vaDiscretionary, v=>'$'+fmt(v));
     // labor force participation + unemployment
     c=this.mk('c-labor'); if(c){ const lf=d.laborForce;
       c.setOption({ grid:{...grid,right:42}, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
@@ -753,13 +795,13 @@ class Component {
        lede:'The age structure sets the stage — a broad working-age core over a slowly aging base shapes housing, schools, and the future labor force.'},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu',
        lede:'Educational attainment compared with the state and the nation — a read on the skills supply employers can draw from.'} ]},
-    { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here. Household income, housing tenure and values, and the cost of living together gauge economic well-being and whether wages keep pace with the price of staying in the community.', scenes:[
-      {id:'s-income', eyebrow:'Income', title:'Household Income', chart:'c-income',
-       lede:'How household income is distributed across the community, and where the typical household lands.'},
-      {id:'s-housing', eyebrow:'Housing', title:'Housing Profile', chart:'c-housing',
-       lede:'Owner- versus renter-occupied housing and the typical home value — the backdrop to how affordable it is to live here.'},
-      {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', chart:'c-col',
-       lede:'A cost-of-living index against the U.S. average of 100. Housing usually swings the furthest from the national baseline.'} ]},
+    { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
+      {id:'s-housing', eyebrow:'Census', title:'Housing Profile', custom:'housing',
+       lede:'Households and occupancy, the own-versus-rent split, what each costs over time, and how much of income housing actually consumes.'},
+      {id:'s-income', eyebrow:'Earnings', title:'Household Income', custom:'income',
+       lede:'Median household income and the discretionary income left after typical costs — both benchmarked against Virginia.'},
+      {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', hold:true,
+       lede:'Held for a later release.'} ]},
     { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How the community works. Participation and unemployment, the mix of occupations, and commuting patterns show how fully the population is engaged in the labor market and how it connects to jobs.', scenes:[
       {id:'s-labor', eyebrow:'Participation', title:'Labor Status & Participation', chart:'c-labor',
        lede:'Labor force participation alongside the unemployment rate over the past decade — who is working, and who is looking.'},
@@ -795,7 +837,10 @@ class Component {
           <span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>
         </div>
         <ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
-      th.scenes.forEach(s=>{ n++; html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+      th.scenes.forEach(s=>{ n++;
+        if(s.hold){ html+=`<li style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#B7BEC8;cursor:not-allowed;border-radius:7px;display:flex;align-items:center">
+        <span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px dashed #E2E0D8;box-shadow:0 0 0 3px #F5F1E8"></span><span>${s.title}</span><span style="font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9DB4D6;border:1px solid #E2E0D8;border-radius:4px;padding:.05rem .3rem;margin-left:.4rem">On hold</span></li>`; return; }
+        html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
         <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
       html+='</ol></div>';
     });
@@ -840,9 +885,11 @@ class Component {
           <div style="flex:1;height:2px;background:linear-gradient(90deg,#3A8A1E,rgba(58,138,30,0))"></div>
         </div>${th.blurb?`<p style="font-size:1.02rem;color:#5A6472;max-width:74ch;margin-top:.7rem;text-wrap:pretty">${th.blurb}</p>`:''}
       </div>`;
-      th.scenes.forEach((s,si)=>{ n++;
+      th.scenes.forEach((s,si)=>{ if(s.hold) return; n++;
         const body = s.id==='s-emp'
           ? `<div id="c-employers" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.2rem"></div>`
+          : s.custom==='housing' ? this.housingBody()
+          : s.custom==='income' ? this.incomeBody()
           : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}</div>
@@ -854,6 +901,64 @@ class Component {
     });
     el.innerHTML=html;
     this.scenes=[...el.querySelectorAll('[data-scene]')];
+  }
+
+  /* ---- Affordability & Housing (section 03) custom bodies ---- */
+  housingBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
+    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
+    const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
+    const big="font-family:'Barlow Condensed';font-weight:800;line-height:.9;color:#0A2463";
+    const vs='font-size:.7rem;font-weight:600;color:#5A6472;margin-top:.4rem';
+    const sub='font-size:.64rem;color:#5A6472;font-weight:600';
+    return `
+      <div style="${card};margin-top:.2rem">
+        <div style="${grp}">Households · Census${ln}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem">
+          <div><div style="${eb}">Total Households</div><div id="k-hh-total" style="${big};font-size:2.3rem">—</div><div id="k-hh-occupied" style="${vs}">—</div></div>
+          <div><div style="${eb}">Occupancy Rate</div><div id="k-occ-rate" style="${big};font-size:2.3rem">—</div><div id="k-occ-vsva" style="${vs}">—</div></div>
+          <div><div style="${eb}">Avg Household Size</div><div id="k-hhsize" style="${big};font-size:2.3rem">—</div><div id="k-hhsize-va" style="${vs}">—</div></div>
+          <div><div style="${eb}">Own vs Rent</div>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.1rem">
+              <div><div id="k-own-pct" style="${big};font-size:1.9rem;color:#3A8A1E">—</div><div id="k-own-cnt" style="${sub}">—</div></div>
+              <div style="color:#E2E0D8;font-size:1.5rem">/</div>
+              <div><div id="k-rent-pct" style="${big};font-size:1.9rem;color:#1B4DB1">—</div><div id="k-rent-cnt" style="${sub}">—</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="${card};margin-top:.7rem">
+        <div style="${grp}">Rent vs Own · Census${ln}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-bottom:1rem">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="${eb};margin-bottom:0">Avg Rent · trend</div><div id="k-rent-hdr" style="font-size:.74rem;color:#5A6472">—</div></div>
+            <div id="c-rent" style="width:100%;height:190px"></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="${eb};margin-bottom:0">Avg Home Price · trend</div><div id="k-home-hdr" style="font-size:.74rem;color:#5A6472">—</div></div>
+            <div id="c-home" style="width:100%;height:190px"></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid #EDE9DF;padding-top:.9rem">
+          <div style="${eb}">Housing costs as % of income — vs Virginia</div>
+          <div id="c-burden" style="width:100%;height:300px"></div>
+        </div>
+      </div>`;
+  }
+  incomeBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
+    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
+    const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
+    return `
+      <div style="${card};margin-top:.2rem">
+        <div style="${grp}">Household Income${ln}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem">
+          <div><div style="${eb}">Median HH Income · current vs VA</div><div id="c-medinc" style="width:100%;height:150px"></div></div>
+          <div><div style="${eb}">Discretionary Income · current vs VA</div><div id="c-disc" style="width:100%;height:150px"></div></div>
+        </div>
+      </div>`;
   }
 
   wireScroll(){
