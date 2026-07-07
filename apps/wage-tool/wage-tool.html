@@ -650,7 +650,7 @@
       fatal(
         'Could not load wage data.\n\n' +
         'Looked for:\n' +
-        '  data/wages.json (real Snowflake export)\n' +
+        '  data/wages.json (real WID SQL Server export)\n' +
         '  data/wages.example.json (fallback)\n\n' +
         'If you opened this file via file:// some browsers block fetch().\n' +
         'Run a tiny local server instead:\n' +
@@ -1148,7 +1148,7 @@
       const validIds = new Set(job ? Object.keys(job.areas || {}) : AREAS.map(a => a.id));
       const valid = AREAS.filter(a => validIds.has(a.id));
       if (!valid.length) return currentAreaId; // defensive — shouldn't happen
-      const fallback = valid.find(a => a.id === 'virginia') || valid[0];
+      const fallback = valid.find(a => a.areatype === '01') || valid[0];
       const resolved = validIds.has(currentAreaId) ? currentAreaId : fallback.id;
       // Rebuild options
       tomSelectInstance.clear(true);
@@ -1445,7 +1445,10 @@
     //   'state'  → Virginia statewide fallback when the MSA has no data
     //   null     → nothing for this job at all
     const EMP_MONTHS = (EMP && EMP.meta && EMP.meta.months) || [];
-    const STATE_AREA_ID = 'virginia';
+    // Statewide id comes from the data (areatype '01') — area ids are 6-digit
+    // WID GEOGRAPHIES codes as of the SQL Server export. 'virginia' is the
+    // legacy slug, kept only as a last-resort fallback for the example dataset.
+    const STATE_AREA_ID = (AREAS.find(a => a.areatype === '01') || {}).id || 'virginia';
     function getEmploymentTrend(jobId, areaId) {
       if (!EMP || !EMP.trends) return { trend: null, scope: null };
       const local = EMP.trends[jobId + '__' + areaId];
