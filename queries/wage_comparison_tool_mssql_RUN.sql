@@ -374,14 +374,28 @@ GO
 --   that year's 12 months using a LABORFORCE seasonal weight
 --       w(area, yr, mo) = LaborForce(area, yr, mo) / AVG month LaborForce(area, yr)
 --   UPGRADE vs Snowflake: weights are the AREA'S OWN monthly labor-force
---   seasonality (LABORFORCE has full monthly MSA series — validate P5), not
---   the statewide curve applied to every area. Statewide series still uses
---   statewide weights. Window = 24 months: (target_year - 1)..target_year.
+--   seasonality where LABORFORCE carries it, not the statewide curve applied
+--   to every area. Statewide series uses statewide weights. Window = 24
+--   months: (target_year - 1)..target_year.
 --
---   Missing/suppressed inputs (no EmpCount for a year, or no LF row for a
---   month) emit JSON null at the right index — front-end plots with gaps.
---   Keys exist only for (soc, area) pairs with EmpCount in >= 1 window year;
---   the front-end falls back to the statewide series for absent local keys.
+--   STATEWIDE-CURVE FALLBACK (found on first real export, 2026-07-07): LAUS
+--   files an MSA's monthly series under its PRIMARY state's StFips, so
+--   LABORFORCE at StFips='51' has NO monthly rows for the two MSAs homed in
+--   another state — 028700 Kingsport-Bristol (TN-homed) and 047900
+--   Washington (DC-homed). VA Beach (VA-NC) and Winchester (VA-WV) are
+--   VA-homed and carry their own series. Without a fallback those two areas
+--   emitted all-null series — which the front-end treats as "local data
+--   present" (truthy array) and renders as an empty sparkline INSTEAD of
+--   falling back to statewide. Fix: COALESCE the area's weight with the
+--   statewide weight — the employment LEVEL stays the area's own IOWAGE
+--   count; only the monthly SHAPE borrows the state curve (exactly the
+--   original Snowflake methodology, which applied the state curve to all
+--   areas).
+--
+--   Missing/suppressed inputs (no EmpCount for a year) still emit JSON null
+--   at the right index — front-end plots with gaps. Keys exist only for
+--   (soc, area) pairs with EmpCount in >= 1 window year; the front-end falls
+--   back to the statewide series for absent local keys.
 -- =============================================================================
 
 WITH
@@ -472,16 +486,21 @@ pairs AS (
     WHERE emp IS NOT NULL
 ),
 series AS (
+    -- COALESCE(wt.w, sw.w): statewide-curve fallback for MSAs with no
+    -- StFips-51 LAUS monthly series (028700, 047900 — see header). The
+    -- area's own weight always wins when present.
     SELECT
         p.soc_code, p.area_id, md.seq,
-        CASE WHEN eb.emp IS NULL OR wt.w IS NULL THEN NULL
-             ELSE CAST(ROUND(eb.emp * wt.w, 0) AS INT) END AS val
+        CASE WHEN eb.emp IS NULL OR COALESCE(wt.w, sw.w) IS NULL THEN NULL
+             ELSE CAST(ROUND(eb.emp * COALESCE(wt.w, sw.w), 0) AS INT) END AS val
     FROM pairs p
     CROSS JOIN month_dim md
     LEFT JOIN emp_by_year eb
       ON eb.soc_code = p.soc_code AND eb.area_id = p.area_id AND eb.yr = md.yr
     LEFT JOIN weights wt
       ON wt.area_id = p.area_id AND wt.yr = md.yr AND wt.mo = md.mo
+    LEFT JOIN weights sw
+      ON sw.area_id = '000000' AND sw.yr = md.yr AND sw.mo = md.mo
 ),
 trend_arrays AS (
     SELECT soc_code, area_id,
@@ -514,7 +533,7 @@ SELECT
                              WITHIN GROUP (ORDER BY seq) + ']'
                 FROM month_dim
             ))                                                 AS months,
-            'Annual EmpCount distributed across months using each area''s own monthly labor-force seasonal weight (statewide weights for the statewide series).' AS notes
+            'Annual EmpCount distributed across months using each area''s own monthly labor-force seasonal weight; statewide weights for the statewide series and for MSAs without a StFips-51 LAUS monthly series (Kingsport-Bristol, Washington).' AS notes
         FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
     )) AS meta,
     JSON_QUERY(tb.blob) AS trends

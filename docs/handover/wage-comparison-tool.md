@@ -77,6 +77,8 @@ jobs[].areas — keyed object:
 
 Methodology: annual `IOWAGE.EmpCount` for each (soc, area, year) is distributed across that year's months by the area's own labor-force seasonal weight — `LaborForce(area,yr,mo) / AVG month LaborForce(area,yr)` from unadjusted (`Adjusted='0'`) monthly (`PeriodType='03'`) LABORFORCE rows. Missing inputs emit `null` at the correct index. Keys exist only for pairs with EmpCount in ≥1 window year; the front-end falls back to the statewide series otherwise.
 
+**Statewide-curve fallback**: LAUS files each MSA's monthly series under its *primary* state's StFips, so Kingsport-Bristol (TN-homed) and Washington (DC-homed) have no `StFips='51'` monthly rows. For those two areas the series `COALESCE`s to the statewide seasonal weight — the employment *level* is still the MSA's own IOWAGE count; only the monthly *shape* borrows the state curve (the original Snowflake export applied the state curve to every area). Without this, those areas emitted all-null series, which the front-end treats as present-but-empty local data instead of falling back to statewide. Found and fixed on the first real export (2026-07-07).
+
 ---
 
 ## Part 3 — Data model (join keys)
@@ -112,7 +114,7 @@ Statewide anchor: `Area='000000'` (the `'000051'` GEOGRAPHIES row is a phantom d
 | P3 | IOWAGE MSA grain: 11 whole MSAs; years {2021,2023,2024,2025} — **no 2022**; 2024 richest | ✅ CONFIRMED 2026-07-07 (first run) | 874 occs / 41,858 rows in 2024; 2025 partial (764 occs) |
 | P3b | Year↔vintage matrix in IOWAGE | ✅ CONFIRMED 2026-07-07 (first run) — **anchor is load-bearing** | 2021/2023 → `'2001'`; 2024/2025 → `'2301'`. Per-Area MAX would have dropped 2021+2023 from the trend; keep the per-(Area, PeriodYear) anchor |
 | P4 | `ONETAlternativeTitles`: 57,543 rows, `ONETCodeType='12'`, 8-digit unpunctuated `ONETCode`, `ONETJobTitle` populated | ✅ CONFIRMED 2026-07-07 (first run) | len(ONETCode)=8 exactly, 0 null titles; supersedes the employer doc's "crosswalk not loaded" note |
-| P5 | LABORFORCE monthly MSA series: `PeriodType='03'`, 12 periods | ✅ CONFIRMED 2026-07-07 (first run) | 12 MSAs at StFips 51, 2010–2026; covers all 11 IOWAGE MSAs |
+| P5 | LABORFORCE monthly MSA series: `PeriodType='03'`, 12 periods | ✅ CONFIRMED 2026-07-07 (first run), **with correction** | 12 MSAs at StFips 51, 2010–2026 — but LAUS homes each MSA under its primary state, so Kingsport-Bristol (TN) and Washington (DC) have no StFips-51 monthly rows. Q2 uses the statewide seasonal curve for those two (P5b matrix) |
 | P6 | Every IOWAGE '31' area resolves to a GEOGRAPHIES label | ✅ CONFIRMED 2026-07-07 (first run) | 0 unresolved rows; code-as-label fallback should never fire |
 | P7 | Statewide IOWAGE rows exclusively `Area='000000'` in the scan window | ✅ CONFIRMED 2026-07-07 (first run) | 231,736 rows, only `000000` |
 | P8 | Post-run JSON smoke tests | ⚠️ Run after each refresh | See `_validate.sql` P8 checklist |

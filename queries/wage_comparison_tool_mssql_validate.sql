@@ -129,8 +129,29 @@ FROM WID.dbo.LABORFORCE lf
 WHERE lf.StFips = '51' AND lf.AreaType = '31'
 GROUP BY lf.PeriodType;
 -- RESULTS LOG P5 (2026-07-07, first run): CONFIRMED — PeriodType='03'
--- monthly, 12 periods, 2010–2026, 12 MSAs at StFips='51' (covers all 11
--- IOWAGE MSAs). PeriodType='01' annual also present — unused.
+-- monthly, 12 periods, 2010–2026, 12 MSAs at StFips='51'. PeriodType='01'
+-- annual also present — unused.
+-- CORRECTION (2026-07-07, first Q2 export): the 12 StFips-51 MSAs do NOT
+-- cover all 11 IOWAGE MSAs. LAUS files an MSA's monthly series under its
+-- PRIMARY state's StFips, so 028700 Kingsport-Bristol (TN-homed) and 047900
+-- Washington (DC-homed) have no StFips-51 monthly rows — their Q2 series
+-- came out all-null. RUN.sql Q2 now falls back to the statewide seasonal
+-- curve for areas with no own weights (COALESCE in the series CTE). Run P5b
+-- to see the coverage matrix.
+
+-- ─── P5b: which IOWAGE MSAs have their own StFips-51 LAUS monthly series ────
+-- Expect 9 of the 11 ('y'), with 028700 and 047900 as 'n' (statewide-curve
+-- fallback applies to those two).
+SELECT w.Area,
+       CASE WHEN EXISTS (
+           SELECT 1 FROM WID.dbo.LABORFORCE lf
+           WHERE lf.StFips = '51' AND lf.AreaType = '31'
+             AND lf.PeriodType = '03' AND lf.Area = w.Area
+       ) THEN 'y' ELSE 'n' END AS has_own_monthly_lf
+FROM (SELECT DISTINCT Area FROM WID.dbo.IOWAGE
+      WHERE StFips = '51' AND AreaType = '31' AND Area NOT LIKE 'S%') w
+ORDER BY w.Area;
+-- RESULTS LOG P5b: OPEN — record the y/n matrix; expected 9y / 2n as above.
 
 
 -- ─── P6: label coverage — IOWAGE MSAs missing from GEOGRAPHIES — OPEN ───────
@@ -174,6 +195,9 @@ GROUP BY w.Area;
 --    (spot-check 29-1141 Registered Nurses — expect "RN"-style alternates).
 -- 4. employment_trend.json: meta.months = 24 entries '2023-01'..'2024-12';
 --    every trends key matches ^\d{2}-\d{4}__(\d{6})$; statewide series
---    present for high-employment SOCs.
+--    present for high-employment SOCs; ZERO all-null series (all-null =
+--    statewide-curve fallback regressed — the front-end treats a present key
+--    as local data and would render an empty sparkline). Kingsport (028700)
+--    and Washington (047900) series must be populated via the fallback.
 -- 5. Cross-file: every area id referenced in a trends key exists in
 --    wages.json areas[] (id migration keeps both files in lockstep).
