@@ -31,6 +31,8 @@ Most likely root cause: the SOCCodes load used an outdated SOC-2018 snapshot pre
 
 **Affects.** **Employer Wage Tool** `wages.json` — the 5 SOCs above emit with `label = STUFF(soc_code, 3, 0, '-')` (the hyphenated SOC-6 fallback like `"21-1018"`) instead of the human title. The Q1 SELECT uses `COALESCE(sd.soc_title, hyphenated soc_code)`, so these rows render with code labels until the dim is reloaded. The `data/soc-titles.json` client-side fallback covers these 5 SOCs with human titles, so the UI stays usable in the interim — but the SQL-emitted JSON has the codes.
 
+Also affects (confirmed 2026-07-07 on the first real export): **Wage Comparison Tool** `wages.json` — the same 5 SOCs render with code labels in the job-search dropdown, and they carry **empty `aliases` arrays** too (`ONETAlternativeTitles` keys to real O*NET-SOC codes, so the hybrid codes get no alias hits — they're the 5 of 777 jobs without aliases). Unlike the employer tool, this tool has **no client-side title fallback**, so the codes are user-visible until the dim reload. Same fix clears both tools.
+
 **Requested action.** Reload `WID.dbo.SOCCodes` from the current BLS SOC-2018 reference file. Verify the 5 codes above appear with their published titles. No SQL changes downstream — the existing `soc_dim` JOIN starts emitting the titles automatically on the next refresh after the dim updates.
 
 ---
