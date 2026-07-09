@@ -78,9 +78,53 @@ wrong-but-real is name-level validation of every crosswalk at probe time,
 plus aggregate spot-checks against published figures (the smoke tests
 checked counts and one county rate, not MSA member identity).
 
+## Update 2026-07-09 — P9 results, reconciliation, and the S-prefix reframe
+
+**P9 CONFIRMED (client run):** the member-state column is `SubStFips`
+(char(2) NOT NULL, ordinal 5). Pinning `StFips='51' AND SubStFips='51'` on
+Washington returns exactly the 17 genuine VA-part members, zero intruders —
+the two-predicate fix is proven correct for MEMBERSHIP. Single vintage on
+this install (2301/0000); no vintage anchor needed — this is NOT the
+front-page multi-vintage mechanism.
+
+**Virginia Beach reconciliation (corrects the table above):** the "18
+members with 3 intruders" figure is the **defect's emitted count** — the
+whole-MSA distinct-member list under StFips 51 is 18 (15 VA + Camden,
+Currituck, Gates NC), and Gates NC (`'000073'`) collides **onto the real
+member Gloucester**, producing a visible duplicate in the emitted fips array
+rather than 18 distinct localities. **15 is the true VA-part member count.**
+All-11 VA-part counts: Blacksburg 5, Charlottesville 5, Harrisonburg 2,
+Kingsport-Bristol 3, Lynchburg 5, Richmond 17, Roanoke 6, Staunton 3,
+Virginia Beach 15, Washington 17, Winchester 2 — 80 localities total.
+
+**Storage model (proven by the 129-row identity):** whole-MSA parents
+replicate the FULL member list under every asking state's StFips (Washington:
+92 rows = 23 x 4); S-part parents (S47900 etc.) list each member ONCE under
+the member's own StFips. P8's 129 member rows at StFips 51 decompose exactly
+as 43 (7 single-state MSAs) + 49 (4 whole multi-state copies) + 37 (4
+S-twins' VA members) — no other composition fits. The undocumented 92→23
+collapse in RUN.sql is therefore the `sg.StFips='51'` predicate selecting
+Virginia's whole-MSA copy; `county_dim` dropped nothing (23 in → 23 out) and
+no DISTINCT exists downstream (the duplicate Gloucester proves it).
+
+**S-prefix finding:** S-areas are the OMB state-part delineation
+(GEOGRAPHIES names them, e.g. S47900 "Washington … VA Part" — wage tool P2,
+client-confirmed 2026-07-07). Only the 4 multi-state MSAs have S-twins.
+**The tranche-1 smoke test S6 ("no S-part MSAs = PASS") was inherited from
+the wage tool's whole-MSA model and is WRONG for this VA-scoped app** — for
+community profiles the S-areas may be the authoritative fact source: if
+LABORFORCE/INDUSTRY carry S-area rows under StFips 51, MSA profiles read
+**published VA-part aggregates natively** and the mixed-grain COALESCE
+problem dissolves instead of needing a fallback rule.
+
 ## Fix (blocked, not designed here)
 
-Awaiting P9 (member-state column name), P10 (exact fall-through list), P11
-(native grain semantics). The fix will at minimum constrain `msa_members` to
-VA sub-areas and re-emit profiles.json; it must also resolve the
-mixed-grain COALESCE question before re-shipping MSA unemployment.
+Membership is settled (two predicates, or equivalently the S-twin member
+lists). Awaiting the REWRITTEN probes in
+`queries/community_profiles_mssql_validate_r4.sql`: P10 (S-aware fact-row
+sweep — enumerate ALL '31' areas incl. `S%` by name, verdict table per
+multi-state MSA per fact table), P11 (three-way grain comparison: whole
+native vs S-part native vs correct-membership VA rollup, Richmond as
+control), P12 (Calvert MD delineation check — parked, non-blocking). The fix
+must choose ONE grain per emitted field from what P10/P11 show, re-emit
+profiles.json, and re-run name-level membership validation before install.
