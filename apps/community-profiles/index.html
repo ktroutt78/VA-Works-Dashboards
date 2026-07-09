@@ -194,6 +194,13 @@ class Component {
     this.vaGeoms = topo.objects.counties.geometries.filter(g=>String(g.id).startsWith('51'));
     let fc = window.topojson.feature(topo, topo.objects.counties);
     this.features = fc.features.filter(f=>String(f.id).startsWith('51'));
+    // Real data (tranche 1): data/profiles.json emitted by
+    // queries/community_profiles_mssql_RUN.sql — {meta, regions:{lwda,msa},
+    // profiles:[{id, ...real contract fields}]}. Missing/unfetchable file
+    // degrades gracefully to full illustrative data + fallback regions.
+    this.profileData=null;
+    try{ const pr=await fetch('data/profiles.json'); if(pr.ok) this.profileData=await pr.json(); }catch(e){}
+    this.profiles={}; ((this.profileData&&this.profileData.profiles)||[]).forEach(p=>{ this.profiles[p.id]=p; });
     // build registry + geometry helpers
     this.prepFeatures();
     this.buildRegions();
@@ -233,8 +240,6 @@ class Component {
       const cx=(f._cx-minx)/(W+eps), cy=(maxy-f._cy)/(H+eps); // cy 0=north
       const gcol=Math.min(2,Math.floor(cx*3)), grow=Math.min(2,Math.floor(cy*3));
       f._gov = grow*3+gcol+1; // 1..9
-      const lcol=Math.min(4,Math.floor(cx*5)), lrow=Math.min(2,Math.floor(cy*3));
-      f._lwda = lrow*5+lcol+1; // 1..15
     });
   }
 
@@ -247,17 +252,27 @@ class Component {
     // STATE
     push({ id:'state', type:'State', name:'Commonwealth of Virginia', fips:F.map(f=>String(f.id)) });
 
-    // MSAs (curated, real-ish membership by FIPS)
-    const MSA={
-      'msa-richmond':['Richmond MSA',['51760','51087','51041','51085','51075','51145','51036','51127','51570','51730','51149','51053','51670','51181','51007','51049','51101']],
-      'msa-hamptonroads':['Virginia Beach–Norfolk–Newport News MSA',['51810','51710','51700','51650','51740','51800','51550','51735','51830','51095','51199','51093','51073','51115','51175','51620']],
-      'msa-nova':['Washington–Arlington–Alexandria MSA (VA)',['51013','51510','51059','51600','51610','51153','51683','51685','51107','51179','51177','51630','51061','51187','51043','51157','51139']],
-      'msa-roanoke':['Roanoke MSA',['51770','51161','51775','51067','51023','51045']],
-      'msa-charlottesville':['Charlottesville MSA',['51540','51003','51065','51079','51125']],
-      'msa-lynchburg':['Lynchburg MSA',['51680','51009','51011','51019','51031']],
-      'msa-blacksburg':['Blacksburg–Christiansburg MSA',['51121','51071','51155','51750']]
-    };
-    Object.keys(MSA).forEach(id=>push({ id, type:'Metro Area (MSA)', name:MSA[id][0], fips:exist(MSA[id][1]) }));
+    // MSAs — dim-derived from profiles.json regions.msa (GEOGRAPHIES AreaType
+    // '31', whole MSAs, labels @MAX vintage; ids = 6-digit Area codes, which
+    // are also the profile lookup keys). The hand-curated list below survives
+    // ONLY as an offline/dev fallback when profiles.json is unavailable —
+    // its slug ids match no profile, so fallback regions show illustrative
+    // data with badges, which is the honest degradation.
+    const rMSA=this.profileData&&this.profileData.regions&&this.profileData.regions.msa;
+    if(rMSA&&rMSA.length){
+      rMSA.forEach(m=>push({ id:m.id, type:'Metro Area (MSA)', name:m.name, fips:exist(m.fips) }));
+    } else {
+      const MSA={
+        'msa-richmond':['Richmond MSA',['51760','51087','51041','51085','51075','51145','51036','51127','51570','51730','51149','51053','51670','51181','51007','51049','51101']],
+        'msa-hamptonroads':['Virginia Beach–Norfolk–Newport News MSA',['51810','51710','51700','51650','51740','51800','51550','51735','51830','51095','51199','51093','51073','51115','51175','51620']],
+        'msa-nova':['Washington–Arlington–Alexandria MSA (VA)',['51013','51510','51059','51600','51610','51153','51683','51685','51107','51179','51177','51630','51061','51187','51043','51157','51139']],
+        'msa-roanoke':['Roanoke MSA',['51770','51161','51775','51067','51023','51045']],
+        'msa-charlottesville':['Charlottesville MSA',['51540','51003','51065','51079','51125']],
+        'msa-lynchburg':['Lynchburg MSA',['51680','51009','51011','51019','51031']],
+        'msa-blacksburg':['Blacksburg–Christiansburg MSA',['51121','51071','51155','51750']]
+      };
+      Object.keys(MSA).forEach(id=>push({ id, type:'Metro Area (MSA)', name:MSA[id][0], fips:exist(MSA[id][1]) }));
+    }
 
     // GO Virginia — official 9-region composition by locality FIPS
     const P=a=>a.map(x=>'51'+x);
@@ -275,9 +290,42 @@ class Component {
     const GNAME={1:'Southwest Virginia',2:'Roanoke & New River Valley',3:'Southern Virginia',4:'Greater Richmond & Crater',5:'Hampton Roads',6:'Northern Neck & Fredericksburg',7:'Northern Virginia',8:'Shenandoah Valley',9:'Central Virginia & Piedmont'};
     for(let n=1;n<=9;n++){ push({ id:'gov-'+n, type:'GO Virginia Region', name:'GO Virginia Region '+n, sub:GNAME[n], fips:exist(P(GOVA[n])) }); }
 
-    // LWDA (grid-derived)
-    const LW=['Capital Region','Hampton Roads','Northern Virginia','Greater Richmond','Shenandoah Valley','Piedmont Crescent','Southwest Virginia','New River / Mount Rogers','West Piedmont','South Central','Crater Area','Bay Consortium','Greater Peninsula','Western Virginia','Valley Workforce'];
-    for(let n=1;n<=15;n++){ const fips=F.filter(f=>f._lwda===n).map(f=>String(f.id)); push({ id:'lwda-'+n, type:'Local Workforce Area (LWDA)', name:(LW[n-1]||('Local Area '+n))+' LWDA', fips }); }
+    // LWDA — dim-derived from profiles.json regions.lwda (SUBGEOGRAPHIES
+    // AreaType '15'; ids = 6-digit GEOGRAPHIES.Area codes = profile lookup
+    // keys). 51515 Bedford City reverted to Bedford County (51019) in 2013 —
+    // WID has no such locality; it rides along in Central Region (000447) as
+    // display geometry only so the LWDA map has no hole. No data keys to it.
+    // The hard-coded composition below (same probe-verified data, 2026-07-09)
+    // survives ONLY as an offline/dev fallback.
+    const rLW=this.profileData&&this.profileData.regions&&this.profileData.regions.lwda;
+    if(rLW&&rLW.length){
+      rLW.forEach(l=>{
+        const fips=exist(l.fips.slice());
+        if(l.id==='000447'&&byFips['51515']&&fips.indexOf('51515')<0) fips.push('51515');
+        push({ id:l.id, type:'Local Workforce Area (LWDA)', name:l.name, fips });
+      });
+    } else {
+    const LWDA={
+      '000441':['Southwest Region (LWDA I)',['027','051','105','167','169','185','195','720']],
+      '000442':['New River/Mt. Rogers Region (LWDA II)',['021','035','063','071','077','121','155','173','191','197','520','640','750']],
+      '000443':['Greater Roanoke Region (LWDA III)',['005','023','045','067','161','580','770','775']],
+      '000444':['Shenandoah Valley Region (LWDA IV)',['015','017','043','069','091','139','163','165','171','187','530','660','678','790','820','840']],
+      '000446':['Piedmont Region (LWDA VI)',['003','047','061','065','079','109','113','125','137','157','540']],
+      // 51515 Bedford City reverted to Bedford County (51019) in 2013 — WID has
+      // no such locality; it rides along here as display geometry only so the
+      // LWDA map has no hole. No data will ever key to it.
+      '000447':['Central Region (LWDA VII)',['009','011','019','031','515','680']],
+      '000448':['South Central Region (LWDA VIII)',['007','025','029','037','049','083','111','117','135','147']],
+      '000449':['Capital Region (LWDA IX)',['036','041','075','085','087','127','145','760']],
+      '000451':['Northern Region (LWDA XI)',['059','107','153','600','610','683','685']],
+      '000452':['Alexandria/Arlington Region (LWDA XII)',['013','510']],
+      '000453':['Bay Consortium Region (LWDA XIII)',['033','057','073','097','099','101','103','115','119','133','159','177','179','193','630']],
+      '000455':['Crater Region (LWDA V)',['053','081','149','181','183','570','595','670','730']],
+      '000456':['Hampton Roads (LWDA XIV)',['001','093','095','131','175','199','550','620','650','700','710','735','740','800','810','830']],
+      '000457':['West Piedmont Region (LWDA X)',['089','141','143','590','690']]
+    };
+    Object.keys(LWDA).forEach(id=>push({ id, type:'Local Workforce Area (LWDA)', name:LWDA[id][0], fips:exist(P(LWDA[id][1])) }));
+    }
 
     // Counties / cities (all)
     F.slice().sort((a,b)=>a.properties.pretty.localeCompare(b.properties.pretty)).forEach(f=>{
@@ -482,6 +530,12 @@ class Component {
     setTimeout(()=>{this.heroChart.resize();this.miniChart.resize();},30);
     this.updateLevelToolbar();
     const d=this.genData(r);
+    // Merge real fields from profiles.json over the illustrative baseline.
+    // Whatever the profile carries is real; everything else stays generated.
+    // Per-chart badges key off realFields (updateBadges below).
+    const real=this.profiles&&this.profiles[r.id];
+    this.realFields=new Set();
+    if(real){ Object.keys(real).forEach(k=>{ if(k!=='id'&&real[k]!=null){ d[k]=real[k]; this.realFields.add(k); } }); }
     this.data=d;
     // labels
     const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
@@ -494,13 +548,25 @@ class Component {
       `<span style="font-family:'Barlow Condensed';font-weight:700;font-size:1rem;color:#fff;letter-spacing:.02em">${r.name}</span>`+
       (r.sub?`<span style="opacity:.85">${r.sub}</span>`:'')+
       (r.fips.length>1?`<span style="opacity:.45">·</span><span><b style="color:#fff">${r.fips.length}</b> localities</span>`:'')+
-      `<span style="opacity:.45">·</span><span>Updated Q4 2025</span>`+
-      `<span style="display:inline-block;background:#E8A33D;color:#3a2400;font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.12rem.45rem;border-radius:4px">Illustrative data</span>`;
+      `<span style="opacity:.45">·</span><span>${this.profileData&&this.profileData.meta&&this.profileData.meta.generated?'Data refreshed '+this.profileData.meta.generated:'Updated Q4 2025'}</span>`;
     this.renderOverview(d);
     this.renderCharts(d);
+    this.updateBadges();
   }
 
   rgba(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16); return `rgba(${r},${g},${b},${a})`; }
+
+  /* Per-chart provenance: a scene's badge hides only when EVERY contract
+     field it draws from came from profiles.json for the selected region
+     (replaces the old global hero "Illustrative data" chip). */
+  updateBadges(){
+    const rf=this.realFields||new Set();
+    document.querySelectorAll('[data-scene-badge]').forEach(b=>{
+      const fields=(b.dataset.fields||'').split(',').filter(Boolean);
+      const allReal=fields.length>0 && fields.every(f=>rf.has(f));
+      b.style.display=allReal?'none':'inline-block';
+    });
+  }
 
   renderOverview(d){
     const C=this.C, fmt=n=>this.fmt(n);
@@ -512,29 +578,31 @@ class Component {
     const top3=[...d.industryEmployment].sort((a,b)=>b.value-a.value).slice(0,3);
     const u=d.unempLatest, uColor = u<=4? C.green : u<=6? '#E8A33D' : '#D0596B';
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.2rem;box-shadow:0 2px 20px rgba(10,36,99,.05);display:flex;flex-direction:column;min-width:0';
-    const eb=t=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.55rem">${t}</div>`;
+    const rf=this.realFields||new Set();
+    const chip=fields=>fields.every(f=>rf.has(f))?'':`<span style="background:#E8A33D;color:#3a2400;font-size:.56rem;font-weight:700;letter-spacing:.05em;padding:.1rem .4rem;border-radius:4px;margin-left:.5rem;vertical-align:1px">Illustrative</span>`;
+    const eb=(t,fields)=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.55rem">${t}${fields?chip(fields):''}</div>`;
     const big='font-family:\'Barlow Condensed\';font-weight:800;font-size:3rem;line-height:.85';
     const foot='font-size:.72rem;color:#5A6472;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem';
     const html=`
       <div style="${card}">
-        ${eb('Unemployment Rate')}
+        ${eb('Unemployment Rate',['unempLatest'])}
         <div style="${big};color:${uColor}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
         <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">Latest · ${d.unempLatestYear}</div>
       </div>
       <div style="${card}">
-        ${eb('Gross Domestic Product')}
+        ${eb('Gross Domestic Product',['gdp','gdpTrend'])}
         <div style="${big};color:${C.cobalt}">${gdpStr}</div>
         <div id="ov-gdp-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
         <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${C.green};font-weight:700">▲ ${gdpGrowthPct.toFixed(1)}%/yr</span></div>
       </div>
       <div style="${card}">
-        ${eb('Population')}
+        ${eb('Population',['population','popTrend'])}
         <div style="${big};color:${C.cobalt}">${fmt(d.population)}</div>
         <div id="ov-pop-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
         <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${popGrowthPct>=0?C.green:'#D0596B'};font-weight:700">${popGrowthPct>=0?'▲':'▼'} ${Math.abs(popGrowthPct).toFixed(1)}%/yr</span></div>
       </div>
       <div style="${card}">
-        ${eb('Top 3 Industries')}
+        ${eb('Top 3 Industries',['industryEmployment'])}
         <div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.05rem">
           ${top3.map((t,i)=>`<div style="display:flex;align-items:center;gap:.65rem">
             <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?C.cobalt:'#EDE9DF'};color:${i===0?'#fff':'#5A6472'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed';font-weight:700;font-size:.82rem">${i+1}</span>
@@ -550,13 +618,17 @@ class Component {
   }
 
   /* ===================================================================
-     MOCK DATA — replace with SQL
+     MOCK DATA — illustrative baseline under the profiles.json merge
      -------------------------------------------------------------------
      Everything from here to "END MOCK DATA" is ILLUSTRATIVE placeholder.
-     There is no backend. genData(region) is the SINGLE swap seam: to wire
-     real LMI data, replace genData's body with a query/fetch that returns
-     an object with the SAME field names, types, and grain documented below
-     — every KPI and chart then updates with no other code change.
+     Real data ships alongside it: selectRegion() deep-merges the region's
+     record from data/profiles.json (emitted by
+     queries/community_profiles_mssql_RUN.sql) OVER this generated object.
+     Any contract field present in the profile is real; the rest stays
+     generated, and per-chart "Illustrative" badges (updateBadges) tell the
+     reader which is which. As the SQL grows, fields retire from genData one
+     at a time — same names, types, and grain as documented below.
+     Real today (tranche 1): unempLatest, unempLatestYear, industryEmployment.
 
      hash()/rng()/countyPop() are deterministic-RNG plumbing used only to
      fabricate stable per-region placeholder numbers; they retire with the
@@ -846,32 +918,32 @@ class Component {
   /* ---------- themes / scenes / rail ---------- */
   themes(){ return [
     { id:'th-demo', name:'Demographic Profile', blurb:'Who lives in this geography. These measures describe the size, age, and educational makeup of the population — the foundation for understanding the available workforce and the community it supports.', scenes:[
-      {id:'s-pop', eyebrow:'Population', title:'Population & Age', chart:'c-pyramid',
+      {id:'s-pop', eyebrow:'Population', title:'Population & Age', chart:'c-pyramid', fields:['ageCohorts'],
        lede:'The age structure sets the stage — a broad working-age core over a slowly aging base shapes housing, schools, and the future labor force.'},
-      {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu',
+      {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
        lede:'Educational attainment compared with the state and the nation — a read on the skills supply employers can draw from.'} ]},
     { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
-      {id:'s-housing', eyebrow:'Census', title:'Housing Profile', custom:'housing',
+      {id:'s-housing', eyebrow:'Census', title:'Housing Profile', custom:'housing', fields:['afford'],
        lede:'Households and occupancy, the own-versus-rent split, what each costs over time, and how much of income housing actually consumes.'},
-      {id:'s-income', eyebrow:'Earnings', title:'Household Income', custom:'income',
+      {id:'s-income', eyebrow:'Earnings', title:'Household Income', custom:'income', fields:['afford'],
        lede:'Median household income and the discretionary income left after typical costs — both benchmarked against Virginia.'},
       {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', hold:true,
        lede:'Held for a later release.'} ]},
     { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How the community works. Participation and unemployment, the mix of occupations, and commuting patterns show how fully the population is engaged in the labor market and how it connects to jobs.', scenes:[
-      {id:'s-labor', eyebrow:'Participation', title:'Labor Status & Participation', chart:'c-labor',
+      {id:'s-labor', eyebrow:'Participation', title:'Labor Status & Participation', chart:'c-labor', fields:['laborForce'],
        lede:'Labor force participation alongside the unemployment rate over the past decade — who is working, and who is looking.'},
-      {id:'s-occ', eyebrow:'Occupations', title:'Occupation Profile', chart:'c-occ',
+      {id:'s-occ', eyebrow:'Occupations', title:'Occupation Profile', chart:'c-occ', fields:['occupations'],
        lede:'The workforce by major occupation group — the mix of roles people actually hold across employers.'},
-      {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', chart:'c-commute',
+      {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', chart:'c-commute', fields:['commute'],
        lede:'How people get to work and how far they travel — a signal of regional connectivity and remote-work adoption.'} ]},
     { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
-      {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', chart:'c-industry',
+      {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', chart:'c-industry', fields:['industryEmployment'],
        lede:'Employment by industry sector. The largest bars are the region\u2019s economic anchors; the highlighted bar is the single biggest employer of people.'},
-      {id:'s-business', eyebrow:'Formation', title:'New Business Growth', chart:'c-business',
+      {id:'s-business', eyebrow:'Formation', title:'New Business Growth', chart:'c-business', fields:['business'],
        lede:'New business formations registered each year — an early indicator of entrepreneurial momentum.'},
-      {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', chart:'c-appr',
+      {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', chart:'c-appr', fields:['apprenticeships'],
        lede:'Registered apprentices in training and program completions — the earn-while-you-learn pipeline into skilled work.'},
-      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', chart:null,
+      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', chart:null, fields:['topEmployers'],
        lede:'The organizations that employ the most people across this geography.'} ]}
   ]; }
 
@@ -947,7 +1019,7 @@ class Component {
           : s.custom==='income' ? this.incomeBody()
           : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
-          <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}</div>
+          <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
           <h3 style="font-family:'Barlow Condensed';font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem;text-transform:uppercase">${s.title}</h3>
           <p style="font-size:1.02rem;color:#5A6472;max-width:62ch;margin-bottom:1rem;text-wrap:pretty">${s.lede}</p>
           ${body}
