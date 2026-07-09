@@ -548,7 +548,9 @@ class Component {
       `<span style="font-family:'Barlow Condensed';font-weight:700;font-size:1rem;color:#fff;letter-spacing:.02em">${r.name}</span>`+
       (r.sub?`<span style="opacity:.85">${r.sub}</span>`:'')+
       (r.fips.length>1?`<span style="opacity:.45">·</span><span><b style="color:#fff">${r.fips.length}</b> localities</span>`:'')+
-      `<span style="opacity:.45">·</span><span>${this.profileData&&this.profileData.meta&&this.profileData.meta.generated?'Data refreshed '+this.profileData.meta.generated:'Updated Q4 2025'}</span>`;
+      (this.realFields.size&&this.profileData&&this.profileData.meta&&this.profileData.meta.generated
+        ?`<span style="opacity:.45">·</span><span>Data refreshed ${this.profileData.meta.generated}</span>`
+        :`<span style="display:inline-block;background:#E8A33D;color:#3a2400;font-size:.62rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px">Illustrative data</span>`);
     this.renderOverview(d);
     this.renderCharts(d);
     this.updateBadges();
@@ -587,7 +589,7 @@ class Component {
       <div style="${card}">
         ${eb('Unemployment Rate',['unempLatest'])}
         <div style="${big};color:${uColor}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
-        <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">Latest · ${d.unempLatestYear}</div>
+        <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">${rf.has('unempLatest')?'Latest · '+d.unempLatestYear:'Illustrative'}</div>
       </div>
       <div style="${card}">
         ${eb('Gross Domestic Product',['gdp','gdpTrend'])}
