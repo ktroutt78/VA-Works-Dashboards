@@ -28,10 +28,33 @@
 --       composition is the sanctioned hand-mapped VALUES block)
 --     - COALESCE fallback for state/MSA unemployment if native annual rows
 --       are absent for the pinned year.
---   MSAs: GEOGRAPHIES '31' minus Area LIKE 'S%' state-part splits (different
---   grain — same exclusion as the wage tool, keeping the two tools
---   self-consistent). 11 whole MSAs, labels at MAX(AreaTypeVersion) per
---   Area. Cross-border MSA labeling is a deferred cosmetic question.
+--   MSAs: GEOGRAPHIES '31' minus Area LIKE 'S%' state-part splits as REGION
+--   IDS (11 whole MSAs, labels at MAX(AreaTypeVersion) per Area — same id
+--   scheme as the wage tool). Cross-border MSA labeling is a deferred
+--   cosmetic question.
+--
+-- MSA GRAIN POLICY (client decision 2026-07-11 — "as-sourced, whole-first"):
+--   * MEMBERSHIP (map fips + rollup inputs): VA-part members via the
+--     two-predicate pin StFips='51' AND SubStFips='51' (defect fix, R4 P9).
+--     SUBGEOGRAPHIES replicates whole-MSA member lists under EVERY asking
+--     state's StFips with out-of-state members carrying their own state's
+--     suffix — StFips alone selects a full multi-state copy whose codes
+--     collide onto same-suffix VA localities. See
+--     docs/defects/MSA-DEFECT-suffix-collision.md. VA-part member counts:
+--     Washington 17, Virginia Beach 15, Kingsport 3, Winchester 2.
+--   * industryEmployment: whole-MSA native '31' rows (as-sourced; correct
+--     since tranche 1). Do NOT switch to S-part Industry rows — R4 P10c red
+--     flag: S-part row/code counts are IDENTICAL to their whole twins and
+--     may be duplicated whole values; P13 unresolved.
+--   * unempLatest: priority chain per MSA, documented per region —
+--       1) whole-MSA published LAUS ('31' whole code)  [9 MSAs incl VB, Winchester]
+--       2) S-part published LAUS ('S'+code = the published VA part; R4 P11
+--          proved S = VA rollup to 1 unit)              [Kingsport only]
+--       3) correct-membership VA rollup                 [Washington only —
+--          NO published LAUS at ANY grain under StFips 51; R4 P10a/b]
+--     Grain therefore varies by MSA (whole for most, VA-part for Kingsport/
+--     Washington) — accepted under as-sourced policy; the front end's
+--     "Illustrative" badges are unaffected (all three sources are real).
 --
 -- REGION IDS in profiles[] (front-end lookup keys):
 --   'state' | 'c-51xxx' counties (fips) | 6-digit LWDA codes ('000441'…) |
@@ -101,6 +124,8 @@ lwda_members AS (          -- 133 locality memberships (P3a)
                   AND sv.v = sg.AreaTypeVersion
     JOIN lwda_dim ld ON ld.Area = sg.Area
     WHERE sg.StFips = '51' AND sg.AreaType = '15' AND sg.SubAreaType = '04'
+      AND sg.SubStFips = '51'   -- explicit member-state pin (all LWDA members
+                                -- are VA today, P3a — but never rely on it)
 ),
 county_dim AS (            -- exactly the 133 LWDA-member localities; the
                            -- Industry fact has 137 '04' areas (P5b) — joining
@@ -127,8 +152,11 @@ msa_dim AS (               -- 11 whole MSAs; label pinned MAX vintage PER AREA
     WHERE g.StFips = '51' AND g.AreaType = '31'
       AND g.Area NOT LIKE 'S%'
 ),
-msa_members AS (           -- membership as carried by SUBGEOGRAPHIES (P8);
-                           -- restricted to real localities via county_dim
+msa_members AS (           -- VA-PART membership — BOTH predicates required
+                           -- (defect fix, R4 P9: StFips alone selects the
+                           -- full multi-state copy; SubStFips='51' keeps the
+                           -- 17/15/3/2 genuine VA members, zero collisions,
+                           -- and kills the Gates-NC duplicate Gloucester)
     SELECT sg.Area AS msa, sg.SubArea AS county
     FROM WID.dbo.SubGeographies sg
     JOIN sg_vin sv ON sv.StFips = sg.StFips AND sv.AreaType = sg.AreaType
@@ -136,6 +164,7 @@ msa_members AS (           -- membership as carried by SUBGEOGRAPHIES (P8);
     JOIN msa_dim md ON md.Area = sg.Area
     JOIN county_dim cd ON cd.Area = sg.SubArea
     WHERE sg.StFips = '51' AND sg.AreaType = '31'
+      AND sg.SubStFips = '51'
 ),
 gova_members AS (          -- GO Virginia: official 9-region composition —
                            -- sanctioned hand-mapping (no WID dim exists, P8).
@@ -181,28 +210,48 @@ laus_county AS (
       AND lf.PeriodType = '01' AND lf.PeriodYear = '2025'   -- ROLL-FORWARD
       AND lf.Adjusted = '0'
 ),
-laus_native AS (           -- official published rates where a native row
-                           -- exists for the pinned year; MAX() de-dupes
-                           -- defensively (should be 1 row per region)
-    SELECT region_id, MAX(rate) AS rate FROM (
-        SELECT 'state' AS region_id, lf.UnemployedRate AS rate
-        FROM WID.dbo.LaborForce lf
-        JOIN lf_vin lv ON lv.StFips = lf.StFips AND lv.AreaType = lf.AreaType
-                      AND lv.v = lf.AreaTypeVersion
-        WHERE lf.StFips = '51' AND lf.AreaType = '01'
-          AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
-        UNION ALL
-        SELECT md.Area, lf.UnemployedRate
-        FROM WID.dbo.LaborForce lf
-        JOIN lf_vin lv ON lv.StFips = lf.StFips AND lv.AreaType = lf.AreaType
-                      AND lv.v = lf.AreaTypeVersion
-        JOIN msa_dim md ON md.Area = lf.Area
-        WHERE lf.StFips = '51' AND lf.AreaType = '31'
-          AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
-        UNION ALL
-        SELECT cd.region_id, lc.UnemployedRate
-        FROM laus_county lc JOIN county_dim cd ON cd.Area = lc.Area
-    ) n GROUP BY region_id
+laus_native AS (           -- published rates with per-MSA grain priority
+                           -- (client policy 2026-07-11, as-sourced whole-
+                           -- first): pri 1 = whole grain, pri 2 = S-part
+                           -- published VA part (R4 P11: S = VA rollup to 1
+                           -- unit). ROW_NUMBER picks the best available;
+                           -- regions with neither fall through to rollup.
+    SELECT region_id, rate FROM (
+        SELECT n.region_id, n.rate,
+               ROW_NUMBER() OVER (PARTITION BY n.region_id ORDER BY n.pri) AS rn
+        FROM (
+            SELECT 'state' AS region_id, lf.UnemployedRate AS rate, 1 AS pri
+            FROM WID.dbo.LaborForce lf
+            JOIN lf_vin lv ON lv.StFips = lf.StFips AND lv.AreaType = lf.AreaType
+                          AND lv.v = lf.AreaTypeVersion
+            WHERE lf.StFips = '51' AND lf.AreaType = '01'
+              AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
+            UNION ALL
+            -- whole-MSA published row (9 of 11 MSAs; absent for Washington +
+            -- Kingsport — LAUS home-state gotcha, R4 P10a)
+            SELECT md.Area, lf.UnemployedRate, 1
+            FROM WID.dbo.LaborForce lf
+            JOIN lf_vin lv ON lv.StFips = lf.StFips AND lv.AreaType = lf.AreaType
+                          AND lv.v = lf.AreaTypeVersion
+            JOIN msa_dim md ON md.Area = lf.Area
+            WHERE lf.StFips = '51' AND lf.AreaType = '31'
+              AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
+            UNION ALL
+            -- S-part published row = the VA part ('S' + last 5 of the whole
+            -- code; covers Kingsport; S47900 does not exist so Washington
+            -- still falls through to the rollup — R4 P10a/b)
+            SELECT md.Area, lf.UnemployedRate, 2
+            FROM WID.dbo.LaborForce lf
+            JOIN lf_vin lv ON lv.StFips = lf.StFips AND lv.AreaType = lf.AreaType
+                          AND lv.v = lf.AreaTypeVersion
+            JOIN msa_dim md ON 'S' + RIGHT(md.Area, 5) = lf.Area
+            WHERE lf.StFips = '51' AND lf.AreaType = '31'
+              AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
+            UNION ALL
+            SELECT cd.region_id, lc.UnemployedRate, 1
+            FROM laus_county lc JOIN county_dim cd ON cd.Area = lc.Area
+        ) n
+    ) x WHERE x.rn = 1
 ),
 laus_rollup AS (           -- numerator-correct fallback / LWDA + GOVA path
     SELECT rm.region_id,
@@ -338,5 +387,18 @@ FOR JSON PATH, WITHOUT_ARRAY_WRAPPER;
 --     expected (suppression/rounding), a large one means a join broke.
 -- S5: every profiles[].industryEmployment has <= 21 sectors and its top
 --     sector label matches NAICSSectors verbatim (incl. the sector-54 typo).
--- S6: no MSA id in profiles[] starts with 'S' (state-part splits excluded).
+-- S6: no MSA id in profiles[] starts with 'S' — S-codes are read INTERNALLY
+--     (Kingsport's published VA-part LAUS) but always emitted under the
+--     whole-MSA id.
+-- S7 (defect regression, R4): regions.msa member counts = Washington 17,
+--     Virginia Beach 15, Kingsport 3, Winchester 2; NO duplicate fips within
+--     any member list (the Gates-NC Gloucester dup must be gone); every
+--     Washington member is genuinely NoVA/exurban — NAME-LEVEL check against
+--     the P9b list, not a count check.
+-- S8 (expected values from R4 P11): Washington unempLatest = 3.1 (correct-
+--     membership rollup, LF 1,759,084); Kingsport = the S28700 published
+--     rate (cross-check against P13's second result set); Virginia Beach
+--     stays 3.5 and Winchester 3.2 (whole-grain, unchanged from tranche 1).
+-- S9: industryEmployment for the 4 multi-state MSAs still comes from WHOLE
+--     '31' rows (S-part industry unused pending P13).
 -- =============================================================================

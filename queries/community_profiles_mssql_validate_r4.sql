@@ -78,7 +78,11 @@ WHERE lf.StFips = '51' AND lf.AreaType = '31'
   AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0'
 GROUP BY lf.Area, g.AreaName
 ORDER BY lf.Area;
--- RESULTS LOG P10a: OPEN
+-- RESULTS LOG P10a (2026-07-09, client run): CONFIRMED — 12 areas at the
+-- 2025 annual pins: 9 wholes (all EXCEPT 028700 Kingsport and 047900
+-- Washington) + 3 S-parts (S28700, S47260, S49020). >>> S47900 DOES NOT
+-- EXIST in LABORFORCE <<< — Washington has NEITHER grain: even its VA-part
+-- LAUS lives under DC's StFips (home-state gotcha applies to the S-row too).
 
 -- P10b — LABORFORCE '31' areas across ALL years/periods (context: whether an
 -- area exists at all vs merely lacking the pinned annual row).
@@ -90,8 +94,10 @@ FROM WID.dbo.LaborForce lf
 WHERE lf.StFips = '51' AND lf.AreaType = '31'
 GROUP BY lf.Area
 ORDER BY lf.Area;
--- RESULTS LOG P10b: OPEN — expect 12 areas (R3a); resolve the composition
--- by name/kind, not by count.
+-- RESULTS LOG P10b (2026-07-09, client run): CONFIRMED — same 12 areas,
+-- uniform 2010-2026 coverage (213 rows each). R3a's "12" resolved by name:
+-- 9 wholes + S28700/S47260/S49020. S47900 absent from the table entirely —
+-- not a pinned-year artifact.
 
 -- P10c — INDUSTRY '31' areas at RUN pins (IndCodeType '10', Ownership '00',
 -- PeriodType '02', PeriodYear '2025').
@@ -109,8 +115,16 @@ WHERE i.StFips = '51' AND i.AreaType = '31'
   AND i.PeriodType = '02' AND i.PeriodYear = '2025'
 GROUP BY i.Area, g.AreaName
 ORDER BY i.Area;
--- RESULTS LOG P10c: OPEN — expect ~15 areas (R3a, all years); confirm the
--- 11-whole + 4-S composition by name at the 2025 pins.
+-- RESULTS LOG P10c (2026-07-09, client run): CONFIRMED 15 areas = 11 wholes
+-- + 4 S-parts (incl. S47900 — Industry DOES carry it, unlike LaborForce).
+-- >>> RED FLAG: every S-part's rows_/ind_codes are IDENTICAL to its whole
+-- twin (S28700=028700: 4832/1227; S47260=047260: 7527/1894; S47900=047900:
+-- 7668/1926; S49020=049020: 5177/1309). A 3-locality Kingsport VA part with
+-- the same 1,227 distinct industry codes as the whole TN-VA MSA is
+-- implausible. The S-part INDUSTRY rows may be duplicated whole-MSA VALUES
+-- under a second code, not genuine VA-part aggregates. Count equality
+-- cannot settle it — P13 (below) compares actual employment values. Do NOT
+-- source industry from S-parts until P13 answers. <<<
 
 -- P10d — VERDICT TABLE: per multi-state MSA, per fact table.
 WITH multi AS (
@@ -151,10 +165,14 @@ LEFT JOIN laus_areas ls  ON ls.Area  = m.s_code
 LEFT JOIN ind_areas  iw  ON iw.Area  = m.whole_code
 LEFT JOIN ind_areas  isp ON isp.Area = m.s_code
 ORDER BY m.whole_code;
--- RESULTS LOG P10d: OPEN — this table decides the fix shape. Note: the
--- verdict is presence-based; where BOTH exist, the whole-vs-VA-part grain
--- choice is a design decision informed by P11 and the no-trimming geography
--- model (report as-sourced at the chosen grain).
+-- RESULTS LOG P10d (2026-07-09, client run): CONFIRMED —
+--   MSA          | LAUS                        | INDUSTRY
+--   Kingsport    | no whole, S yes -> S-PART   | both (pending P13)
+--   VirginiaBeach| both -> grain choice        | both (pending P13)
+--   Washington   | NEITHER -> ROLLUP REQUIRED  | both (pending P13)
+--   Winchester   | both -> grain choice        | both (pending P13)
+-- Washington unemployment has no published row at any grain on this install
+-- — the correct-membership VA rollup is the ONLY option for it.
 
 
 -- ─── P11 (REWRITTEN): three-way grain comparison ─────────────────────────────
@@ -221,11 +239,20 @@ LEFT JOIN va_rollup r ON r.msa  = t.whole_code
 LEFT JOIN msa_laus  a ON a.Area = t.whole_code
 LEFT JOIN msa_laus  b ON b.Area = t.s_code
 ORDER BY t.label;
--- RESULTS LOG P11: OPEN — expected: Richmond control 'whole ~= VA rollup';
--- Washington likely 'no whole row' (home-state gotcha) + S verdict decides;
--- Virginia Beach (VA-primary) may have BOTH -> the a-vs-b gap measures the
--- NC share. If S rows confirm as published VA parts, the RUN.sql fix reads
--- them natively and no rollup or mixed-grain COALESCE is needed for MSAs.
+-- RESULTS LOG P11 (2026-07-09, client run): CONFIRMED —
+--   * Richmond control: whole 723,088 vs rollup 723,091 (3 units, rounding)
+--     -> PASS. County-sum rollups reproduce published MSA LAUS figures.
+--   * Virginia Beach: whole LF 876,710 / S-part 850,069 / rollup 850,068.
+--     S-part = rollup to 1 unit -> >>> S LAUS rows ARE the published VA
+--     part <<<. whole - S = 26,641 = the NC share (Camden+Currituck+Gates).
+--     (The whole_vs_rollup verdict column printed 'single-state control OK'
+--     for VB — the 1.2x threshold was too coarse for a 3% NC share; read
+--     the values, not that label.)
+--   * Washington: no whole row, no S row; correct-membership rollup LF
+--     1,759,084, rate 3.1. The SHIPPED polluted rollup said 3.2 — the
+--     defect moved Washington's displayed rate by +0.1pt. Kingsport's
+--     shipped 3.3 is also polluted (S28700's published rate not yet pulled
+--     — P13 grabs it alongside the industry check).
 
 
 -- ─── P12: CALVERT CHECK (parked — do not block on this) ──────────────────────
@@ -235,7 +262,39 @@ SELECT sg.StFips AS asking_state, sg.SubStFips, sg.SubArea
 FROM WID.dbo.SUBGEOGRAPHIES sg
 WHERE sg.Area = '047900' AND sg.AreaType = '31' AND sg.SubStFips = '24'
 ORDER BY sg.StFips, sg.SubArea;
--- RESULTS LOG P12: OPEN — if '000009' appears under NO asking state, Calvert
--- is out of the loaded 2301 delineation (national-copy question / possible
--- punchlist item, since OMB 2023 lists Calvert in the Washington MSA). Park
--- the answer either way.
+-- RESULTS LOG P12 (2026-07-09, client run): CONFIRMED ABSENT EVERYWHERE —
+-- all four asking states (11/24/51/54) list the same 4 MD members
+-- (017 Charles, 021 Frederick, 031 Montgomery, 033 Prince George's); no
+-- 000009 under any StFips. Calvert is out of the LOADED 2301 delineation
+-- nationally, not a Virginia-copy artifact. OMB 2023 includes Calvert in
+-- the Washington MSA -> punchlist candidate (whole-MSA membership only;
+-- does not affect the VA part). PARKED per decision 2026-07-09.
+
+
+-- ─── P13: S-part INDUSTRY values — genuine VA part or duplicated whole? ──────
+-- Added after P10c's red flag (identical rows_/ind_codes per twin pair).
+-- Compare total-all-industries employment for each pair; Kingsport is the
+-- discriminator (whole includes Sullivan+Hawkins TN — a genuine VA part
+-- must be much smaller). Also pull S28700's published LAUS rate while here
+-- (Kingsport's shipped 3.3 is polluted; the fix needs the real number).
+SELECT i.Area,
+       CASE WHEN i.Area LIKE 'S%' THEN 'S-PART' ELSE 'whole' END AS kind,
+       SUM(i.QuarterAvgEmp) / 4.0 AS annual_avg_total_emp
+FROM WID.dbo.Industry i
+WHERE i.StFips = '51' AND i.AreaType = '31'
+  AND i.IndCodeType = '10' AND i.Ownership = '00'
+  AND i.PeriodType = '02' AND i.PeriodYear = '2025'
+  AND LTRIM(RTRIM(i.IndCode)) = '10'         -- QCEW total, all industries
+  AND i.Area IN ('028700','S28700','047260','S47260',
+                 '047900','S47900','049020','S49020')
+GROUP BY i.Area
+ORDER BY i.Area;
+-- Kingsport VA-part published LAUS (annual 2025):
+SELECT lf.Area, lf.LaborForce, lf.Unemployed, lf.UnemployedRate
+FROM WID.dbo.LaborForce lf
+WHERE lf.StFips = '51' AND lf.AreaType = '31' AND lf.Area = 'S28700'
+  AND lf.PeriodType = '01' AND lf.PeriodYear = '2025' AND lf.Adjusted = '0';
+-- RESULTS LOG P13: OPEN — if S28700 total emp ~= 028700 total emp, the
+-- S-part INDUSTRY rows are duplicated whole-MSA values: industry must stay
+-- whole-grain (as shipped) or roll up from counties. If S28700 << 028700,
+-- S-part industry is genuine and VA-part grain is available for both fields.

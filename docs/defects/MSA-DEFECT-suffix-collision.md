@@ -117,14 +117,44 @@ LABORFORCE/INDUSTRY carry S-area rows under StFips 51, MSA profiles read
 **published VA-part aggregates natively** and the mixed-grain COALESCE
 problem dissolves instead of needing a fallback rule.
 
-## Fix (blocked, not designed here)
+## Update 2026-07-11 — P10–P12 results and the implemented fix
 
-Membership is settled (two predicates, or equivalently the S-twin member
-lists). Awaiting the REWRITTEN probes in
-`queries/community_profiles_mssql_validate_r4.sql`: P10 (S-aware fact-row
-sweep — enumerate ALL '31' areas incl. `S%` by name, verdict table per
-multi-state MSA per fact table), P11 (three-way grain comparison: whole
-native vs S-part native vs correct-membership VA rollup, Richmond as
-control), P12 (Calvert MD delineation check — parked, non-blocking). The fix
-must choose ONE grain per emitted field from what P10/P11 show, re-emit
-profiles.json, and re-run name-level membership validation before install.
+**P10 (S-aware sweep, client run 2026-07-09):** LAUS carries 9 wholes +
+S28700/S47260/S49020; **S47900 does not exist in LABORFORCE at all** —
+Washington has no published unemployment at any grain under StFips 51; its
+only option is the correct-membership VA rollup. Industry carries all 11
+wholes + all 4 S-parts, **but every S-part's row/industry-code counts are
+IDENTICAL to its whole twin** (e.g. Kingsport 4832/1227 both grains) — the
+S-part Industry rows may be duplicated whole-MSA values, not genuine VA
+parts. Probe P13 (added) compares actual employment values; **industry must
+not source from S-parts until P13 answers.**
+
+**P11 (grain comparison):** Richmond control passed (whole 723,088 vs rollup
+723,091). Virginia Beach: S-part 850,069 vs rollup 850,068 — **S LAUS rows
+ARE the published VA part**; whole − S = 26,641 = the NC share. Washington
+correct-membership rollup: LF 1,759,084, rate **3.1** — the shipped polluted
+rate was 3.2, so the defect moved Washington by +0.1pt. Damage final:
+Washington and Kingsport rates were wrong; Virginia Beach (3.5) and
+Winchester (3.2) shipped from whole-grain native rows and were correct.
+
+**P12:** Calvert MD absent from the loaded 2301 delineation under ALL asking
+states — national load/delineation question, parked (punchlist candidate;
+whole-MSA membership only).
+
+**Fix implemented in RUN.sql (2026-07-11, grain policy "as-sourced,
+whole-first" — client decision):**
+1. `msa_members` pins `StFips='51' AND SubStFips='51'` (also added the
+   explicit pin to `lwda_members` — correct today by accident of geography,
+   now correct by contract).
+2. `laus_native` gained a per-MSA priority chain: whole-grain published row
+   (pri 1) → S-part published VA-part row (pri 2, `'S'+RIGHT(code,5)`) →
+   fall through to the correct-membership rollup. Kingsport lands on its
+   published S28700 rate; Washington on the 3.1 rollup.
+3. `industryEmployment` unchanged (whole-grain native — was never wrong).
+4. Smoke tests S7–S9 added: name-level membership regression, expected
+   values from P11, S-part-industry-unused assertion.
+
+**Not yet done:** re-run RUN.sql, name-level membership validation of the
+emitted regions block (per the process rule above), install profiles.json,
+headless re-verify. P13 outstanding (documentation under this grain policy;
+blocking only if S-part industry is ever considered again).
