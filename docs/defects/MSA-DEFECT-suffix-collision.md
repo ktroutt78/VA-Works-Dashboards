@@ -158,3 +158,12 @@ whole-first" — client decision):**
 emitted regions block (per the process rule above), install profiles.json,
 headless re-verify. P13 outstanding (documentation under this grain policy;
 blocking only if S-part industry is ever considered again).
+
+**Interim production deploy (2026-07-13):** to ship the badges + correct
+county/LWDA/state data without publishing the defect, the installed
+profiles.json was stripped of the `regions.msa` block and the 11 MSA profile
+records (168 → 157). The front end falls back to the curated-slug MSA
+regions, which resolve no profile → MSA selections render fully-badged
+illustrative data (verified: fallback active, 0 MSA profile hits, default
+county view unchanged). The next full install from the FIXED RUN.sql
+restores MSA data wholesale — no revert commit needed.
