@@ -16,6 +16,32 @@
   @keyframes vw-spin{to{transform:rotate(360deg)}}
   @keyframes vw-fade{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
   #geoSearch::placeholder{color:#5A6472;opacity:1}
+  /* ---- Demographics & Age section (scene: s-pop) ---- */
+  .demo-bans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:.2rem 0 0}
+  .demo-ban{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:16px;box-shadow:0 2px 20px rgba(10,36,99,.06)}
+  .demo-ban-lbl{font-size:.72rem;color:#9DB4D6;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+  .demo-ban-val{font-family:'Barlow Condensed';font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.01em;color:#0A2463;font-variant-numeric:tabular-nums}
+  .demo-ban-cmp{font-size:.72rem;margin-top:9px;color:#5A6472}
+  .demo-ban-cmp .delta{font-weight:700;font-variant-numeric:tabular-nums}
+  .demo-ban-cmp .up{color:#3A8A1E}
+  .demo-ban-cmp .down{color:#D0596B}
+  .demo-card{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.2rem 1.35rem;margin-top:1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
+  .demo-ct{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6}
+  .demo-ch{font-family:'Barlow Condensed';font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;text-transform:uppercase;letter-spacing:.01em;line-height:1.05}
+  .demo-cs{font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:64ch;line-height:1.5}
+  .demo-pair{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;align-items:start}
+  .demo-panel-lbl{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.4rem}
+  .demo-fact{font-size:.78rem;color:#5A6472;margin-top:13px;padding-top:12px;border-top:1px solid #F0EEE7;line-height:1.5}
+  .demo-fact b{color:#1A1A1A;font-weight:600}
+  .demo-cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+  .demo-yearbox{flex:none;text-align:right;line-height:1}
+  .demo-yearlbl{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9DB4D6}
+  .demo-yearval{font-family:'Barlow Condensed';font-size:2.3rem;font-weight:800;color:#0A2463;line-height:.95;font-variant-numeric:tabular-nums;margin-top:1px}
+  .demo-yearnudge{font-size:.66rem;font-weight:700;color:#3A8A1E;margin-top:3px;white-space:nowrap;animation:demo-nudge 1.7s ease-in-out infinite}
+  .demo-yearnudge.off{display:none}
+  @keyframes demo-nudge{0%,100%{opacity:.4}50%{opacity:1}}
+  .varef{color:#0A2463}
+  @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}.demo-pair{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -51,50 +77,49 @@
     </div>
   </div>
 
-  <!-- HERO with interactive map -->
-  <section data-screen-label="Hero — region picker &amp; map" style="background:linear-gradient(120deg,#0A2463 0%,#1B4DB1 58%,#2E6BD6 128%);color:#fff;position:relative;overflow:hidden">
-    <div style="max-width:1240px;margin:0 auto;padding:2.8rem 1.5rem 2.4rem;display:grid;grid-template-columns:minmax(0,0.62fr) minmax(0,1.38fr);gap:1rem;align-items:center">
-      <!-- left -->
-      <div style="position:relative;z-index:3">
+  <!-- HERO with interactive map (full-bleed map background — from Claude Design) -->
+  <section data-screen-label="Hero — region picker &amp; map" style="background:linear-gradient(120deg,#0A2463 0%,#1B4DB1 58%,#2E6BD6 128%);color:#fff;position:relative;overflow:hidden;min-height:435px">
+    <!-- map background layer: LOCKED to 435px at the top so growing the hero never rescales the map -->
+    <div style="position:absolute;top:0;left:0;right:0;height:435px;z-index:1">
+      <div id="vamap" style="width:100%;height:100%;overflow:hidden"></div>
+      <div id="mapLoad" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;color:#cfe0fb">
+        <div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:vw-spin 1s linear infinite"></div>
+        <div style="font-size:.8rem;letter-spacing:.04em">Loading Virginia geography…</div>
+      </div>
+    </div>
+    <!-- legibility scrim (pointer-events:none so the map stays interactive under it) -->
+    <div style="position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(10,36,99,.86) 0%,rgba(10,36,99,.45) 14%,rgba(10,36,99,0) 30%)"></div>
+    <!-- content layer: pointer-events:none keeps the map hover/click alive underneath; only the picker re-enables events -->
+    <div style="position:relative;z-index:3;max-width:1240px;margin:0 auto;padding:26px 1.5rem 16px;min-height:492px;display:flex;flex-direction:column;pointer-events:none">
+      <div style="max-width:52ch">
         <div style="font-size:.82rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.7rem">Labor Market Information</div>
-        <h1 style="font-family:'Barlow Condensed';font-size:clamp(2.1rem,4vw,3.4rem);font-weight:800;text-transform:uppercase;line-height:.95;margin-bottom:.5rem;white-space:nowrap">Community Profile</h1>
+        <h1 style="font-family:'Barlow Condensed';font-size:clamp(2.6rem,5.2vw,4.4rem);font-weight:800;text-transform:uppercase;line-height:.9;letter-spacing:.005em;margin-bottom:.55rem;white-space:nowrap">Community Profile</h1>
         <div id="crumb" style="font-size:.78rem;color:#B9CDEE;display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.6rem"><span style="opacity:.85">Home</span><span style="opacity:.5">›</span><span style="opacity:.85">LMI</span><span style="opacity:.5">›</span><span style="opacity:.85">Community Profiles</span><span style="opacity:.5">›</span><span id="crumb-region" style="color:#fff;font-weight:600">—</span></div>
 
         <div style="font-size:1.04rem;color:#D7E3F6;max-width:46ch;margin-bottom:1.2rem">Choose a geography from the map or the selector. Every chart below re-frames to the place you pick: a county or city, a metro area, a workforce region, or the whole Commonwealth.</div>
 
         <div id="heroMeta" style="font-size:.8rem;color:#B9CDEE;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"></div>
       </div>
-
-      <!-- right: map -->
-      <div style="position:relative;z-index:2;margin-right:-1.5rem">
-        <div style="margin-bottom:.7rem">
-          <div style="font-size:.66rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.5rem">Choose a geography level</div>
-          <div style="display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">
-            <div id="levelbar" style="display:contents"></div>
-            <div id="geoSearchWrap" style="position:relative;flex:1 1 180px;min-width:168px">
-              <input id="geoSearch" type="text" autocomplete="off" placeholder="Search a place…" style="width:100%;box-sizing:border-box;font-family:'Barlow',sans-serif;font-size:.92rem;font-weight:600;line-height:1.15;color:#0A2463;background:#fff;border:1.5px solid rgba(255,255,255,.65);border-radius:8px;padding:.46rem 1.9rem .46rem .8rem;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.3)">
-              <span id="geoCaret" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:#5A6472;font-size:.7rem;pointer-events:none;transition:transform .18s">▾</span>
-              <div id="geoResults" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:#fff;border:1px solid #E2E0D8;border-radius:10px;box-shadow:0 18px 44px rgba(10,36,99,.3);max-height:320px;overflow-y:auto;color:#1A1A1A"></div>
-            </div>
+      <!-- geography selector pinned to bottom — pointer-events re-enabled so the controls work over the map -->
+      <div style="margin-top:auto;padding-top:0;width:100%;max-width:800px;align-self:flex-end;pointer-events:auto">
+        <div style="font-size:.66rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.5rem">Choose a geography level</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">
+          <div id="levelbar" style="display:contents"></div>
+          <div id="geoSearchWrap" style="position:relative;flex:1 1 180px;min-width:168px">
+            <input id="geoSearch" type="text" autocomplete="off" placeholder="Search a place…" style="width:100%;box-sizing:border-box;font-family:'Barlow',sans-serif;font-size:.92rem;font-weight:600;line-height:1.15;color:#0A2463;background:#fff;border:1.5px solid rgba(255,255,255,.65);border-radius:8px;padding:.46rem 1.9rem .46rem .8rem;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.3)">
+            <span id="geoCaret" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:#5A6472;font-size:.7rem;pointer-events:none;transition:transform .18s">▾</span>
+            <div id="geoResults" style="display:none;position:fixed;z-index:200;background:#fff;border:1px solid #E2E0D8;border-radius:10px;box-shadow:0 18px 44px rgba(10,36,99,.3);max-height:320px;overflow-y:auto;color:#1A1A1A"></div>
           </div>
         </div>
-        <div style="position:relative">
-          <div id="vamap" style="width:100%;height:498px"></div>
-          <div id="mapLoad" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;color:#cfe0fb">
-            <div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:vw-spin 1s linear infinite"></div>
-            <div style="font-size:.8rem;letter-spacing:.04em">Loading Virginia geography…</div>
-          </div>
-        </div>
-        <div id="mapHint" style="text-align:center;font-size:.72rem;color:#9DC0F2;margin-top:.4rem;letter-spacing:.03em">Pick a level above, then click a region on the map to load its profile</div>
+        <div id="mapHint" style="font-size:.72rem;color:#9DC0F2;margin-top:.6rem;letter-spacing:.03em">Pick a level above, then click a region on the map to load its profile</div>
       </div>
     </div>
-    <div style="position:absolute;right:-70px;top:-70px;width:340px;height:340px;border:2px solid rgba(255,255,255,.07);border-radius:50%"></div>
   </section>
 
   <!-- STICKY collapsed mini-map bar -->
   <div id="stickybar" style="position:sticky;top:0;z-index:60;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid #E2E0D8;box-shadow:0 4px 18px rgba(10,36,99,.06)">
-    <div style="max-width:1240px;margin:0 auto;padding:.5rem 1.5rem;display:flex;align-items:center;gap:1rem">
-      <div id="minimap" style="width:58px;height:62px;flex:none"></div>
+    <div style="max-width:1240px;margin:0 auto;padding:.3rem 1.5rem;display:flex;align-items:center;gap:1rem">
+      <div id="minimap" style="width:160px;height:74px;flex:none"></div>
       <div style="min-width:0">
         <div id="stickyName" style="font-family:'Barlow Condensed';font-weight:700;font-size:1.15rem;color:#0A2463;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
         <div id="stickyType" style="font-size:.66rem;color:#5A6472;font-weight:600;letter-spacing:.06em;text-transform:uppercase"></div>
@@ -169,7 +194,8 @@
 /* --- Component (ported verbatim from the DC logic block) --------- */
 class Component {
   componentDidMount(){
-    this.C = { cobalt:'#0A2463', blue:'#1B4DB1', blueBright:'#2E6BD6', green:'#3A8A1E', greenDark:'#2C6916', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
+    // Blue/green sourced from the DWDA brand guide (2023): primary 661/555, secondary 660.
+    this.C = { cobalt:'#002A76', blue:'#003595', blueBright:'#3D7CC9', green:'#2A7050', greenDark:'#1F5A3E', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
     this.PALETTE = ['#1B4DB1','#3A8A1E','#5BA3D0','#E8A33D','#9B6FB5','#D0596B','#7A8794'];
     this.FONT = "'Barlow', sans-serif";
     this.charts = {};
@@ -423,6 +449,11 @@ class Component {
   wireGeoSearch(){
     const inp=document.getElementById('geoSearch'), res=document.getElementById('geoResults'), wrap=document.getElementById('geoSearchWrap'), caret=document.getElementById('geoCaret');
     if(!inp) return;
+    // portal the dropdown to <body> so it escapes the hero's overflow:hidden clip AND the content layer's z-index:3 stacking context
+    document.body.appendChild(res);
+    const place=()=>{ const b=inp.getBoundingClientRect(); res.style.left=b.left+'px'; res.style.top=(b.bottom+6)+'px'; res.style.width=b.width+'px'; res.style.maxHeight=Math.min(320,window.innerHeight-b.bottom-16)+'px'; };
+    const reflow=()=>{ if(res.style.display!=='none') place(); };
+    window.addEventListener('scroll',reflow,true); window.addEventListener('resize',reflow);
     const render=(openAll)=>{
       const q=(inp.value||'').trim().toLowerCase();
       const selId=this.current&&this.current.id;
@@ -437,7 +468,7 @@ class Component {
           ${on?`<span style="flex:none;color:#3A8A1E;font-weight:700">✓</span>`:''}
         </button>`;
       }).join('') + (list.length>shown.length?`<div style="padding:.5rem .7rem;color:#9DB4D6;font-size:.74rem">Showing first ${shown.length} — type to narrow…</div>`:'') : `<div style="padding:.8rem;color:#5A6472;font-size:.86rem">No matches</div>`;
-      res.style.display='block'; if(caret) caret.style.transform='translateY(-50%) rotate(180deg)';
+      res.style.display='block'; place(); if(caret) caret.style.transform='translateY(-50%) rotate(180deg)';
       res.querySelectorAll('button[data-rid]').forEach(b=>b.onclick=()=>{ this.selectRegion(b.dataset.rid); inp.value=''; this.closeGeoSearch(); inp.blur(); });
     };
     const close=()=>{ res.style.display='none'; if(caret) caret.style.transform='translateY(-50%)'; };
@@ -445,7 +476,7 @@ class Component {
     inp.oninput=()=>render();
     inp.onfocus=()=>render(true);
     inp.onkeydown=(e)=>{ if(e.key==='Enter'){ const f=res.querySelector('button[data-rid]'); if(f) f.click(); } else if(e.key==='Escape'){ close(); inp.blur(); } };
-    document.addEventListener('click',(e)=>{ if(e.target.closest && e.target.closest('#levelbar')) return; if(wrap && !wrap.contains(e.target)) close(); });
+    document.addEventListener('click',(e)=>{ if(e.target.closest && e.target.closest('#levelbar')) return; if(wrap && !wrap.contains(e.target) && !res.contains(e.target)) close(); });
     inp.placeholder=this.geoPlaceholder(this.level);
   }
   closeGeoSearch(){ if(this._geoClose) this._geoClose(); }
@@ -470,7 +501,7 @@ class Component {
   }
   setLevel(level){
     this.level=level; this.activeTab=level;
-    const layout={zoom:1.1,aspect:0.82,layoutCenter:['50%','50%'],layoutSize:'112%'};
+    const layout={zoom:1.0,aspect:0.85,layoutCenter:['60%','43%'],layoutSize:'170%'}; // from Claude Design — keep consistent across all levels
     this.heroChart.clear();
     this.heroChart.setOption(this.mapOption(level,{tooltip:true,...layout}),true);
     setTimeout(()=>this.heroChart.resize(),20);
@@ -524,9 +555,9 @@ class Component {
     const r=this.regionById[id]; if(!r) return;
     this.current=r; this.level=r.type; this.activeTab=r.type;
     this.heroChart.clear();
-    this.heroChart.setOption(this.mapOption(r.type,{tooltip:true,sel:'#57B23A',base:'#C2D0E2',border:'#FFFFFF',emph:'#9DB8D9',zoom:1.1,aspect:0.82,layoutCenter:['50%','50%'],layoutSize:'112%'}),true);
+    this.heroChart.setOption(this.mapOption(r.type,{tooltip:true,sel:'#57B23A',base:'#C2D0E2',border:'#FFFFFF',emph:'#9DB8D9',zoom:1.0,aspect:0.85,layoutCenter:['60%','43%'],layoutSize:'170%'}),true); // from Claude Design — keep consistent across all levels
     this.miniChart.clear();
-    this.miniChart.setOption(this.mapOption(r.type,{silent:true,sel:'#1B4DB1',base:'#CBD7E8',border:'#FFFFFF',bw:0.5,emph:'#CBD7E8',zoom:1.16,aspect:0.92,layoutCenter:['50%','50%'],layoutSize:'112%'}),true);
+    this.miniChart.setOption(this.mapOption(r.type,{silent:true,sel:'#57B23A',base:'#CBD7E8',border:'#FFFFFF',bw:0.5,emph:'#CBD7E8',zoom:1.0,aspect:0.85,layoutCenter:['50%','50%'],layoutSize:'195%'}),true); // minimap: bigger + natural aspect, full silhouette, selected region green
     setTimeout(()=>{this.heroChart.resize();this.miniChart.resize();},30);
     this.updateLevelToolbar();
     const d=this.genData(r);
@@ -578,7 +609,7 @@ class Component {
     const gdpGrowthPct=(Math.pow(d.gdpTrend[span]/d.gdpTrend[0],1/span)-1)*100;
     const totJobs=d.industryEmployment.reduce((a,b)=>a+b.value,0);
     const top3=[...d.industryEmployment].sort((a,b)=>b.value-a.value).slice(0,3);
-    const u=d.unempLatest, uColor = u<=4? C.green : u<=6? '#E8A33D' : '#D0596B';
+    const u=d.unempLatest;   // KPI values render in one consistent color, not a per-value traffic light
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.2rem;box-shadow:0 2px 20px rgba(10,36,99,.05);display:flex;flex-direction:column;min-width:0';
     const rf=this.realFields||new Set();
     const chip=fields=>fields.every(f=>rf.has(f))?'':`<span style="background:#E8A33D;color:#3a2400;font-size:.56rem;font-weight:700;letter-spacing:.05em;padding:.1rem .4rem;border-radius:4px;margin-left:.5rem;vertical-align:1px">Illustrative</span>`;
@@ -588,7 +619,7 @@ class Component {
     const html=`
       <div style="${card}">
         ${eb('Unemployment Rate',['unempLatest'])}
-        <div style="${big};color:${uColor}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
+        <div style="${big};color:${C.cobalt}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
         <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">${rf.has('unempLatest')?'Latest · '+d.unempLatestYear:'Illustrative'}</div>
       </div>
       <div style="${card}">
@@ -614,8 +645,9 @@ class Component {
       </div>`;
     const el=document.getElementById('overview'); if(el) el.innerHTML=html;
     const spark=(id,arr,color)=>{ const c=this.mk(id); if(!c) return; c.setOption({ grid:{left:2,right:2,top:6,bottom:4}, xAxis:{type:'category',show:false,boundaryGap:false,data:arr.map((_,i)=>i)}, yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false}, series:[{type:'line',data:arr,smooth:true,symbol:'none',lineStyle:{width:2.5,color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(color,.26)},{offset:1,color:this.rgba(color,0)}])}}] }); };
+    // both KPI sparklines share one line color — the metric differs, the encoding shouldn't
     spark('ov-gdp-spark', d.gdpTrend, C.blue);
-    spark('ov-pop-spark', d.popTrend, C.green);
+    spark('ov-pop-spark', d.popTrend, C.blue);
     const sk=document.getElementById('stickyKpis'); if(sk) sk.innerHTML='';
   }
 
@@ -781,6 +813,7 @@ class Component {
 
   renderCharts(d){
     const C=this.C, F=this.FONT, fmt=n=>this.fmt(n), ax=this.axis(), grid={left:8,right:24,top:28,bottom:8,containLabel:true};
+    this.renderDemographics(d);   // Population & Age (s-pop) — arch-driven illustrative section
     // pyramid
     let c=this.mk('c-pyramid'); if(c) c.setOption({
       grid:{...grid,left:8,right:8}, legend:{data:['Male','Female'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
@@ -871,13 +904,13 @@ class Component {
       yAxis:{type:'value',max:40,axisLabel:{...ax.axisLabel,formatter:'{value}%'},splitLine:ax.splitLine},
       series:[ {name:'This region',type:'bar',data:A.burdenRegion,barMaxWidth:38,itemStyle:{color:C.green,borderRadius:[4,4,0,0]},
           markLine:{symbol:'none',silent:true,data:[{yAxis:30,label:{formatter:'30% cost-burden threshold',color:'#D0596B',fontSize:10,position:'insideEndTop'},lineStyle:{color:'#D0596B',type:'dashed',width:1.5}}]}},
-        {name:'Virginia',type:'bar',data:A.burdenVa,barMaxWidth:38,itemStyle:{color:C.blueBright,borderRadius:[4,4,0,0]}} ] });
+        {name:'Virginia',type:'bar',data:A.burdenVa,barMaxWidth:38,itemStyle:{color:C.blue,borderRadius:[4,4,0,0]}} ] });
     // Household Income — horizontal compare bars (region vs VA)
     const compareBar=(id,region,va,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
       cc.setOption({ grid:{left:6,right:70,top:8,bottom:6,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:vfmt},
         xAxis:{type:'value',axisLabel:{show:false},splitLine:{show:false},axisLine:{show:false}},
         yAxis:{type:'category',data:['Virginia','This region'],axisLine:{lineStyle:{color:C.line}},axisLabel:{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600}},
-        series:[{type:'bar',data:[{value:va,itemStyle:{color:C.blueBright}},{value:region,itemStyle:{color:C.green}}],barMaxWidth:30,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>vfmt(p.value),fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,color:C.cobalt}}] }); };
+        series:[{type:'bar',data:[{value:va,itemStyle:{color:C.blue}},{value:region,itemStyle:{color:C.green}}],barMaxWidth:30,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>vfmt(p.value),fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:14,color:C.cobalt}}] }); };
     compareBar('c-medinc', A.medianIncome, A.vaMedianIncome, v=>'$'+fmt(v));
     compareBar('c-disc', A.discretionary, A.vaDiscretionary, v=>'$'+fmt(v));
     // labor force participation + unemployment
@@ -920,8 +953,8 @@ class Component {
   /* ---------- themes / scenes / rail ---------- */
   themes(){ return [
     { id:'th-demo', name:'Demographic Profile', blurb:'Who lives in this geography. These measures describe the size, age, and educational makeup of the population — the foundation for understanding the available workforce and the community it supports.', scenes:[
-      {id:'s-pop', eyebrow:'Population', title:'Population & Age', chart:'c-pyramid', fields:['ageCohorts'],
-       lede:'The age structure sets the stage — a broad working-age core over a slowly aging base shapes housing, schools, and the future labor force.'},
+      {id:'s-pop', eyebrow:'Population', title:'Population & Age', custom:'demographics', fields:['ageCohorts'],
+       lede:'The size and shape of the working-age population — the people who make up the local labor supply — shown alongside Virginia for comparison.'},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
        lede:'Educational attainment compared with the state and the nation — a read on the skills supply employers can draw from.'} ]},
     { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
@@ -1019,6 +1052,7 @@ class Component {
           ? `<div id="c-employers" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.2rem"></div>`
           : s.custom==='housing' ? this.housingBody()
           : s.custom==='income' ? this.incomeBody()
+          : s.custom==='demographics' ? this.demographicsBody()
           : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
@@ -1088,6 +1122,226 @@ class Component {
           <div><div style="${eb}">Discretionary Income · current vs VA</div><div id="c-disc" style="width:100%;height:150px"></div></div>
         </div>
       </div>`;
+  }
+
+  /* ---- Demographics & Age (section 01, scene s-pop) ---- */
+  demographicsBody(){
+    return `
+      <div class="demo-bans" id="demo-bans"></div>
+      <div class="demo-card">
+        <div class="demo-cardhead">
+          <div>
+            <div class="demo-ct">Chart 1 · Age structure</div>
+            <div class="demo-ch">Population by age and sex</div>
+          </div>
+          <div class="demo-yearbox">
+            <div class="demo-yearlbl">Showing</div>
+            <div id="demo-year" class="demo-yearval">2024</div>
+            <div id="demo-yearnudge" class="demo-yearnudge">drag the slider or press play &darr;</div>
+          </div>
+        </div>
+        <p class="demo-cs">Each bar is the share of the total population in a five-year age band. The dashed line is Virginia&rsquo;s shape, for comparison.</p>
+        <div id="c-demo-pyramid" style="width:100%;height:460px"></div>
+        <div class="demo-fact" id="f-demo-pyramid"></div>
+      </div>
+      <div class="demo-card">
+        <div class="demo-ct">Chart 2 · Working-age structure and population change</div>
+        <div class="demo-ch">Age make-up and the pace of population change</div>
+        <p class="demo-cs">Residents by broad age group compared with Virginia, and how the total population has changed since 2010.</p>
+        <div class="demo-pair">
+          <div class="demo-panel">
+            <div class="demo-panel-lbl">Age make-up vs Virginia</div>
+            <div id="c-demo-shares" style="width:100%;height:210px"></div>
+          </div>
+          <div class="demo-panel">
+            <div class="demo-panel-lbl">Population change since 2010</div>
+            <div id="c-demo-popgrowth" style="width:100%;height:210px"></div>
+          </div>
+        </div>
+        <div class="demo-fact" id="f-demo-struct"></div>
+      </div>`;
+  }
+
+  demoData(){
+    const bands=["0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+"];
+    // Virginia reference shape (share % of total), index 0 = 0-4
+    const vaM=[3.5,3.9,4.2,4.2,4.4,4.6,4.8,4.6,4.7,4.5,4.3,4.1,3.9,3.2,2.7,2.1,1.7,1.3];
+    const vaF=[3.4,3.8,4.1,4.1,4.3,4.7,4.9,4.7,4.8,4.6,4.4,4.3,4.2,3.6,3.1,2.7,2.3,1.9];
+    return {
+      bands, vaM, vaF,
+      A:{ geo:'Fairfax County',
+        pyrYears:['2000','2010','2024'],
+        pyrM:{ '2000':[4.0,4.4,4.6,4.2,4.2,4.7,5.3,5.2,5.0,4.3,3.7,3.0,2.4,1.9,1.5,1.1,0.7,0.5],
+               '2010':[3.8,4.2,4.5,4.1,4.3,4.9,5.2,4.9,5.0,4.5,4.1,3.6,3.0,2.4,1.9,1.4,1.0,0.7],
+               '2024':[3.6,4.1,4.3,4.0,4.4,5.0,5.1,4.7,4.9,4.6,4.4,4.2,4.0,3.3,2.6,1.9,1.4,1.0] },
+        pyrF:{ '2000':[3.8,4.2,4.4,4.0,4.1,4.7,5.4,5.3,5.1,4.4,3.9,3.2,2.7,2.2,1.9,1.5,1.1,0.9],
+               '2010':[3.6,4.0,4.3,3.9,4.2,4.9,5.3,5.0,5.1,4.6,4.2,3.8,3.3,2.8,2.4,1.9,1.5,1.2],
+               '2024':[3.5,3.9,4.1,3.9,4.3,5.0,5.2,4.8,5.0,4.7,4.5,4.4,4.3,3.7,3.1,2.6,2.1,1.7] },
+        bans:[
+          {lbl:'Total population', val:'1,150,300', cmp:'<span class="delta up">&#9650; 6.2%</span> since 2010'},
+          {lbl:'Median age',       val:'37.3',      cmp:'<span class="delta">&minus;1.1</span> vs <span class="varef">Virginia 38.4</span>'},
+          {lbl:'Working age 18&ndash;64',val:'64%',  cmp:'<span class="delta">+3 pts</span> vs <span class="varef">VA 61%</span>'},
+          {lbl:'Within 10 yrs of 65', val:'11%',    cmp:'age 55&ndash;64 &middot; <span class="delta">&minus;1 pt</span> vs <span class="varef">VA 12%</span>'} ],
+        under18:[25,24.5,24,23,22,21], working:[65,65,65,65,65,65], over65:[10,10.5,11,12,13,14],
+        shares:[21,65,14], popIdx:[100,102,104,105,106.2],
+        facts:{ pyrByYear:{
+            '2000':'In 2000 the largest age band was <b>30&ndash;34</b>, at 10.7% of residents.',
+            '2010':'In 2010 the largest age band was <b>30&ndash;34</b>, at 10.5% of residents.',
+            '2024':'In 2024 the largest age band is <b>30&ndash;34</b>, at 10.3% of residents; Virginia&rsquo;s largest band is also 30&ndash;34, at 9.8%.' },
+          lines:'In 2024, <b>21%</b> of residents were under 18, <b>65%</b> were working age (18&ndash;64), and <b>14%</b> were 65 or over. Virginia: 21.5% / 62% / 16%.',
+          struct:'<b>64%</b> of residents are working age (18&ndash;64), compared with 61% across Virginia.' } },
+      B:{ geo:'Buchanan County',
+        pyrYears:['2000','2010','2024'],
+        pyrM:{ '2000':[3.4,3.7,3.9,4.0,3.4,3.5,3.9,4.5,5.1,5.0,4.4,3.7,3.1,2.6,2.1,1.6,1.1,0.8],
+               '2010':[3.0,3.3,3.5,3.6,3.2,3.3,3.6,4.0,4.7,5.0,4.9,4.4,3.9,3.3,2.8,2.2,1.7,1.3],
+               '2024':[2.7,3.0,3.2,3.3,3.0,3.2,3.4,3.7,4.3,4.7,5.0,4.9,4.8,4.2,3.6,3.0,2.4,1.9] },
+        pyrF:{ '2000':[3.3,3.6,3.8,3.9,3.3,3.4,3.9,4.5,5.1,5.0,4.5,3.9,3.4,3.0,2.6,2.1,1.6,1.3],
+               '2010':[2.9,3.2,3.4,3.5,3.1,3.2,3.6,4.0,4.7,5.0,5.0,4.6,4.2,3.7,3.3,2.8,2.3,1.9],
+               '2024':[2.6,2.9,3.1,3.2,2.9,3.1,3.4,3.7,4.3,4.7,5.0,5.0,5.0,4.6,4.1,3.7,3.2,2.8] },
+        bans:[
+          {lbl:'Total population', val:'38,400', cmp:'<span class="delta down">&#9660; 4.1%</span> since 2010'},
+          {lbl:'Median age',       val:'46.8',   cmp:'<span class="delta">+8.4</span> vs <span class="varef">Virginia 38.4</span>'},
+          {lbl:'Working age 18&ndash;64',val:'56%', cmp:'<span class="delta">&minus;5 pts</span> vs <span class="varef">VA 61%</span>'},
+          {lbl:'Within 10 yrs of 65', val:'17%', cmp:'age 55&ndash;64 &middot; <span class="delta">+5 pts</span> vs <span class="varef">VA 12%</span>'} ],
+        under18:[22,20.5,19,17.5,16,15], working:[65,64.5,64,62.5,62,61], over65:[13,15,17,20,22,24],
+        shares:[15,61,24], popIdx:[100,99,98,96.5,95.9],
+        facts:{ pyrByYear:{
+            '2000':'In 2000 the largest age band was <b>40&ndash;44</b>, at 10.2% of residents.',
+            '2010':'In 2010 the largest age band was <b>45&ndash;49</b>, at 10.0% of residents.',
+            '2024':'In 2024 the largest age band is <b>50&ndash;54</b>, at 10.0% of residents; Virginia&rsquo;s largest band is 30&ndash;34, at 9.8%.' },
+          lines:'In 2024, <b>15%</b> of residents were under 18, <b>61%</b> were working age (18&ndash;64), and <b>24%</b> were 65 or over. Virginia: 21.5% / 62% / 16%.',
+          struct:'<b>56%</b> of residents are working age (18&ndash;64), compared with 61% across Virginia.' } }
+    };
+  }
+
+  /* Population & Age charts. Called from renderCharts; ignores the geography
+     record (arch-driven illustrative data) until real Census data is wired. */
+  renderDemographics(){
+    const C=this.C, F=this.FONT, ax=this.axis();
+    const grid={left:8,right:24,top:28,bottom:8,containLabel:true};
+    // dev-only archetype switch — default 'A' is production. Remove before prod.
+    const ARCH=(new URLSearchParams(location.search).get('arch')||'A').toUpperCase()==='B'?'B':'A';
+    const DATA=this.demoData(), dd=DATA[ARCH], bands=DATA.bands;
+    // house convention: Male = blue, Female = green; Virginia = cobalt reference.
+    const REGION_M=C.blue, REGION_F=C.green, VA_REF=C.cobalt;
+    // age-band roles: working age is metric blue; ends are a lighter blue and amber.
+    const YOUNG=C.blueBright, WORK=C.blue, OLD='#6FA088', YOUNG_D=C.blue, OLD_D='#547E6A';   // 65+ = brand secondary green 556 (sage; calm, non-alarming)
+
+    const banEl=document.getElementById('demo-bans');
+    if(banEl){ banEl.innerHTML=dd.bans.map(b=>
+      `<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
+    const setFact=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+
+    /* CHART 1 — population pyramid with year slider (ECharts timeline) */
+    let c1=this.mk('c-demo-pyramid');
+    if(c1){
+      const years=dd.pyrYears;
+      // display in 10-year bins: collapse each adjacent pair of 5-year bands
+      const TEN=['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80+'];
+      const to10=(a)=>{ const o=[]; for(let i=0;i<a.length;i+=2) o.push(+((a[i]||0)+(a[i+1]||0)).toFixed(1)); return o; };
+      const peak10=(m,f)=>{ const rm=to10(m), rf=to10(f), t=rm.map((v,i)=>v+rf[i]); let bi=0; t.forEach((v,i)=>{ if(v>t[bi]) bi=i; }); return {label:TEN[bi], pct:+t[bi].toFixed(1)}; };
+      const pyrTooltip={ trigger:'axis', axisPointer:{type:'shadow'},
+        formatter:(p)=>{ if(!p||!p.length) return '';
+          let rows='<b>Age '+p[0].axisValue+'</b>';
+          p.forEach(sr=>{ if(sr.seriesName==='Virginia') return;
+            rows+='<br/>'+sr.seriesName+': '+Math.abs(sr.value).toFixed(1)+'%'; });
+          return rows; } };
+      c1.setOption({
+        baseOption:{
+          textStyle:{fontFamily:F},
+          grid:{left:8,right:24,top:34,bottom:78,containLabel:true},
+          tooltip:pyrTooltip,
+          legend:{ data:['Male','Female','Virginia'], top:0, itemWidth:14, itemHeight:12,
+                   textStyle:{color:C.slate,fontFamily:F,fontSize:12} },
+          xAxis:{ type:'value', min:-12, max:12,
+            axisLabel:{color:C.slate,fontFamily:F,formatter:(v)=>Math.abs(v)+'%'},
+            axisLine:{lineStyle:{color:C.line}}, splitLine:{lineStyle:{color:'#F0EEE7'}} },
+          yAxis:{ type:'category', data:TEN,
+            axisLabel:{color:C.slate,fontFamily:F,fontSize:10},
+            axisLine:{lineStyle:{color:C.line}}, axisTick:{show:false} },
+          timeline:{ axisType:'category', data:years, currentIndex:years.length-1,
+            autoPlay:false, playInterval:1400, bottom:6, left:40, right:40, height:44,
+            symbol:'circle', symbolSize:7, lineStyle:{color:C.line}, itemStyle:{color:C.slate},
+            checkpointStyle:{color:C.blue,borderColor:'#fff',borderWidth:2,animationDuration:400},
+            controlStyle:{showPlayBtn:true,showPrevBtn:false,showNextBtn:false,itemSize:14,color:C.slate,borderColor:C.slate},
+            emphasis:{itemStyle:{color:C.blue},controlStyle:{color:C.blue,borderColor:C.blue},label:{color:C.blue}},
+            label:{color:C.slate,fontFamily:F,fontSize:11} },
+          series:[
+            {name:'Male',   type:'bar', stack:'r', barWidth:'62%',
+             itemStyle:{color:REGION_M,borderRadius:[3,0,0,3]}, emphasis:{itemStyle:{color:C.cobalt}},
+             animationDurationUpdate:500, animationEasingUpdate:'cubicOut'},
+            {name:'Female', type:'bar', stack:'r', barWidth:'62%',
+             itemStyle:{color:REGION_F,borderRadius:[0,3,3,0]}, emphasis:{itemStyle:{color:C.greenDark}},
+             animationDurationUpdate:500, animationEasingUpdate:'cubicOut'},
+            // Virginia benchmark — thin dashed silhouette (male left, female right)
+            {name:'Virginia', type:'line', symbol:'none', z:5, silent:true, tooltip:{show:false},
+             lineStyle:{color:VA_REF,width:1.4,type:'dashed'}, itemStyle:{color:VA_REF}, animationDurationUpdate:500},
+            {name:'Virginia', type:'line', symbol:'none', z:5, silent:true, tooltip:{show:false},
+             lineStyle:{color:VA_REF,width:1.4,type:'dashed'}, itemStyle:{color:VA_REF}, animationDurationUpdate:500}
+          ]
+        },
+        options: years.map(y=>({
+          series:[ {data:to10(dd.pyrM[y]).map(v=>-v)}, {data:to10(dd.pyrF[y])}, {data:to10(DATA.vaM).map(v=>-v)}, {data:to10(DATA.vaF)} ]
+        }))
+      });
+      const yearEl=document.getElementById('demo-year'), nudgeEl=document.getElementById('demo-yearnudge');
+      const vp=peak10(DATA.vaM, DATA.vaF);   // Virginia's largest 10-year band (fixed)
+      const syncFact=(idx,userDriven)=>{ const y=years[Math.max(0,Math.min(idx,years.length-1))];
+        const rp=peak10(dd.pyrM[y], dd.pyrF[y]);
+        setFact('f-demo-pyramid', 'In '+y+', the largest age group is <b>'+rp.label+'</b>, at '+rp.pct+'% of residents. Virginia&rsquo;s largest is '+vp.label+', at '+vp.pct+'%.');
+        if(yearEl) yearEl.textContent=y;
+        if(userDriven && nudgeEl) nudgeEl.classList.add('off'); };   // hide the nudge once discovered
+      syncFact(years.length-1,false);
+      c1.off('timelinechanged');
+      c1.on('timelinechanged',(e)=>syncFact(e.currentIndex,true));
+    }
+
+    /* CHART 2a — three broad age shares, region vs VA (stacked) */
+    const vaShares=[21.5,62,16.5];
+    let c3=this.mk('c-demo-shares');
+    if(c3){ c3.setOption({
+      textStyle:{fontFamily:F},
+      grid:{left:4,right:12,top:16,bottom:34,containLabel:true},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:(v)=>v+'%'},
+      legend:{ data:['Under 18','Working age 18–64','65 and over'], bottom:12, itemWidth:13, itemHeight:13, itemGap:16,
+               textStyle:{color:C.slate,fontFamily:F,fontSize:11} },
+      xAxis:{type:'value',max:100,show:false},   // in-segment % labels make the axis redundant
+      yAxis:{type:'category',data:['Virginia','This region'],axisLabel:{color:C.slate,fontFamily:F},axisLine:{lineStyle:{color:C.line}},axisTick:{show:false}},
+      series:[
+        { name:'Under 18', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:YOUNG}, emphasis:{itemStyle:{color:YOUNG_D}},
+          data:[vaShares[0],dd.shares[0]], label:{show:true,color:'#12303f',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} },
+        { name:'Working age 18–64', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:WORK}, emphasis:{itemStyle:{color:C.cobalt}},
+          data:[vaShares[1],dd.shares[1]], label:{show:true,color:'#fff',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} },
+        { name:'65 and over', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:OLD}, emphasis:{itemStyle:{color:OLD_D}},
+          data:[vaShares[2],dd.shares[2]], label:{show:true,color:'#3a2400',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} }
+      ] }); }
+
+    /* CHART 2b — population change since 2010 (region vs VA), plain % bar */
+    const vaPopIdx=[100,101.5,102.8,103.6,104.2];
+    const regionGrowth=+(dd.popIdx[dd.popIdx.length-1]-100).toFixed(1);   // 2010 = 100 baseline
+    const vaGrowth=+(vaPopIdx[vaPopIdx.length-1]-100).toFixed(1);
+    const pctLbl=(v)=>(v>0?'+':'')+v+'%';
+    const gMax=Math.max(Math.abs(regionGrowth),Math.abs(vaGrowth)), gNeg=regionGrowth<0||vaGrowth<0;
+    let c4=this.mk('c-demo-popgrowth');
+    if(c4){ c4.setOption({
+      textStyle:{fontFamily:F},
+      // no y-axis or gridlines — values are printed on the bars; headroom via max so bars nearly fill
+      grid:{left:2,right:2,top:28,bottom:34,containLabel:true},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:pctLbl},
+      xAxis:{type:'category',data:['This region','Virginia'],
+        axisLabel:{color:C.slate,fontFamily:F,fontWeight:600}, axisLine:{lineStyle:{color:C.line}}, axisTick:{show:false}},
+      yAxis:{type:'value', show:false, splitLine:{show:false}, max:+(gMax*1.18).toFixed(2), min:gNeg?-(gMax*1.18):0},
+      series:[{ type:'bar', barWidth:'52%', barMaxWidth:74,
+        label:{show:true,formatter:(p)=>pctLbl(p.value),color:C.cobalt,fontFamily:F,fontWeight:700,fontSize:14},
+        data:[
+          {value:regionGrowth, label:{position:regionGrowth<0?'bottom':'top'},
+           itemStyle:{color:regionGrowth<0?'#9F2842':C.green, borderRadius:regionGrowth<0?[0,0,4,4]:[4,4,0,0]}},
+          {value:vaGrowth, label:{position:vaGrowth<0?'bottom':'top'},
+           itemStyle:{color:C.blue, borderRadius:vaGrowth<0?[0,0,4,4]:[4,4,0,0]}}
+        ]
+      }] }); }
+
+    setFact('f-demo-struct', dd.facts.struct+' Since 2010, its population has changed by '+pctLbl(regionGrowth)+' (Virginia '+pctLbl(vaGrowth)+').');
   }
 
   wireScroll(){
