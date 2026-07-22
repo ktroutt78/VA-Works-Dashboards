@@ -42,6 +42,26 @@
   @keyframes demo-nudge{0%,100%{opacity:.4}50%{opacity:1}}
   .varef{color:#0A2463}
   @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}.demo-pair{grid-template-columns:1fr}}
+  /* ---- Higher Education section (scene: s-highered) ---- */
+  .hied-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin-top:.2rem;align-items:start}
+  .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
+  .hied-grouphead{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;border-bottom:1px solid #EDE9DF;padding-bottom:.6rem;margin-bottom:.35rem}
+  .hied-gt{font-family:'Barlow Condensed';font-size:1.2rem;font-weight:800;text-transform:uppercase;letter-spacing:.01em;color:#0A2463;line-height:1.05}
+  .hied-gc{flex:none;font-family:'Barlow Condensed';font-weight:700;font-size:1rem;color:#3A8A1E;font-variant-numeric:tabular-nums}
+  .hied-note{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem}
+  .hied-item{display:flex;align-items:flex-start;gap:.7rem;padding:.6rem 0;border-top:1px solid #F4F1EA}
+  .hied-item:first-child{border-top:0}
+  .hied-ico{flex:none;width:34px;height:34px;border-radius:9px;background:#F0F4FB;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .hied-ico svg{width:19px;height:19px;fill:#1B4DB1}
+  .hied-name{font-weight:700;font-size:.95rem;color:#1A1A1A;line-height:1.2}
+  .hied-meta{font-size:.76rem;color:#5A6472;margin-top:2px}
+  .hied-pill{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.03em;padding:.06rem .34rem;border-radius:4px;margin-left:.4rem;vertical-align:1px}
+  .hied-pub{background:#E8F1E4;color:#2C6916}
+  .hied-priv{background:#EAF0FA;color:#0A2463}
+  .hied-serves{font-size:.72rem;color:#3A8A1E;font-weight:600;margin-top:3px}
+  .hied-serves.here{color:#5A6472;font-weight:600}
+  .hied-empty{font-size:.82rem;color:#5A6472;background:#F8F6F0;border:1px dashed #E2E0D8;border-radius:9px;padding:.8rem .9rem;line-height:1.45}
+  @media(max-width:760px){.hied-wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -169,6 +189,16 @@
     <div id="pickList" style="overflow-y:auto;padding:.5rem"></div>
   </div>
 
+  <!-- Reusable "how to read this" help modal (content set by openHelp) -->
+  <div id="helpBack" style="display:none;position:fixed;inset:0;z-index:92;background:rgba(10,16,32,.45);backdrop-filter:blur(2px)"></div>
+  <div id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" style="display:none;position:fixed;z-index:93;left:50%;top:7vh;transform:translateX(-50%);width:min(620px,92vw);max-height:86vh;background:#fff;border-radius:14px;box-shadow:0 28px 80px rgba(10,36,99,.4);overflow:hidden;flex-direction:column;color:#1A1A1A">
+    <div style="padding:1.1rem 1.35rem .85rem;border-bottom:1px solid #E2E0D8;display:flex;align-items:center;gap:.8rem">
+      <div id="helpTitle" style="font-family:'Barlow Condensed';font-weight:800;font-size:1.35rem;color:#0A2463;text-transform:uppercase;line-height:1.1"></div>
+      <button id="helpClose" type="button" aria-label="Close" style="margin-left:auto;flex:none;width:30px;height:30px;border-radius:8px;border:1px solid #E2E0D8;background:#fff;cursor:pointer;color:#5A6472;font-size:1rem">✕</button>
+    </div>
+    <div id="helpBody" style="overflow-y:auto;padding:1.25rem 1.35rem 1.5rem;font-size:.95rem;line-height:1.6;color:#3A3F4A"></div>
+  </div>
+
 </div>
 
 <script>
@@ -235,6 +265,7 @@ class Component {
     this.initHeroMap();
     this.initMiniMap();
     this.wirePicker();
+    this.wireHelp();
     this.buildRail();
     this.buildScenes();
     this.wireScroll();
@@ -527,6 +558,71 @@ class Component {
     document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
     this._closePicker=close;
   }
+  /* Reusable "how to read this" help modal. Buttons anywhere carry
+     data-help="<key>"; content lives in helpContent(). Delegated click so it
+     survives scene re-renders. */
+  wireHelp(){
+    const back=document.getElementById('helpBack'), box=document.getElementById('help');
+    const close=()=>{ back.style.display='none'; box.style.display='none'; };
+    this._closeHelp=close;
+    back.onclick=close;
+    document.getElementById('helpClose').onclick=close;
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+    document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-help]'); if(b){ e.preventDefault(); this.openHelp(b.dataset.help); } });
+  }
+  openHelp(key){
+    const c=this.helpContent()[key]; if(!c) return;
+    document.getElementById('helpTitle').textContent=c.title;
+    const body=document.getElementById('helpBody'); body.innerHTML=c.body; body.scrollTop=0;
+    document.getElementById('helpBack').style.display='block';
+    document.getElementById('help').style.display='flex';
+  }
+  helpContent(){
+    const bar=(lbl,w,col,txt)=>`<div style="display:flex;align-items:center;gap:.8rem">
+      <div style="flex:none;width:42px;font-family:'Barlow Condensed';font-weight:800;font-size:1.2rem;color:#0A2463;text-align:right">${lbl}</div>
+      <div style="flex:none;width:150px;position:relative;height:22px;background:#F0EEE7;border-radius:5px">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${col};border-radius:5px"></div>
+        <div style="position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:#1A1A1A"></div>
+      </div>
+      <div style="flex:1;font-size:.9rem">${txt}</div></div>`;
+    return {
+      lq:{ title:'How to read this chart',
+        body:`
+          <p style="margin:0 0 1rem;font-size:1.05rem;color:#1A1A1A"><b>In one line:</b> it shows what your region has <b>more of</b>, and <b>less of</b>, than Virginia as a whole.</p>
+          <p style="margin:0 0 1.1rem">Each industry gets one number comparing its share of <b>local</b> jobs to its share of jobs <b>across all of Virginia</b>. It's a simple multiplier against the statewide average. The black line is the Virginia average (1.0×):</p>
+          <div style="display:flex;flex-direction:column;gap:.75rem;margin:0 0 1.25rem">
+            ${bar('2.0×',100,'#3A8A1E','<b>Double.</b> Twice as concentrated here as statewide. A strong local specialty.')}
+            ${bar('1.0×',50,'#94A6BE','<b>Even.</b> Exactly the same as Virginia, no more and no less.')}
+            ${bar('0.5×',25,'#94A6BE','<b>Half.</b> Only half as common here as statewide. Underrepresented.')}
+          </div>
+          <div style="background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.9rem 1rem;margin:0 0 1.15rem">
+            <div style="font-weight:700;color:#0A2463;margin-bottom:.35rem;font-size:.88rem">A concrete example</div>
+            Say an industry is <b>8% of all jobs in Virginia</b>. Then a reading of:
+            <ul style="margin:.5rem 0 0;padding-left:1.15rem">
+              <li><b>1.0×</b> → it's about <b>8%</b> of local jobs too</li>
+              <li><b>2.0×</b> → it's about <b>16%</b> of local jobs (double)</li>
+              <li><b>0.5×</b> → it's about <b>4%</b> of local jobs (half)</li>
+            </ul>
+          </div>
+          <p style="margin:0"><b>On the chart:</b> bars to the <b style="color:#3A8A1E">right of the dashed line</b> are your region's specialties (more than Virginia); bars to the <b>left</b> are industries the region has less of than the rest of the state.</p>` },
+      newbiz:{ title:'What counts as a new business?',
+        body:`
+          <p style="margin:0 0 1rem;font-size:1.05rem;color:#1A1A1A"><b>In one line:</b> a new business is an employer that shows up in the state's official jobs records for the very first time.</p>
+          <p style="margin:0 0 1.1rem">The count comes from the same payroll records used to track employment (QCEW). When a business hires its first employees, it registers with the state and gets counted here. Each year's bar is that year's brand-new arrivals.</p>
+          <div style="background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.9rem 1rem;margin:0 0 1.15rem">
+            <div style="font-weight:700;color:#0A2463;margin-bottom:.35rem;font-size:.88rem">Good to know</div>
+            Because it is based on payroll records, this counts businesses that have <b>paid employees</b>. A one-person business with no staff (a sole proprietor) may not appear until it hires someone.
+          </div>
+          <p style="margin:0 0 1.1rem"><b>Why it matters:</b> a rising line means more businesses are opening and putting down roots locally than in earlier years. It is an early signal of investment and confidence in the area.</p>
+          <div style="background:#FFF8EC;border:1px solid #F0E2C4;border-radius:10px;padding:.9rem 1rem;margin:0">
+            <div style="font-weight:700;color:#8A6D1F;margin-bottom:.35rem;font-size:.88rem">Two choices set at data wire-up</div>
+            <ol style="margin:.2rem 0 0;padding-left:1.2rem">
+              <li>Exactly when a business counts as "new" (the first time its account appears).</li>
+              <li>Whether to require a minimum employee size, so very small or short-lived filings do not inflate the count.</li>
+            </ol>
+          </div>` }
+    };
+  }
   renderTabs(){
     const types=['Metro Area (MSA)','GO Virginia Region','Local Workforce Area (LWDA)','County / City','State'];
     const lbl={'Metro Area (MSA)':'Metro (MSA)','GO Virginia Region':'GO Virginia','Local Workforce Area (LWDA)':'Workforce (LWDA)','County / City':'County / City','State':'Statewide'};
@@ -722,9 +818,15 @@ class Component {
     const race=raceNames.map((n,i)=>({name:n, value:Math.round(population*raceBase[i]/rs)}));
     // industry
     const indNames=['Government','Health Care & Social Assistance','Retail Trade','Professional & Technical','Accommodation & Food Services','Manufacturing','Construction','Administrative & Support','Finance & Insurance','Educational Services','Transportation & Warehousing','Wholesale Trade','Other Services','Information','Real Estate','Arts & Recreation','Management of Companies','Agriculture & Forestry','Utilities','Mining'];
-    const indW=[12,11,9,8.5,7.5,6,5.5,5,4.8,4,3.6,3.2,3,2.2,2,1.6,1.4,1,0.7,0.3].map(w=>w*j(0.3));
-    const iws=indW.reduce((a,b)=>a+b,0); const jobs=Math.round(population*0.46);
-    const industryEmployment=indNames.map((n,i)=>({name:n, value:Math.round(jobs*indW[i]/iws)}));
+    // indBase ~ Virginia statewide sector mix; used as the Location Quotient
+    // denominator. indGrowthBias = illustrative 5-yr trend lean per sector.
+    // LQ = local sector share ÷ VA sector share (>1 = local specialization).
+    const indBase=[12,11,9,8.5,7.5,6,5.5,5,4.8,4,3.6,3.2,3,2.2,2,1.6,1.4,1,0.7,0.3];
+    const indGrowthBias=[1,6,-2,7,3,-3,4,2,2,2,5,0,1,6,3,4,3,-1,0,-4];
+    const indW=indBase.map(w=>w*j(0.35)); const iws=indW.reduce((a,b)=>a+b,0), ibs=indBase.reduce((a,b)=>a+b,0);
+    const jobs=Math.round(population*0.46);
+    const industryEmployment=indNames.map((n,i)=>{ const localShare=indW[i]/iws, vaShare=indBase[i]/ibs;
+      return { name:n, value:Math.round(jobs*localShare), lq:+(localShare/vaShare).toFixed(2), growth:+(indGrowthBias[i]+(rnd()-0.5)*5).toFixed(1) }; });
     // wages
     const wageBase=[['Utilities',2780],['Finance & Insurance',2510],['Information',2390],['Federal Government',2150],['Professional & Technical',2090],['Management of Companies',1980],['Wholesale Trade',1810],['Mining',1700],['State Government',1620],['Health Care & Social Assistance',1480],['Construction',1390],['Total, All Industries',1395],['Manufacturing',1310],['Real Estate',1250],['Educational Services',1150],['Transportation & Warehousing',1090],['Administrative & Support',1010],['Agriculture & Forestry',860],['Retail Trade',790],['Arts & Recreation',640],['Accommodation & Food Services',590]];
     const costf=0.82+rnd()*0.4; const weeklyWage=wageBase.map(([n,v])=>({name:n, value:Math.round(v*costf*j(0.05))})); const wageAll=weeklyWage.find(w=>w.name.includes('Total')).value;
@@ -734,10 +836,15 @@ class Component {
     const unemployment={years:uy, msa:mk(0,8.5+rnd()*4), va:mk(0.2,9.8), us:mk(0.6,11.1)};
     // UI payments
     const uiBase=jobs*55; const uiPayments={years:uy, amount:uy.map(y=> y==='2020'?Math.round(uiBase*9*j(0.1)): Math.round(uiBase*j(0.18)) )};
-    // education compare (%)
+    // education compare (%) \u2014 grounded on Census ACS S1501 "Educational
+    // Attainment," population 25+. Seven buckets mirroring ACS: below-9th /
+    // some-high-school-no-diploma / HS grad (incl. GED) / some college /
+    // associate's / bachelor's / grad-or-professional. Region vs Virginia only
+    // (no U.S. column). Whether to keep the "8th Grade or Less" bar or fold it
+    // into "Some High School" is a client display decision, left open here.
     const eduCats=['8th Grade or Less','Some High School','High School/GED','Some College','Associate\u2019s','Bachelor\u2019s','Graduate/Professional'];
     const eduBase=[3.5,5.8,26,21,8,22,13.7].map(v=>v*j(0.25)); const es=eduBase.reduce((a,b)=>a+b,0); const msaPct=eduBase.map(v=>+(v/es*100).toFixed(1));
-    const vaPct=[3.6,6.1,25.9,21.0,7.9,21.8,13.7]; const usPct=[4.9,6.9,27.0,20.3,8.7,20.2,12.0];
+    const vaPct=[3.6,6.1,25.9,21.0,7.9,21.8,13.7];
     // employers
     const empPool=['Walmart','Amazon','HCA Healthcare','Sentara Health','Bon Secours','Dominion Energy','Bank of America','Capital One','Northrop Grumman','Huntington Ingalls','VCU Health','UVA Health','Carilion Clinic','Food Lion','Kroger','Target','FedEx','UPS','Lowe\u2019s','Booz Allen','Leidos','Navy Federal','Anthem','Costco','Smithfield Foods','Volvo','Micron','Local Public Schools','County Government','Regional Hospital'];
     const pool=empPool.slice(); const topEmployers=[]; for(let i=0;i<12 && pool.length;i++){ topEmployers.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
@@ -781,7 +888,13 @@ class Component {
     // new business formations + apprenticeships
     const byrs=['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
     const biz0=Math.max(120,Math.round(jobs*0.018));
-    const business={ years:byrs, formations:byrs.map((y,i)=>Math.round(biz0*(1+i*0.05)*(y>='2021'?1.32:1)*j(0.12))) };
+    const bizForm=byrs.map((y,i)=>Math.round(biz0*(1+i*0.05)*(y>='2021'?1.32:1)*j(0.12)));
+    // where new businesses form — per-sector formation propensity (small-biz
+    // heavy sectors lead). Aligned to indNames; totals last year's formations.
+    const bizProp=[0.2,8,12,14,11,3,15,9,4,2,6,4,10,3,6,3,1,2,0.3,0.3].map(w=>w*j(0.3));
+    const bpS=bizProp.reduce((a,b)=>a+b,0), lastForm=bizForm[bizForm.length-1];
+    const bizByIndustry=indNames.map((n,i)=>({name:n, value:Math.round(lastForm*bizProp[i]/bpS)}));
+    const business={ years:byrs, formations:bizForm, byIndustry:bizByIndustry, lastYear:byrs[byrs.length-1] };
     const ap0=Math.max(40,Math.round(jobs*0.004));
     const apprenticeships={ years:byrs, active:byrs.map((y,i)=>Math.round(ap0*(1+i*0.06)*j(0.12))), completions:byrs.map((y,i)=>Math.round(ap0*0.22*(1+i*0.05)*j(0.14))) };
     // affordability & housing (section 03) — illustrative, derived from population/housing/medianIncome
@@ -802,7 +915,7 @@ class Component {
       rentNow, rentYoY, rentTrend, homeNow, homeYoY, homeTrend,
       burdenCats:['Renting','Owning (mortgage)','Owning (no mortgage)'], burdenRegion, burdenVa:[29.1,21.5,10.4],
       medianIncome, vaMedianIncome, discretionary, vaDiscretionary };
-    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct, us:usPct}, medianIncome, topEmployers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
+    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct}, medianIncome, topEmployers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
       householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships, afford };
   }
   /* ===================== END MOCK DATA ===================== */
@@ -814,6 +927,7 @@ class Component {
   renderCharts(d){
     const C=this.C, F=this.FONT, fmt=n=>this.fmt(n), ax=this.axis(), grid={left:8,right:24,top:28,bottom:8,containLabel:true};
     this.renderDemographics(d);   // Population & Age (s-pop) — arch-driven illustrative section
+    this.renderHigherEd();        // Higher Education (s-highered) — arch-driven illustrative directory
     // pyramid
     let c=this.mk('c-pyramid'); if(c) c.setOption({
       grid:{...grid,left:8,right:8}, legend:{data:['Male','Female'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
@@ -836,12 +950,30 @@ class Component {
     c=this.mk('c-race'); if(c) c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> (${p.percent}%)`},
       legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
       series:[{type:'pie',radius:['44%','70%'],center:['50%','45%'],avoidLabelOverlap:true,itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:this.PALETTE,data:d.race}] });
-    // industry
+    // Prototype: tranche-1 real employment carries name+value only. Synthesize
+    // illustrative 5-yr growth + Location Quotient (deterministic per sector, so
+    // stable across redraws) whenever a row lacks them, so both cards render on
+    // real employment now. QCEW wire-up replaces growth/lq with real values.
+    { const hash=s=>{let h=2166136261;for(let i=0;i<String(s).length;i++){h^=String(s).charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+      d.industryEmployment.forEach(r=>{ if(r.growth==null) r.growth=+(((hash(r.name)%200)/10)-8).toFixed(1);
+        if(r.lq==null) r.lq=+(0.45+(hash('lq'+r.name)%195)/100).toFixed(2); }); }
+    // industry — Card 1: employment by sector + 5-yr trend arrow
     c=this.mk('c-industry'); if(c){ const rows=[...d.industryEmployment].sort((a,b)=>a.value-b.value);
-      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' jobs'},
+      c.setOption({ grid:{...grid,left:8,right:110}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],g=r.data.growth;return `${r.name}<br/><b>${fmt(r.value)}</b> jobs<br/>${g>=0?'▲':'▼'} ${Math.abs(g)}% over 5 yrs`;}},
         xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); }
+        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,growth:r.growth,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),
+          label:{show:true,position:'right',formatter:p=>`{v|${fmt(p.value)}}  {${p.data.growth>=0?'up':'dn'}|${p.data.growth>=0?'▲':'▼'}${Math.abs(p.data.growth)}%}`,rich:{v:{color:C.slate,fontFamily:F,fontSize:10},up:{color:C.green,fontFamily:F,fontSize:10,fontWeight:700},dn:{color:'#D0596B',fontFamily:F,fontSize:10,fontWeight:700}}}}] }); }
+    // industry — Card 2: Location Quotient, framed for lay readers as a
+    // "× vs Virginia" multiplier (same math, self-describing label)
+    c=this.mk('c-industry-lq'); if(c){ const rows=[...d.industryEmployment].filter(r=>r.value>0).sort((a,b)=>a.lq-b.lq);
+      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],v=r.data.value;return `${r.name}<br/><b>${v.toFixed(1)}×</b> as concentrated as Virginia<br/><span style="opacity:.65">Location Quotient ${v.toFixed(2)}</span>`;}},
+        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v.toFixed(1)+'×'}},
+        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.green:'#9DB4D6',borderRadius:[0,4,4,0]}})),
+          label:{show:true,position:'right',formatter:p=>p.data.value.toFixed(1)+'×',color:C.slate,fontFamily:F,fontSize:10},
+          markLine:{symbol:'none',silent:true,lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5},data:[{xAxis:1}],
+            label:{show:true,position:'end',rotate:0,formatter:'Virginia avg',color:'#1A1A1A',fontFamily:F,fontWeight:700,fontSize:10,backgroundColor:'rgba(255,255,255,.92)',padding:[3,5],borderRadius:3}}}] }); }
     // wages
     c=this.mk('c-wages'); if(c){ const rows=[...d.weeklyWage].sort((a,b)=>a.value-b.value); const avg=d.wageAll;
       c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>'$'+fmt(v)+'/wk'},
@@ -858,10 +990,15 @@ class Component {
                  {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',lineStyle:{width:2,color:'#D0596B'},itemStyle:{color:'#D0596B'}},
                  {name:'United States',type:'line',data:u.us,smooth:true,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}} ] }); }
     // education
-    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,C.green],['Virginia',e.va,C.blue],['United States',e.us,'#9DB4D6']];
-      c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
-        legend:{top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
-        xAxis:{type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:24,fontSize:10}},
+    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,C.green],['Virginia',e.va,C.blue]];
+      // horizontal category labels wrapped to ~2 balanced lines (break on space
+      // and after '/') so we avoid angled text — e.g. "Graduate/\nProfessional"
+      const wrapLbl=s=>{ const toks=String(s).replace(/\//g,'/ ').split(/\s+/).filter(Boolean); const lines=[]; let cur='';
+        toks.forEach(w=>{ const sep=cur&&!cur.endsWith('/')?' ':''; const cand=cur+sep+w; if(cur&&cand.length>11){ lines.push(cur); cur=w; } else cur=cand; });
+        if(cur) lines.push(cur); return lines.join('\n'); };
+      c.setOption({ grid:{...grid,top:12,bottom:40}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+        legend:{bottom:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
+        xAxis:{type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:0,fontSize:10,lineHeight:12,formatter:wrapLbl}},
         yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
         series:S.map(([n,arr,col])=>({name:n,type:'bar',data:arr,itemStyle:{color:col,borderRadius:[3,3,0,0]},barMaxWidth:24})) }); }
     // UI payments
@@ -934,10 +1071,26 @@ class Component {
         title:{ text:cm.meanTravelMin+' min', subtext:'Mean commute', left:'center', top:'37%', textStyle:{fontFamily:'Barlow Condensed',fontSize:24,color:C.cobalt}, subtextStyle:{fontFamily:F,fontSize:11,color:C.slate} },
         series:[{type:'pie',radius:['52%','73%'],center:['50%','45%'],itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:this.PALETTE,data:cm.modes}] }); }
     // new business formations
-    c=this.mk('c-business'); if(c){ const b=d.business;
-      c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
+    { const b=d.business, f=b.formations, last=f[f.length-1], prev=f[f.length-2]||last, first=f[0]||last;
+      // Card 1 headline: latest count + YoY + decade change (answers "is it growing?")
+      const yoy=prev?((last-prev)/prev*100):0, dec=first?((last-first)/first*100):0;
+      const arrow=v=>`<span style="color:${v>=0?'#3A8A1E':'#D0596B'};font-weight:800">${v>=0?'▲':'▼'} ${Math.abs(v).toFixed(0)}%</span>`;
+      const hEl=document.getElementById('biz-headline');
+      if(hEl) hEl.innerHTML=`<div style="display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap">
+        <span style="font-family:'Barlow Condensed';font-weight:800;font-size:2.4rem;line-height:.9;color:#0A2463">${fmt(last)}</span>
+        <span style="font-size:.9rem;color:#5A6472">new businesses in ${b.lastYear}</span>
+        <span style="font-size:.86rem;color:#5A6472">${arrow(yoy)} vs ${b.years[b.years.length-2]||''}</span>
+        <span style="font-size:.86rem;color:#5A6472">${arrow(dec)} since ${b.years[0]}</span></div>`;
+      // Card 1 chart — formation trend (latest bar highlighted)
+      c=this.mk('c-business'); if(c) c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
         xAxis:{type:'category',data:b.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(v)}},
-        series:[{type:'bar',barMaxWidth:26,data:b.formations,itemStyle:{color:C.green,borderRadius:[3,3,0,0]}}] }); }
+        series:[{type:'bar',barMaxWidth:26,data:f.map((v,i)=>({value:v,itemStyle:{color:i===f.length-1?C.green:'#9DB4D6',borderRadius:[3,3,0,0]}}))}] });
+      // Card 2 chart — new businesses by industry (most recent year)
+      c=this.mk('c-business-industry'); if(c){ const rows=[...b.byIndustry].filter(r=>r.value>0).sort((a2,b2)=>a2.value-b2.value);
+        c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' new businesses'},
+          xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(v)}},
+          yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
+          series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
     // apprenticeships
     c=this.mk('c-appr'); if(c){ const a=d.apprenticeships;
       c.setOption({ grid, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)},
@@ -956,7 +1109,9 @@ class Component {
       {id:'s-pop', eyebrow:'Population', title:'Population & Age', custom:'demographics', fields:['ageCohorts'],
        lede:'The size and shape of the working-age population — the people who make up the local labor supply — shown alongside Virginia for comparison.'},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
-       lede:'Educational attainment compared with the state and the nation — a read on the skills supply employers can draw from.'} ]},
+       lede:'Educational attainment compared with the Commonwealth — a read on the skills supply employers can draw from.'},
+      {id:'s-highered', eyebrow:'Institutions', title:'Higher Education', custom:'highered', fields:['higherEd'],
+       lede:'The colleges and universities that feed the region’s degree and credential pipeline — four-year institutions located in the locality, and the community college whose service region covers it.'} ]},
     { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
       {id:'s-housing', eyebrow:'Census', title:'Housing Profile', custom:'housing', fields:['afford'],
        lede:'Households and occupancy, the own-versus-rent split, what each costs over time, and how much of income housing actually consumes.'},
@@ -972,10 +1127,10 @@ class Component {
       {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', chart:'c-commute', fields:['commute'],
        lede:'How people get to work and how far they travel — a signal of regional connectivity and remote-work adoption.'} ]},
     { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
-      {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', chart:'c-industry', fields:['industryEmployment'],
-       lede:'Employment by industry sector. The largest bars are the region\u2019s economic anchors; the highlighted bar is the single biggest employer of people.'},
-      {id:'s-business', eyebrow:'Formation', title:'New Business Growth', chart:'c-business', fields:['business'],
-       lede:'New business formations registered each year — an early indicator of entrepreneurial momentum.'},
+      {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', custom:'industry', fields:['industryEmployment'],
+       lede:'Where the jobs are, which sectors are growing or shrinking, and what this region specializes in compared with the Commonwealth.'},
+      {id:'s-business', eyebrow:'Formation', title:'New Business Growth', custom:'business', fields:['business'],
+       lede:'How many new businesses are opening, whether that pace is rising, and which industries new businesses are choosing. An early read on where the local economy is investing.'},
       {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', chart:'c-appr', fields:['apprenticeships'],
        lede:'Registered apprentices in training and program completions — the earn-while-you-learn pipeline into skilled work.'},
       {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', chart:null, fields:['topEmployers'],
@@ -1053,6 +1208,9 @@ class Component {
           : s.custom==='housing' ? this.housingBody()
           : s.custom==='income' ? this.incomeBody()
           : s.custom==='demographics' ? this.demographicsBody()
+          : s.custom==='highered' ? this.higherEdBody()
+          : s.custom==='industry' ? this.industryBody()
+          : s.custom==='business' ? this.businessBody()
           : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#3A8A1E;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
@@ -1159,6 +1317,147 @@ class Component {
           </div>
         </div>
         <div class="demo-fact" id="f-demo-struct"></div>
+      </div>`;
+  }
+
+  /* Higher Education (s-highered). Arch-driven illustrative directory — same
+     A/B dev switch as renderDemographics; ignores the selected geography until
+     real data is wired.
+
+     ===================== DATA CONTRACT (NOT YET WIRED) =====================
+       higherEd = {
+         fourYear:  [ {name, city, control:'Public'|'Private', enroll} ],  // LOCATED-IN
+         community: [ {name, city, control, enroll, here} ]                // SERVES
+       }
+
+     SOURCING NOTES — read before wiring real data. Two DIFFERENT geography
+     rules are intentional (hybrid), and one of them needs data we do not have:
+
+       • fourYear = IPEDS institutions (sector 1/2/3) whose COUNTYCD (county
+         FIPS) falls in the selected geography's FIPS list — i.e. physically
+         LOCATED-IN the locality. There is no service-region concept for
+         four-year institutions, so located-in is the rule by design. A
+         locality with no four-year campus correctly shows an empty state.
+
+       • community = the VCCS community college(s) whose official SERVICE REGION
+         contains the selected locality (NOT merely those located in it).
+         >>> REQUIRES A CROSSWALK WE DO NOT YET HAVE <<< : a static table
+         mapping each Virginia locality FIPS -> its assigned VCCS college. The
+         23 colleges partition the whole Commonwealth, so every locality
+         resolves to exactly one. Source: VCCS published service regions /
+         SCHEV. `here` = whether that college's campus physically sits in the
+         selected locality (true) or serves it from a neighboring one (false —
+         e.g. a rural county served by the college one county over).
+     ======================================================================== */
+  higherEdBody(){
+    return `
+      <div class="hied-wrap">
+        <div class="hied-col">
+          <div class="hied-grouphead"><span class="hied-gt">Four-Year Institutions</span><span class="hied-gc" id="hied-4yr-count"></span></div>
+          <div class="hied-note">Located in this locality</div>
+          <div id="hied-4yr"></div>
+        </div>
+        <div class="hied-col">
+          <div class="hied-grouphead"><span class="hied-gt">Community &amp; Junior Colleges</span><span class="hied-gc" id="hied-cc-count"></span></div>
+          <div class="hied-note">Serving this locality · VCCS service region</div>
+          <div id="hied-cc"></div>
+        </div>
+      </div>`;
+  }
+
+  higherEdData(){
+    // Illustrative only. A = Fairfax (four-year present; its community college
+    // is also located in the locality). B = Buchanan (no four-year located in
+    // the county; its assigned community college serves it from one county over
+    // — the case that makes the SERVES rule matter).
+    return {
+      A:{ geo:'Fairfax County',
+        fourYear:[
+          {name:'George Mason University', city:'Fairfax', control:'Public', enroll:39049} ],
+        community:[
+          {name:'Northern Virginia Community College', city:'Annandale', control:'Public', enroll:49762, here:true} ] },
+      B:{ geo:'Buchanan County',
+        fourYear:[],
+        community:[
+          {name:'Southwest Virginia Community College', city:'Cedar Bluff', control:'Public', enroll:2380, here:false} ] }
+    };
+  }
+
+  renderHigherEd(){
+    const fmt=n=>this.fmt(n);
+    const ARCH=(new URLSearchParams(location.search).get('arch')||'A').toUpperCase()==='B'?'B':'A';
+    const D=this.higherEdData()[ARCH], geo=D.geo;
+    const cap='<svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4C5 18.83 8.13 20 12 20s7-1.17 7-2.82v-4L12 17l-7-3.82z"/></svg>';
+    const pill=c=> c==='Public' ? '<span class="hied-pill hied-pub">Public</span>' : '<span class="hied-pill hied-priv">Private</span>';
+    const item=(o,serves)=>`<div class="hied-item"><span class="hied-ico">${cap}</span><div><div class="hied-name">${o.name}${pill(o.control)}</div><div class="hied-meta">${o.city}, VA${o.enroll?' · '+fmt(o.enroll)+' students':''}</div>${serves?`<div class="hied-serves${o.here?' here':''}">${o.here?'Campus in this locality':'Serves '+geo+' from its '+o.city+' campus'}</div>`:''}</div></div>`;
+    const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+    const setc=(id,n)=>{ const el=document.getElementById(id); if(el) el.textContent=n; };
+    set('hied-4yr', D.fourYear.length ? D.fourYear.map(o=>item(o,false)).join('') : `<div class="hied-empty">No four-year institution is located in ${geo}. Residents typically attend institutions in neighboring localities.</div>`);
+    setc('hied-4yr-count', D.fourYear.length);
+    set('hied-cc', D.community.length ? D.community.map(o=>item(o,true)).join('') : `<div class="hied-empty">No community college is mapped to ${geo} yet.</div>`);
+    setc('hied-cc-count', D.community.length);
+  }
+
+  /* Industry Trends (s-industry) — two cards. Source (real): QCEW by NAICS
+     sector for the selected geography. Card 1 = employment + 5-yr trend;
+     Card 2 = Location Quotient (local sector share ÷ VA sector share). Both
+     derivable from the client's QCEW; growth/LQ are illustrative until wired.
+     Note: QCEW cell suppression may blank some sectors in small localities —
+     report at supersector level to minimize it. */
+  industryBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
+    const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
+    const ch='font-family:\'Barlow Condensed\';font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;text-transform:uppercase;letter-spacing:.01em;line-height:1.05';
+    const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    return `
+      <div style="${card};margin-top:.2rem">
+        <div style="${ct}">Chart 1 · Employment by industry</div>
+        <div style="${ch}">Where people work — and which sectors are growing</div>
+        <p style="${cs}">Every major industry sector by the number of jobs it supports locally. The arrow after each bar shows the change in that sector’s jobs over the past five years: <span style="color:#3A8A1E;font-weight:700">green up</span> for growing, <span style="color:#D0596B;font-weight:700">red down</span> for shrinking.</p>
+        <div id="c-industry" style="width:100%;height:540px"></div>
+      </div>
+      <div style="${card}">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+          <div>
+            <div style="${ct}">Chart 2 · Industry specialization</div>
+            <div style="${ch}">What this region concentrates in vs. Virginia</div>
+          </div>
+          <button type="button" data-help="lq" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:'Barlow',sans-serif;font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>How to read this</button>
+        </div>
+        <p style="${cs}">How concentrated each industry is in the local job mix compared with Virginia as a whole. A reading of <b>2.0×</b> means the industry is twice as common here as it is statewide, a local specialty; <b>1.0×</b> (the dashed line) is an even match with the Commonwealth; below 1.0× means it’s less common here than across Virginia. <span style="color:#9DB4D6">(Economists call this the industry’s Location Quotient.)</span></p>
+        <div id="c-industry-lq" style="width:100%;height:540px"></div>
+      </div>`;
+  }
+
+  /* New Business Growth (s-business). Source (real): QCEW/ES-202 new employer
+     establishments (new UI accounts appearing that period) for the geography.
+     DEFINITION IS A CLIENT DECISION (see the map): what counts as "new" (first
+     appearance of a UI account) and whether to filter by an employee threshold.
+     Card 1 = formation trend + YoY; Card 2 = formations by industry (QCEW
+     split). Illustrative until wired; can also split by location/ownership. */
+  businessBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
+    const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
+    const ch='font-family:\'Barlow Condensed\';font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;text-transform:uppercase;letter-spacing:.01em;line-height:1.05';
+    const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    return `
+      <div style="${card};margin-top:.2rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+          <div>
+            <div style="${ct}">Chart 1 · Formation trend</div>
+            <div style="${ch}">How many new businesses are opening</div>
+          </div>
+          <button type="button" data-help="newbiz" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:'Barlow',sans-serif;font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>What counts as a new business?</button>
+        </div>
+        <div id="biz-headline" style="margin:.35rem 0 .9rem"></div>
+        <p style="${cs}">New employer businesses registered each year. A rising trend signals investment and confidence in the local economy.</p>
+        <div id="c-business" style="width:100%;height:330px"></div>
+      </div>
+      <div style="${card}">
+        <div style="${ct}">Chart 2 · Where new businesses are forming</div>
+        <div style="${ch}">New businesses by industry, most recent year</div>
+        <p style="${cs}">Which industries new businesses chose in the latest year. The tallest bars are where local investment is concentrating: small-business heavy sectors like construction, professional services, and food service usually lead.</p>
+        <div id="c-business-industry" style="width:100%;height:520px"></div>
       </div>`;
   }
 

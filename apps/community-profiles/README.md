@@ -75,7 +75,10 @@ Each scene has its own chart, all driven by the selected geography.
 **Section 01 — Demographic Profile**
 Static intro: *"Who lives in this geography. These measures describe the size, age, and educational makeup of the population — the foundation for understanding the available workforce and the community it supports."*
 - Population & Age — horizontal **population pyramid** (male left / female right, stacked bar, 18 age cohorts).
-- Education — grouped **bar** of educational attainment %, region vs Virginia vs U.S.
+- Education — grouped **bar** of educational attainment %, region vs Virginia. Source: Census ACS S1501 (pop. 25+); seven buckets (`8th Grade or Less`, `Some High School`, `High School/GED`, `Some College`, `Associate's`, `Bachelor's`, `Graduate/Professional`). Whether to keep the `8th Grade or Less` bar or fold it into `Some High School` is a client display decision, left open.
+- Higher Education — two-column **directory** (not a chart) of degree-granting institutions, split into **Four-Year Institutions** and **Community & Junior Colleges**. **Hybrid geography rule (intentional):**
+  - *Four-year* uses **located-in** — IPEDS institutions (sector 1/2/3) whose county FIPS is in the selected geography. A locality with no four-year campus shows an empty state.
+  - *Community college* uses **serves** — the VCCS college whose official **service region** covers the locality (may be physically in a neighboring locality; flagged via `here`). **⚠ Requires a crosswalk we don't yet have:** a static `locality FIPS → assigned VCCS college` table (the 23 colleges partition the Commonwealth, so every locality resolves to exactly one). Source: VCCS service regions / SCHEV.
 
 **Section 02 — Affordability & Housing**
 Static intro: *"What it costs to live here. Household income, housing tenure and values, and the cost of living together gauge economic well-being and whether wages keep pace with the price of staying in the community."*
@@ -91,8 +94,8 @@ Static intro: *"How the community works. Participation and unemployment, the mix
 
 **Section 04 — Employers & Industry**
 Static intro: *"Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading."*
-- Industry Trends — horizontal **bar** of employment by industry (largest = highlighted green).
-- New Business Growth — **bar** of new business formations per year.
+- Industry Trends — two cards. **Card 1:** horizontal **bar** of employment by industry (largest = highlighted green) with a per-sector **5-yr growth arrow** (▲ green / ▼ red). **Card 2:** horizontal **Location Quotient bar** (`local sector share ÷ VA sector share`) with a dashed reference line at **1.0**; bars ≥1.0 (green) = local specialization. Source: **QCEW** by NAICS sector (employment + trend + LQ all derivable; client has QCEW). Expands on the overview's Top-3 industries. `industryEmployment` now `[{name, value, lq, growth}]`. Watch QCEW cell suppression in small localities — report at supersector level.
+- New Business Growth — two cards. **Card 1:** formation-trend **bar** by year (latest highlighted) + a headline stat (latest count, YoY %, decade %) and a **"What counts as a new business?" help modal** (`data-help="newbiz"`). **Card 2:** horizontal **bar** of new businesses **by industry** (latest year). Source: **QCEW/ES-202** new employer establishments (new UI accounts). **Definition is a client decision:** what counts as "new" (first UI-account appearance) and whether to apply an employee-size threshold. Can also split by location/ownership. `business` now `{years[], formations[], byIndustry:[{name,value}], lastYear}`.
 - Apprenticeships — grouped **bar** (active apprentices + completions per year).
 - Largest Employers — **ranked list** (not a chart): two-column grid of numbered rows, alternating row backgrounds, a `#0A2463` circular rank badge per row.
 
@@ -142,8 +145,9 @@ Each **region** object: `{ id, type, name, fips:[...], sub? }`, where `fips` is 
   - `population` (number), `ageCohorts` `[{age,male,female}]`, `populationChange` `[{year,value}]`, `race` `[{name,value}]`
   - `householdIncome` `[{name,value%}]`, `housing` `{owner,renter,vacant,medianHomeValue,medianRent}`, `costOfLiving` `{categories[],values[]}`
   - `laborForce` `{years[],participation[],unemployment[]}`, `occupations` `[{name,value}]`, `commute` `{modes:[{name,value%}],meanTravelMin}`
-  - `industryEmployment` `[{name,value}]`, `business` `{years[],formations[]}`, `apprenticeships` `{years[],active[],completions[]}`, `topEmployers` `[string]`
-  - `educationCompare` `{categories[],msa[],va[],us[]}`, plus scalars `baPct`, `medianIncome`, `netIn`, `wageAll`, `unemployment`, `uiPayments`.
+  - `industryEmployment` `[{name,value,lq,growth}]` (value = jobs; `lq` = Location Quotient vs VA; `growth` = 5-yr % change — all from QCEW), `business` `{years[],formations[],byIndustry:[{name,value}],lastYear}` (new employer establishments from QCEW; `byIndustry` = latest-year split), `apprenticeships` `{years[],active[],completions[]}`, `topEmployers` `[string]`
+  - `educationCompare` `{categories[],msa[],va[]}` (ACS S1501, pop. 25+; `msa` = selected region, no U.S. column), plus scalars `baPct`, `medianIncome`, `netIn`, `wageAll`, `unemployment`, `uiPayments`.
+  - `higherEd` `{fourYear:[{name,city,control,enroll}], community:[{name,city,control,enroll,here}]}` — `fourYear` = IPEDS sector 1/2/3 **located-in** the geography (county FIPS match); `community` = VCCS college **serving** the geography (needs the `locality FIPS → college` service-region crosswalk; `here` = campus physically in the locality). Currently arch-driven illustrative (see `higherEdData()`), not from `profiles.json`.
 
 ---
 
