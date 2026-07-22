@@ -9,11 +9,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="va-works-theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
   <style>
     :root {
       /* Design tokens — ported from docs/employer-wage-tool/employer-data.jsx T object. */
-      --header-bg:    #1b2536;
+      --header-bg:    #00246B;
       --header-sub:   #aab3c4;
       --paper:        #f3f0e9;
       --shell:        #ffffff;
@@ -33,7 +34,9 @@
       --industry-line:#d8dde8;
       --industry-sub: #5b6577;
 
-      --serif: "Source Serif Pro", Georgia, "Times New Roman", serif;
+      /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
+         falls back to a blocky sans where the licensed face is not bundled. */
+      --serif: "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
       --sans:  "Inter", system-ui, sans-serif;
 
       --frame-w: 760px;
@@ -797,15 +800,15 @@
         <svg class="help-illustration" viewBox="0 0 700 134" role="img" aria-label="Annotated industry summary band">
           <rect x="2" y="2" width="696" height="72" rx="4" fill="#eef3f9" stroke="#dee5ef" stroke-width="1"/>
           <text x="20" y="26" font-family="-apple-system, system-ui, sans-serif" font-size="10" fill="#5a6376" letter-spacing="0.8" font-weight="600">NAICS 62</text>
-          <text x="20" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="14" font-weight="600" fill="#11151c">Health Care &amp; Social</text>
-          <text x="20" y="60" font-family="Source Serif Pro, Georgia, serif" font-size="14" font-weight="600" fill="#11151c">Assistance</text>
+          <text x="20" y="44" font-family="Greycliff CF, Greycliff, Public Sans, system-ui, sans-serif" font-size="14" font-weight="600" fill="#11151c">Health Care &amp; Social</text>
+          <text x="20" y="60" font-family="Greycliff CF, Greycliff, Public Sans, system-ui, sans-serif" font-size="14" font-weight="600" fill="#11151c">Assistance</text>
           <text x="260" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">AVG WAGE</text>
-          <text x="260" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">$69,785</text>
+          <text x="260" y="44" font-family="Greycliff CF, Greycliff, Public Sans, system-ui, sans-serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">$69,785</text>
           <text x="260" y="58" font-family="-apple-system, system-ui, sans-serif" font-size="10" fill="#6b7280" text-anchor="middle">$33.55/hr</text>
           <text x="425" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">EMPLOYMENT</text>
-          <text x="425" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">451,657</text>
+          <text x="425" y="44" font-family="Greycliff CF, Greycliff, Public Sans, system-ui, sans-serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">451,657</text>
           <text x="590" y="22" font-family="-apple-system, system-ui, sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle" letter-spacing="0.6">ESTABLISHMENTS</text>
-          <text x="590" y="44" font-family="Source Serif Pro, Georgia, serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">42,069</text>
+          <text x="590" y="44" font-family="Greycliff CF, Greycliff, Public Sans, system-ui, sans-serif" font-size="17" font-weight="600" fill="#11151c" text-anchor="middle">42,069</text>
           <g font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#5a6376">
             <line x1="260" y1="80" x2="260" y2="96" stroke="#5a6376" stroke-width="1"/>
             <text x="222" y="110">Average Annual</text>
@@ -1275,7 +1278,7 @@
     let chart = null;
 
     function ensureChart() {
-      if (!chart) chart = echarts.init(document.getElementById('chart'));
+      if (!chart) chart = echarts.init(document.getElementById('chart'), 'vaWorks');
       return chart;
     }
 
@@ -1484,7 +1487,7 @@
                     x: xRight, y: yc - 7,
                     text: fmtMoney(Math.round(target / 500) * 500),
                     fill: C.you,
-                    font: '600 14.5px "Source Serif Pro", Georgia, serif',
+                    font: '600 14.5px "Greycliff CF", "Greycliff", "Public Sans", system-ui, sans-serif',
                     textAlign: 'left', textVerticalAlign: 'middle',
                   } },
                 /* Right column: native $/hr */

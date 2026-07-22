@@ -13,6 +13,7 @@
      topojson.feature() converts it to GeoJSON that echarts.registerMap can consume). -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="va-works-theme.js"></script>
 
 <style>
 :root {
@@ -33,6 +34,10 @@
   --accent-soft: #f4e8c6;
   --coral:   #b75049;
   --success: #2f7a4a;
+
+  /* Blocky Greycliff Demi Bold for titles (VA Works type scale); falls back to a
+     blocky sans where the licensed face is not bundled. */
+  --font-title: 'Greycliff CF','Greycliff','Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
 
   --shadow-card: 0 0.5px 0 rgba(20,30,50,0.04), 0 1px 2px rgba(20,30,50,0.04), 0 8px 24px rgba(20,30,50,0.04);
   --radius-card: 14px;
@@ -57,10 +62,12 @@ body {
   margin-bottom: 22px; gap: 24px;
 }
 .brand-block .eyebrow {
+  font-family: var(--font-title);
   font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--brand-2); margin-bottom: 4px;
 }
 .brand-block h1 {
+  font-family: var(--font-title);
   margin: 0; font-size: 24px; font-weight: 700;
   letter-spacing: -0.015em; color: var(--ink-1);
 }
@@ -127,7 +134,8 @@ body {
   margin-bottom: 6px; gap: 8px;
 }
 .card-title {
-  margin: 0; font-size: 14.5px; font-weight: 600;
+  font-family: var(--font-title);
+  margin: 0; font-size: 15px; font-weight: 600;
   letter-spacing: -0.005em; color: var(--ink-1);
 }
 .card-sub {
@@ -393,9 +401,9 @@ body {
         </div>
       </div>
       <div class="legend">
-        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#c89b3c"></span><span id="legend-region-name">Northern Virginia</span></span>
+        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#2A7050"></span><span id="legend-region-name">Northern Virginia</span></span>
         <span class="legend-item"><span class="legend-dot" id="leg-va-dot" style="background:#003595"></span><span>Virginia</span></span>
-        <span class="legend-item dashed" style="color:#8a8c8f"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
+        <span class="legend-item dashed" style="color:#8A94A3"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
       </div>
       <div class="chart-wrap" id="line-cell"><div class="loading">Loading trend…</div></div>
     </section>
@@ -427,7 +435,7 @@ body {
 // Same near-white → brand-blue ramp the original uses for the choropleth.
 const MAP_RAMP = ['#eaf1f9', '#bbcbe5', '#8ca6d1', '#5e80bd', '#2f5ba9', '#003595'];
 const BRAND_PRIMARY = '#003595';
-const BRAND_ACCENT  = '#c89b3c';
+const BRAND_ACCENT  = '#2A7050';
 const INK_3 = '#8a8c8f';
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -694,8 +702,8 @@ function lineChartOptions(trend, selectedCounty) {
     name: 'U.S. National',
     type: 'line', smooth: true,
     data: base.series.us_national,
-    lineStyle: { width: 1.8, color: INK_3, type: 'dashed' },
-    itemStyle: { color: INK_3 },
+    lineStyle: { width: 1.8, color: '#8A94A3', type: 'dashed' },
+    itemStyle: { color: '#8A94A3' },
     symbol: 'none',
     z: 1
   });
@@ -772,8 +780,10 @@ function barChartOptions(industry, regionKey) {
     value: d.jobs_added,
     name: d.sector,
     itemStyle: {
-      color: d.jobs_added < 0 ? '#b75049' : BRAND_PRIMARY,
-      borderRadius: [0, 4, 4, 0]
+      color: d.jobs_added < 0 ? '#9FB4D8' : BRAND_PRIMARY,
+      // round the outer (away-from-zero) end, flat against the zero axis:
+      // negatives extend left → round left corners; positives extend right → round right corners
+      borderRadius: d.jobs_added < 0 ? [4, 0, 0, 4] : [0, 4, 4, 0]
     }
   }));
 
@@ -859,9 +869,9 @@ function initBoard() {
   // Drop loading placeholders.
   document.querySelectorAll('.loading').forEach(el => el.remove());
 
-  STATE.charts.map  = echarts.init(document.getElementById('map-cell'));
-  STATE.charts.line = echarts.init(document.getElementById('line-cell'));
-  STATE.charts.bar  = echarts.init(document.getElementById('bar-cell'));
+  STATE.charts.map  = echarts.init(document.getElementById('map-cell'), 'vaWorks');
+  STATE.charts.line = echarts.init(document.getElementById('line-cell'), 'vaWorks');
+  STATE.charts.bar  = echarts.init(document.getElementById('bar-cell'), 'vaWorks');
 
   STATE.charts.map.setOption(mapChartOptions(STATE.mapData));
   STATE.charts.line.setOption(lineChartOptions(d.trend, null));

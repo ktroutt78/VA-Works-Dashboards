@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="va-works-theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
   <style>
     :root {
@@ -25,7 +26,9 @@
          clear separation. Median tick uses --ink + 3px for strong target signal. */
       --band-outer: #8aa0c4;
       --band-inner: #3a5a8a;
-      --serif:  "Source Serif Pro", Georgia, serif;
+      /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
+         falls back to a blocky sans where the licensed face is not bundled. */
+      --serif:  "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
       --mono:   "JetBrains Mono", ui-monospace, Menlo, monospace;
       --sans:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
     }
@@ -34,7 +37,7 @@
     .frame { width: 760px; background: var(--shell); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
     /* Agency header */
-    .header { background: var(--ink); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
+    .header { background: #00246B; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
     .header-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
     .header-sub   { font-size: 11px; color: #c8cdd9; margin-top: 2px; letter-spacing: 0.4px; }
     .header-brand { font-size: 10px; color: #9ea6b8; font-family: var(--mono); letter-spacing: 0.6px; text-transform: uppercase; }
@@ -1446,7 +1449,7 @@
 
     function mkPercentileBar(el, entry, domain, salary, salaryLabel) {
       salaryLabel = salaryLabel || 'Your salary';
-      const c = echarts.init(el);
+      const c = echarts.init(el, 'vaWorks');
       charts.push(c);
       c.setOption({
         animation: false,
@@ -1497,7 +1500,7 @@
       const range = maxV - minV;
       const pad = range > 0 ? range * 0.10 : Math.max(1, maxV * 0.02);
 
-      const c = echarts.init(el);
+      const c = echarts.init(el, 'vaWorks');
       charts.push(c);
       c.setOption({
         animation: false,
@@ -1552,7 +1555,7 @@
     }
 
     function mkAxis(el, domain) {
-      const c = echarts.init(el);
+      const c = echarts.init(el, 'vaWorks');
       charts.push(c);
       c.setOption({
         animation: false,
