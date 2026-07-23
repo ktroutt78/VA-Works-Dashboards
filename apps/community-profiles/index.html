@@ -1119,7 +1119,7 @@ class Component {
       const rankBars=(id,src,unit)=>{ const cc=this.mk(id); if(!cc) return;
         const rows=[...src].filter(r=>r.value>0).sort((a2,b2)=>a2.value-b2.value);
         cc.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' '+unit},
-          xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
+          xAxis:{type:'value',...ax,axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:150,overflow:'truncate'}},
           series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); };
       rankBars('c-appr-occ', a.byOccupation, 'apprentices');
