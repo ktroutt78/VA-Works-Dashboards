@@ -31,6 +31,7 @@
   .demo-ch{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05}
   .demo-cs{font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:64ch;line-height:1.5}
   .demo-pair{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;align-items:start}
+  .emp-toprow{display:grid;grid-template-columns:minmax(220px,.85fr) 1.15fr;gap:.9rem;align-items:stretch;margin-top:.2rem}
   .demo-panel-lbl{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.4rem}
   .demo-fact{font-size:.78rem;color:#5A6472;margin-top:13px;padding-top:12px;border-top:1px solid #F0EEE7;line-height:1.5}
   .demo-fact b{color:#1A1A1A;font-weight:600}
@@ -42,7 +43,7 @@
   .demo-yearnudge.off{display:none}
   @keyframes demo-nudge{0%,100%{opacity:.4}50%{opacity:1}}
   .varef{color:#0A2463}
-  @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}.demo-pair{grid-template-columns:1fr}}
+  @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}.demo-pair{grid-template-columns:1fr}.emp-toprow{grid-template-columns:1fr}}
   /* ---- Higher Education section (scene: s-highered) ---- */
   .hied-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin-top:.2rem;align-items:start}
   .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
@@ -1007,9 +1008,22 @@ class Component {
 
   renderEmployers(d){
     if(!d||!d.employers) return;
-    const C=this.C, F=this.FONT, cols=this.empColumns(), locName=this.current?this.current.name:'this locality';
+    const C=this.C, F=this.FONT, ax=this.axis(), cols=this.empColumns(), locName=this.current?this.current.name:'this locality';
     const setTxt=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
-    setTxt('emp-locality', locName); setTxt('emp-locality2', locName);
+    setTxt('emp-locality', locName); setTxt('emp-locality2', locName); setTxt('emp-locality3', locName);
+    // Quick-read BANs: statewide count + local private-sector share
+    setTxt('emp-ban-count', this.fmt(d.employers.list.length));
+    setTxt('emp-ban-private', d.employers.ownership.privatePct+'%');
+    // Employer size distribution (statewide) — counts of the named list per band,
+    // derived from the same list so it previews the table exactly.
+    const sdBands=['10,000+','5,000-9,999','1,000-4,999'];
+    const sdCounts=sdBands.map(b=>d.employers.list.filter(r=>r.band===b).length);
+    const sd=this.mk('c-emp-sizedist');
+    if(sd){ sd.setOption({ grid:{left:8,right:16,top:26,bottom:8,containLabel:true},
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+' employers'},
+      xAxis:{type:'category',data:sdBands,...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11}},
+      yAxis:{type:'value',...ax,axisLabel:{show:false},splitLine:{show:false}},   // counts sit on the bars; axis scale redundant
+      series:[{type:'bar',barMaxWidth:60,data:sdCounts,itemStyle:{color:C.blue,borderRadius:[4,4,0,0]},label:{show:true,position:'top',formatter:p=>p.value,color:C.slate,fontFamily:F,fontWeight:700,fontSize:13}}] }); }
     // Named list table — top 25 visible; full 50 via CSV
     const tbl=document.getElementById('emp-table');
     if(tbl){ const rows=d.employers.list.slice(0,25);
@@ -1285,7 +1299,7 @@ class Component {
       {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', custom:'apprenticeships', fields:['apprenticeships'],
        lede:'Registered apprentices in training across this geography — the occupations they are learning, the industries those trades feed, and the programs that sponsor them.'},
       {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', custom:'employers', fields:['topEmployers'],
-       lede:'Two views of the biggest employers: a statewide list of Virginia’s largest employers, the same for every geography, and the public-versus-private split of jobs in the selected locality.'} ]}
+       lede:'Two views of the biggest employers: the public-versus-private split of jobs in the selected locality, and a statewide list of Virginia’s largest employers, the same for every geography.'} ]}
   ]; }
 
   jumpTo(id){ const t=document.getElementById(id); if(!t) return; const y=t.getBoundingClientRect().top+window.pageYOffset-92; window.scrollTo({top:y,behavior:'smooth'}); }
@@ -1663,12 +1677,49 @@ class Component {
     const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
     const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    // Scope chip — makes statewide-vs-local unmistakable on each element
+    const chip=(txt,sw)=>`<span style="display:inline-block;align-self:flex-start;background:${sw?'#EAF1FB':'#EAF3EE'};border:1px solid ${sw?'#C4D6F0':'#BFE0CD'};color:${sw?'#1B4DB1':'#1F5A3E'};font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:20px">${txt}</span>`;
+    const banLbl='margin:.5rem 0 0;color:#5A6472;text-transform:none;letter-spacing:0;font-size:.8rem;font-weight:600;line-height:1.35';
     return `
       <!-- MANIFEST — Largest Employers (data wired later).
            Named list: client-provided curated STATEWIDE largest-employers list (QCEW-derived; names released at aggregate level; employment as bands due to suppression). Constant across every geography, NOT per-locality. Columns extensible per the client's actual file (edit empColumns() + row objects).
+           Size distribution: counts of the named list per employment band — STATEWIDE, derived from the same list.
            Ownership split: dbo.industry / WID Industry, StFips='51', IndCode='10' (all industries), grouped by Ownership code (50=Private; 10=Federal, 20=State, 30=Local, or 80=All Government) for the selected Area. AreaType '04'=county/city (137 areas); roll up to LWDA/state per fallback (locality -> parent LWDA -> State).
            Employment shown as bands, never exact counts, for any named-employer figure. -->
-      <div style="${card};margin-top:.2rem">
+
+      <!-- TOP ROW: quick-read stats (left) + statewide size distribution (right) -->
+      <div class="emp-toprow">
+        <div style="display:flex;flex-direction:column;gap:.9rem">
+          <div class="demo-ban" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+            ${chip('Statewide',true)}
+            <div class="demo-ban-val" id="emp-ban-count" style="margin-top:.5rem">—</div>
+            <div class="demo-ban-lbl" style="${banLbl}">Large employers in Virginia (1,000+ jobs)</div>
+          </div>
+          <div class="demo-ban" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+            ${chip('Local',false)}
+            <div class="demo-ban-val" id="emp-ban-private" style="margin-top:.5rem;color:#2A7050">—</div>
+            <div class="demo-ban-lbl" style="${banLbl}">Private-sector jobs in <span id="emp-locality3">this locality</span></div>
+          </div>
+        </div>
+        <div style="${card};margin-top:0;display:flex;flex-direction:column">
+          <div style="${ct}">Statewide</div>
+          <div style="${ch}">Employers by size</div>
+          <p style="${cs};margin-bottom:6px">How many of Virginia’s largest employers fall in each employment band — a preview of the list below.</p>
+          <div id="c-emp-sizedist" style="width:100%;height:236px;flex:1"></div>
+        </div>
+      </div>
+
+      <!-- LOCALITY OWNERSHIP SPLIT (local) -->
+      <div style="${card}">
+        <div style="${ct}">This locality</div>
+        <div style="${ch}">Public and private jobs in <span id="emp-locality2">this locality</span></div>
+        <p style="${cs}">This split <b>is</b> specific to the selected geography: the share of jobs in private businesses versus government (federal, state, and local).</p>
+        <div id="c-emp-ownership" style="width:100%;height:150px"></div>
+        <p style="font-size:.9rem;color:#5A6472;margin:.4rem 0 0;line-height:1.5" id="f-emp-ownership"></p>
+      </div>
+
+      <!-- STATEWIDE NAMED LIST + CSV (long — placed last) -->
+      <div style="${card}">
         <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
           <div>
             <div style="${ct}">Statewide</div>
@@ -1686,13 +1737,6 @@ class Component {
           <table id="emp-table" style="width:100%;border-collapse:collapse;min-width:560px"></table>
         </div>
         <p style="font-size:.78rem;color:#9DB4D6;margin:.7rem 0 0">Showing the top 25 of 50. Download the CSV for the full list.</p>
-      </div>
-      <div style="${card}">
-        <div style="${ct}">This locality</div>
-        <div style="${ch}">Public and private jobs in <span id="emp-locality2">this locality</span></div>
-        <p style="${cs}">Unlike the statewide list above, this split <b>is</b> specific to the selected geography: the share of jobs in private businesses versus government (federal, state, and local).</p>
-        <div id="c-emp-ownership" style="width:100%;height:150px"></div>
-        <p style="font-size:.9rem;color:#5A6472;margin:.4rem 0 0;line-height:1.5" id="f-emp-ownership"></p>
       </div>`;
   }
 
