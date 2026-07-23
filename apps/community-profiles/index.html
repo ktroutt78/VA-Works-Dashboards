@@ -608,20 +608,15 @@ class Component {
           <p style="margin:0"><b>On the chart:</b> bars to the <b style="color:#2A7050">right of the dashed line</b> are your region's specialties (more than Virginia); bars to the <b>left</b> are industries the region has less of than the rest of the state.</p>` },
       newbiz:{ title:'What counts as a new business?',
         body:`
-          <p style="margin:0 0 1rem;font-size:1.05rem;color:#1A1A1A"><b>In one line:</b> a new business is an employer that shows up in the state's official jobs records for the very first time.</p>
-          <p style="margin:0 0 1.1rem">The count comes from the same payroll records used to track employment (QCEW). When a business hires its first employees, it registers with the state and gets counted here. Each year's bar is that year's brand-new arrivals.</p>
+          <p style="margin:0 0 1.1rem;font-size:1.05rem;color:#1A1A1A">A new business is an employer that appears in the state's official payroll records (QCEW) for the very first time. When a business hires its first employees and registers with the state, it gets counted here — so each year's bar is that year's brand-new arrivals.</p>
           <div style="background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.9rem 1rem;margin:0 0 1.15rem">
             <div style="font-weight:700;color:#0A2463;margin-bottom:.35rem;font-size:.88rem">Good to know</div>
             Because it is based on payroll records, this counts businesses that have <b>paid employees</b>. A one-person business with no staff (a sole proprietor) may not appear until it hires someone.
           </div>
-          <p style="margin:0 0 1.1rem"><b>Why it matters:</b> a rising line means more businesses are opening and putting down roots locally than in earlier years. It is an early signal of investment and confidence in the area.</p>
-          <div style="background:#FFF8EC;border:1px solid #F0E2C4;border-radius:10px;padding:.9rem 1rem;margin:0">
-            <div style="font-weight:700;color:#8A6D1F;margin-bottom:.35rem;font-size:.88rem">Two choices set at data wire-up</div>
-            <ol style="margin:.2rem 0 0;padding-left:1.2rem">
-              <li>Exactly when a business counts as "new" (the first time its account appears).</li>
-              <li>Whether to require a minimum employee size, so very small or short-lived filings do not inflate the count.</li>
-            </ol>
-          </div>` }
+          <p style="margin:0"><b>Why it matters:</b> a rising line means more businesses are opening and putting down roots locally than in earlier years. It is an early signal of investment and confidence in the area.</p>
+          <!-- Internal note (not citizen-facing): two choices set at data wire-up —
+               (1) exactly when a business counts as "new" (the first time its account appears);
+               (2) whether to require a minimum employee size, so very small or short-lived filings do not inflate the count. -->` }
     };
   }
   renderTabs(){
@@ -1451,7 +1446,7 @@ class Component {
           <button type="button" data-help="newbiz" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:'Barlow',sans-serif;font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>What counts as a new business?</button>
         </div>
         <div id="biz-headline" style="margin:.35rem 0 .9rem"></div>
-        <p style="${cs}">New employer businesses registered each year. A rising trend signals investment and confidence in the local economy.</p>
+        <p style="${cs}">Each year's bar counts employer businesses that show up in the state's official jobs records for the first time — an early signal of local investment.</p>
         <div id="c-business" style="width:100%;height:330px"></div>
       </div>
       <div style="${card}">
