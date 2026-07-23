@@ -783,7 +783,9 @@ class Component {
        gdpTrend:           [int]  GDP series over ovYears
        unempLatest:        num    latest unemployment rate (%)
        unempLatestYear:    str    year of unempLatest
-       topEmployers:       [str]  ranked employer names
+       topEmployers:       [str]  ranked employer names (legacy)
+       employers:          {list:[{rank,name,band,ownership,industry}] STATEWIDE constant,
+                            ownership:{privatePct,govPct,federalPct,statePct,localPct} per-locality}
        householdIncome:    [{name:str, value:num %}]           income brackets
        housing:            {owner:num %, renter:num %, vacant:num %, medianHomeValue:int $, medianRent:int $}
        costOfLiving:       {categories:[str], values:[num]}    US=100 index
@@ -845,6 +847,15 @@ class Component {
     // employers
     const empPool=['Walmart','Amazon','HCA Healthcare','Sentara Health','Bon Secours','Dominion Energy','Bank of America','Capital One','Northrop Grumman','Huntington Ingalls','VCU Health','UVA Health','Carilion Clinic','Food Lion','Kroger','Target','FedEx','UPS','Lowe\u2019s','Booz Allen','Leidos','Navy Federal','Anthem','Costco','Smithfield Foods','Volvo','Micron','Local Public Schools','County Government','Regional Hospital'];
     const pool=empPool.slice(); const topEmployers=[]; for(let i=0;i<12 && pool.length;i++){ topEmployers.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); }
+    // Largest Employers: the named list is STATEWIDE and identical for every
+    // geography (empStatewideList), so it is NOT regenerated per region. The
+    // ownership split IS locality-specific (Industry ownership codes), so it is
+    // seeded per region here and stays stable for that region.
+    const empPriv=Math.round(70+(rnd()-0.5)*24);            // ~58-82% private
+    const empGov=100-empPriv;
+    const _fw=0.3+rnd()*0.35,_sw=0.3+rnd()*0.35,_lw=0.3+rnd()*0.35,_ws2=_fw+_sw+_lw;
+    const empFed=Math.round(empGov*_fw/_ws2), empStateO=Math.round(empGov*_sw/_ws2), empLocal=empGov-empFed-empStateO;
+    const employers={ list:this.empStatewideList(), ownership:{ privatePct:empPriv, govPct:empGov, federalPct:empFed, statePct:empStateO, localPct:empLocal } };
     const medianIncome=Math.round((58000+rnd()*42000)/500)*500;
     // overview: GDP + population sparkline series + latest unemployment
     const ovYears=['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
@@ -918,10 +929,123 @@ class Component {
       rentNow, rentYoY, rentTrend, homeNow, homeYoY, homeTrend,
       burdenCats:['Renting','Owning (mortgage)','Owning (no mortgage)'], burdenRegion, burdenVa:[29.1,21.5,10.4],
       medianIncome, vaMedianIncome, discretionary, vaDiscretionary };
-    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct}, medianIncome, topEmployers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
+    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct}, medianIncome, topEmployers, employers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
       householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships, afford };
   }
   /* ===================== END MOCK DATA ===================== */
+
+  /* Largest Employers — STATEWIDE curated list (client-provided later). Constant
+     across every geography; do NOT re-rank per locality. Representative until
+     wired. Employment shown as bands (QCEW suppression), never exact counts. */
+  empStatewideList(){
+    if(this._empList) return this._empList;
+    this._empList=[
+      {rank:1, name:'Walmart', band:'10,000+', ownership:'Private', industry:'Retail Trade'},
+      {rank:2, name:'Fort Belvoir (U.S. Army)', band:'10,000+', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:3, name:'Inova Health System', band:'10,000+', ownership:'Private', industry:'Health Care'},
+      {rank:4, name:'Amazon', band:'10,000+', ownership:'Private', industry:'Transportation & Warehousing'},
+      {rank:5, name:'Sentara Healthcare', band:'10,000+', ownership:'Private', industry:'Health Care'},
+      {rank:6, name:'Fairfax County Public Schools', band:'10,000+', ownership:'Public (Local)', industry:'Educational Services'},
+      {rank:7, name:'Huntington Ingalls Industries', band:'10,000+', ownership:'Private', industry:'Manufacturing'},
+      {rank:8, name:'University of Virginia', band:'5,000-9,999', ownership:'Public (State)', industry:'Educational Services'},
+      {rank:9, name:'Virginia Commonwealth University', band:'5,000-9,999', ownership:'Public (State)', industry:'Educational Services'},
+      {rank:10, name:'Capital One', band:'5,000-9,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:11, name:'Naval Station Norfolk', band:'10,000+', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:12, name:'Food Lion', band:'5,000-9,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:13, name:'Costco Wholesale', band:'5,000-9,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:14, name:'Bank of America', band:'5,000-9,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:15, name:'Northrop Grumman', band:'5,000-9,999', ownership:'Private', industry:'Manufacturing'},
+      {rank:16, name:'Booz Allen Hamilton', band:'5,000-9,999', ownership:'Private', industry:'Professional & Technical'},
+      {rank:17, name:'Leidos', band:'5,000-9,999', ownership:'Private', industry:'Professional & Technical'},
+      {rank:18, name:'Dominion Energy', band:'5,000-9,999', ownership:'Private', industry:'Utilities'},
+      {rank:19, name:'Navy Federal Credit Union', band:'5,000-9,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:20, name:'Virginia Tech', band:'5,000-9,999', ownership:'Public (State)', industry:'Educational Services'},
+      {rank:21, name:'George Mason University', band:'5,000-9,999', ownership:'Public (State)', industry:'Educational Services'},
+      {rank:22, name:'Bon Secours Mercy Health', band:'5,000-9,999', ownership:'Private', industry:'Health Care'},
+      {rank:23, name:'HCA Virginia Health System', band:'5,000-9,999', ownership:'Private', industry:'Health Care'},
+      {rank:24, name:'Carilion Clinic', band:'5,000-9,999', ownership:'Private', industry:'Health Care'},
+      {rank:25, name:'Prince William County Public Schools', band:'5,000-9,999', ownership:'Public (Local)', industry:'Educational Services'},
+      {rank:26, name:'Loudoun County Public Schools', band:'5,000-9,999', ownership:'Public (Local)', industry:'Educational Services'},
+      {rank:27, name:'Virginia Beach City Public Schools', band:'5,000-9,999', ownership:'Public (Local)', industry:'Educational Services'},
+      {rank:28, name:'Chesterfield County Public Schools', band:'1,000-4,999', ownership:'Public (Local)', industry:'Educational Services'},
+      {rank:29, name:'Marine Corps Base Quantico', band:'5,000-9,999', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:30, name:'Naval Air Station Oceana', band:'1,000-4,999', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:31, name:'Langley Air Force Base', band:'1,000-4,999', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:32, name:'Smithfield Foods', band:'1,000-4,999', ownership:'Private', industry:'Manufacturing'},
+      {rank:33, name:'Volvo Trucks North America', band:'1,000-4,999', ownership:'Private', industry:'Manufacturing'},
+      {rank:34, name:'Micron Technology', band:'1,000-4,999', ownership:'Private', industry:'Manufacturing'},
+      {rank:35, name:'Anthem (Elevance Health)', band:'1,000-4,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:36, name:'Kroger', band:'1,000-4,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:37, name:'Target', band:'1,000-4,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:38, name:'The Home Depot', band:'1,000-4,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:39, name:"Lowe's", band:'1,000-4,999', ownership:'Private', industry:'Retail Trade'},
+      {rank:40, name:'FedEx', band:'1,000-4,999', ownership:'Private', industry:'Transportation & Warehousing'},
+      {rank:41, name:'UPS', band:'1,000-4,999', ownership:'Private', industry:'Transportation & Warehousing'},
+      {rank:42, name:'Wells Fargo', band:'1,000-4,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:43, name:'Truist Financial', band:'1,000-4,999', ownership:'Private', industry:'Finance & Insurance'},
+      {rank:44, name:'Virginia Department of Motor Vehicles', band:'1,000-4,999', ownership:'Public (State)', industry:'Public Administration'},
+      {rank:45, name:'Virginia Department of Transportation', band:'1,000-4,999', ownership:'Public (State)', industry:'Public Administration'},
+      {rank:46, name:'U.S. Postal Service', band:'1,000-4,999', ownership:'Public (Federal)', industry:'Public Administration'},
+      {rank:47, name:'Riverside Health System', band:'1,000-4,999', ownership:'Private', industry:'Health Care'},
+      {rank:48, name:'Centra Health', band:'1,000-4,999', ownership:'Private', industry:'Health Care'},
+      {rank:49, name:'Old Dominion University', band:'1,000-4,999', ownership:'Public (State)', industry:'Educational Services'},
+      {rank:50, name:'James Madison University', band:'1,000-4,999', ownership:'Public (State)', industry:'Educational Services'} ];
+    return this._empList;
+  }
+  /* Single column-config array drives BOTH the table and the CSV export. To add
+     a column (e.g. City, Website, Year established), add one entry here and one
+     field to each row object above — no table or export rewrite needed. */
+  empColumns(){ return [
+    {label:'Rank',       align:'center', cell:r=>r.rank},
+    {label:'Employer',   align:'left',   cell:r=>r.name},
+    {label:'Employment', align:'left',   cell:r=>r.band},
+    {label:'Ownership',  align:'left',   cell:r=>r.ownership, td:r=>this.ownPill(r.ownership)},
+    {label:'Industry',   align:'left',   cell:r=>r.industry} ]; }
+  ownPill(v){ const pub=/Public/.test(v);
+    const bg=pub?'#EAF1FB':'#EAF3EE', bd=pub?'#C4D6F0':'#BFE0CD', fg=pub?'#1B4DB1':'#1F5A3E';
+    return `<span style="display:inline-block;background:${bg};border:1px solid ${bd};color:${fg};font-size:.72rem;font-weight:700;padding:.12rem .5rem;border-radius:20px;white-space:nowrap">${v}</span>`; }
+
+  renderEmployers(d){
+    if(!d||!d.employers) return;
+    const C=this.C, F=this.FONT, cols=this.empColumns(), locName=this.current?this.current.name:'this locality';
+    const setTxt=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+    setTxt('emp-locality', locName); setTxt('emp-locality2', locName);
+    // Named list table — top 25 visible; full 50 via CSV
+    const tbl=document.getElementById('emp-table');
+    if(tbl){ const rows=d.employers.list.slice(0,25);
+      const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;padding:.5rem .7rem;border-bottom:2px solid #E2E0D8';
+      const head='<thead><tr>'+cols.map(c=>`<th style="text-align:${c.align};${th}">${c.label}</th>`).join('')+'</tr></thead>';
+      const body='<tbody>'+rows.map((r,i)=>`<tr style="background:${i%2?'#fff':'#F8FAFD'}">`+
+        cols.map(c=>`<td style="text-align:${c.align};padding:.5rem .7rem;font-size:.9rem;color:#1A1A1A;border-bottom:1px solid #EDEEF1;${c.label==='Employer'?'font-weight:600;':''}${c.label==='Rank'?"font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;color:#5A6472;":''}">${c.td?c.td(r):c.cell(r)}</td>`).join('')+'</tr>').join('')+'</tbody>';
+      tbl.innerHTML=head+body; }
+    // CSV export
+    const btn=document.getElementById('emp-csv'); if(btn) btn.onclick=()=>this.downloadEmployersCsv();
+    // Locality ownership split — 100% stacked horizontal bar (private + gov tiers)
+    const o=d.employers.ownership, c=this.mk('c-emp-ownership');
+    if(c){ const seg=(name,val,color)=>({name,type:'bar',stack:'own',barWidth:46,data:[val],itemStyle:{color},
+        label:{show:val>=6,position:'inside',formatter:`${val}%`,color:'#fff',fontFamily:F,fontWeight:700,fontSize:12}});
+      c.setOption({ grid:{left:6,right:6,top:8,bottom:8,containLabel:true},
+        tooltip:{trigger:'item',formatter:p=>`${p.seriesName}<br/><b>${p.value}%</b> of jobs`},
+        legend:{bottom:0,itemWidth:12,itemHeight:12,itemGap:16,textStyle:{fontFamily:F,color:C.slate,fontSize:12}},
+        xAxis:{type:'value',max:100,show:false}, yAxis:{type:'category',data:[''],show:false},
+        series:[ seg('Private',o.privatePct,'#2A7050'), seg('Federal',o.federalPct,'#1B4DB1'), seg('State',o.statePct,'#5BA3D0'), seg('Local',o.localPct,'#E8A33D') ] }); }
+    // one-line fact
+    const fEl=document.getElementById('f-emp-ownership');
+    if(fEl) fEl.innerHTML=`<b style="color:#0A2463">In ${locName}, ${o.privatePct}% of jobs are private sector</b> and ${o.govPct}% are government (Federal ${o.federalPct}%, State ${o.statePct}%, Local ${o.localPct}%).`;
+  }
+  downloadEmployersCsv(){
+    if(!this.data||!this.data.employers) return;
+    const cols=this.empColumns(), rows=this.data.employers.list;
+    const esc=v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+    const lines=[ cols.map(c=>esc(c.label)).join(',') ]
+      .concat(rows.map(r=>cols.map(c=>esc(c.cell(r))).join(',')));
+    const csv='﻿'+lines.join('\r\n');   // BOM + CRLF so Excel opens it cleanly
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='virginia-largest-employers.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
 
   /* ---------- charts ---------- */
   mk(id){ const el=document.getElementById(id); if(!el) return null; if(this.charts[id]) this.charts[id].dispose(); const c=this.ec.init(el,'vaWorks'); this.charts[id]=c; return c; }
@@ -1126,7 +1250,7 @@ class Component {
       rankBars('c-appr-industry', a.byIndustry, 'apprentices');
       rankBars('c-appr-sponsor', a.bySponsor, 'apprentices'); }
     // employers list
-    const emp=document.getElementById('c-employers'); if(emp) emp.innerHTML=d.topEmployers.map((e,i)=>`<div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .7rem;background:${i%2?'#fff':'#F8F6F0'};border-radius:7px"><span style="flex:none;width:24px;height:24px;border-radius:50%;background:#0A2463;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.78rem">${i+1}</span><span style="font-weight:600;font-size:.92rem">${e}</span></div>`).join('');
+    this.renderEmployers(d);   // Largest Employers — statewide named table + CSV + locality ownership split
     requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize()));
   }
 
@@ -1160,8 +1284,8 @@ class Component {
        lede:'How many new businesses are opening, whether that pace is rising, and which industries new businesses are choosing. An early read on where the local economy is investing.'},
       {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', custom:'apprenticeships', fields:['apprenticeships'],
        lede:'Registered apprentices in training across this geography — the occupations they are learning, the industries those trades feed, and the programs that sponsor them.'},
-      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', chart:null, fields:['topEmployers'],
-       lede:'The organizations that employ the most people across this geography.'} ]}
+      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', custom:'employers', fields:['topEmployers'],
+       lede:'Two views of the biggest employers: a statewide list of Virginia’s largest employers, the same for every geography, and the public-versus-private split of jobs in the selected locality.'} ]}
   ]; }
 
   jumpTo(id){ const t=document.getElementById(id); if(!t) return; const y=t.getBoundingClientRect().top+window.pageYOffset-92; window.scrollTo({top:y,behavior:'smooth'}); }
@@ -1230,8 +1354,7 @@ class Component {
         </div>${th.blurb?`<p style="font-size:1.02rem;color:#5A6472;max-width:74ch;margin-top:.7rem;text-wrap:pretty">${th.blurb}</p>`:''}
       </div>`;
       th.scenes.forEach((s,si)=>{ if(s.hold) return; n++;
-        const body = s.id==='s-emp'
-          ? `<div id="c-employers" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.2rem"></div>`
+        const body = s.custom==='employers' ? this.employersBody()
           : s.custom==='housing' ? this.housingBody()
           : s.custom==='income' ? this.incomeBody()
           : s.custom==='demographics' ? this.demographicsBody()
@@ -1529,6 +1652,47 @@ class Component {
           <p style="${cs}">Active apprentices by the program sponsor that registers and trains them.</p>
           <div id="c-appr-sponsor" style="width:100%;height:300px"></div>
         </div>
+      </div>`;
+  }
+
+  /* Largest Employers (s-emp). Two parts with different geography scope:
+     (1) STATEWIDE named list — client-curated, constant across geographies;
+     (2) locality ownership split — real, per-selected-geography. */
+  employersBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
+    const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
+    const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
+    const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    return `
+      <!-- MANIFEST — Largest Employers (data wired later).
+           Named list: client-provided curated STATEWIDE largest-employers list (QCEW-derived; names released at aggregate level; employment as bands due to suppression). Constant across every geography, NOT per-locality. Columns extensible per the client's actual file (edit empColumns() + row objects).
+           Ownership split: dbo.industry / WID Industry, StFips='51', IndCode='10' (all industries), grouped by Ownership code (50=Private; 10=Federal, 20=State, 30=Local, or 80=All Government) for the selected Area. AreaType '04'=county/city (137 areas); roll up to LWDA/state per fallback (locality -> parent LWDA -> State).
+           Employment shown as bands, never exact counts, for any named-employer figure. -->
+      <div style="${card};margin-top:.2rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div style="${ct}">Statewide</div>
+            <div style="${ch}">Virginia’s Largest Employers</div>
+          </div>
+          <button type="button" id="emp-csv" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.45rem;border:1px solid #0A2463;background:#0A2463;color:#fff;font-family:'Barlow',sans-serif;font-weight:700;font-size:.8rem;padding:.5rem .85rem;border-radius:8px;cursor:pointer;white-space:nowrap">
+            <span style="font-size:.9rem">&#8595;</span> Download CSV (all 50)
+          </button>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:.55rem;background:#FFF8EC;border:1px solid #F0E2C4;border-radius:10px;padding:.6rem .85rem;margin:.5rem 0 .9rem">
+          <span style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#8A6D1F;color:#fff;font-size:.66rem;font-weight:700;margin-top:1px">i</span>
+          <span style="font-size:.82rem;color:#5A5033;line-height:1.45">This is a <b>statewide</b> list of Virginia’s largest employers. It is the same for every geography in this report and is <b>not specific to <span id="emp-locality">this locality</span></b>. Employment is shown as ranges, not exact counts.</span>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table id="emp-table" style="width:100%;border-collapse:collapse;min-width:560px"></table>
+        </div>
+        <p style="font-size:.78rem;color:#9DB4D6;margin:.7rem 0 0">Showing the top 25 of 50. Download the CSV for the full list.</p>
+      </div>
+      <div style="${card}">
+        <div style="${ct}">This locality</div>
+        <div style="${ch}">Public and private jobs in <span id="emp-locality2">this locality</span></div>
+        <p style="${cs}">Unlike the statewide list above, this split <b>is</b> specific to the selected geography: the share of jobs in private businesses versus government (federal, state, and local).</p>
+        <div id="c-emp-ownership" style="width:100%;height:150px"></div>
+        <p style="font-size:.9rem;color:#5A6472;margin:.4rem 0 0;line-height:1.5" id="f-emp-ownership"></p>
       </div>`;
   }
 
