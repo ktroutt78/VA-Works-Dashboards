@@ -244,6 +244,12 @@ class Component {
     this.profileData=null;
     try{ const pr=await fetch('data/profiles.json'); if(pr.ok) this.profileData=await pr.json(); }catch(e){}
     this.profiles={}; ((this.profileData&&this.profileData.profiles)||[]).forEach(p=>{ this.profiles[p.id]=p; });
+    // County/City LAUS unemployment trend — reused from the front-page dashboard
+    // (data/unemployment_trend.json: monthly series.virginia + counties[hc_key]).
+    // hc_key = 'us-va-<FIPS3>'. County/City only for now; other levels stay mock.
+    this.laus=null; this.lausByKey={};
+    try{ const lr=await fetch('data/unemployment_trend.json'); if(lr.ok) this.laus=await lr.json(); }catch(e){}
+    if(this.laus&&this.laus.counties) this.laus.counties.forEach(c=>{ this.lausByKey[c.hc_key]=c.data; });
     // build registry + geometry helpers
     this.prepFeatures();
     this.buildRegions();
@@ -1541,39 +1547,52 @@ class Component {
 
   renderUnemployment(d){
     const C=this.C, F=this.FONT, ax=this.axis();
-    const u=d.unemployment; if(!u) return;
     const regionName=(this.current&&this.current.name)||'This locality';
-    // BAN pair — latest rate + change vs prior period, region and Virginia.
+    // Real County/City LAUS (front-page dataset), keyed us-va-<FIPS3>. Other
+    // levels (MSA, statewide-as-selection, aggregated regions) stay on the
+    // illustrative series for now — scope is County/City only.
+    const isCC=this.current&&this.current.type==='County / City';
+    const fips=this.current&&this.current.fips&&this.current.fips[0];
+    const key=fips?('us-va-'+String(fips).slice(-3)):null;
+    const ccData=(isCC&&this.laus&&key)?this.lausByKey[key]:null;
+    let cats, region, va, monthly;
+    if(ccData){
+      const SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      cats=this.laus.months.map(m=>{ const [y,mo]=m.split('-'); return SHORT[+mo-1]+" '"+y.slice(2); });
+      region=ccData; va=this.laus.series.virginia; monthly=true;
+      this.realFields.add('unemployment');   // real data → hides the "Illustrative data" badge (updateBadges runs next)
+    } else {
+      const u=d.unemployment; if(!u) return;
+      cats=u.years; region=u.msa; va=u.va; monthly=false;
+    }
+    // BAN pair — latest valid rate + change vs prior valid period (skips null months).
     // Rising unemployment reads as bad (red), falling as good (green).
     const UP=this.PALETTE[5], DOWN=C.green;
-    const last=a=>a[a.length-1], prev=a=>a[a.length-2];
-    const delta=(cur,pr)=>{ const dv=+(cur-pr).toFixed(1), flat=dv===0, up=dv>0;
+    const twoValid=a=>{ const o=[]; for(let i=a.length-1;i>=0&&o.length<2;i--) if(a[i]!=null) o.push(a[i]); return o; };
+    const delta=(cur,pr)=>{ if(cur==null) return ''; if(pr==null) pr=cur; const dv=+(cur-pr).toFixed(1), flat=dv===0, up=dv>0;
       const col=flat?C.slate:(up?UP:DOWN), ar=flat?'■':(up?'▲':'▼');
       return `<span style="color:${col};font-weight:700">${ar} ${Math.abs(dv).toFixed(1)} pt${Math.abs(dv)===1?'':'s'}</span> vs last period`; };
+    const ban=a=>{ const [cur,pr]=twoValid(a); return {val:cur==null?'—':cur.toFixed(1)+'%', cmp:delta(cur,pr)}; };
+    const rB=ban(region), vB=ban(va);
     const banEl=document.getElementById('unemp-bans');
-    if(banEl){ banEl.innerHTML=[
-      {lbl:regionName, val:last(u.msa).toFixed(1)+'%', cmp:delta(last(u.msa),prev(u.msa))},
-      {lbl:'Virginia',  val:last(u.va).toFixed(1)+'%',  cmp:delta(last(u.va),prev(u.va))}
-    ].map(b=>`<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
-    // Geography fallback (locality → LWDA → state) with an on-screen note when
-    // rolled up. LAUS is locality-level and not suppression-limited, so the mock
-    // never rolls up; this is wired for the real LAUS source.
-    const note=document.getElementById('unemp-rollup');
-    if(note){ if(u.rollupNote){ note.textContent=u.rollupNote; note.style.display=''; } else { note.style.display='none'; } }
+    if(banEl){ banEl.innerHTML=[{lbl:regionName,...rB},{lbl:'Virginia',...vB}]
+      .map(b=>`<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
+    // Rollup note reserved for the locality→LWDA→state fallback (not in scope yet).
+    const note=document.getElementById('unemp-rollup'); if(note) note.style.display='none';
     const c=this.mk('c-unemp-trend'); if(!c) return;
     c.setOption({
       textStyle:{fontFamily:F},
       grid:{left:8,right:16,top:22,bottom:8,containLabel:true},
       legend:{data:[regionName,'Virginia'],top:0,itemWidth:20,itemHeight:8,textStyle:{color:C.slate,fontFamily:F,fontSize:12}},
       tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:this.rgba(C.blue,.18)}},valueFormatter:v=>v==null?'—':(+v).toFixed(1)+'%'},
-      xAxis:{type:'category',data:u.years,...ax,boundaryGap:false},
+      xAxis:{type:'category',data:cats,...ax,boundaryGap:false,axisLabel:{...ax.axisLabel,interval:monthly?5:0}},
       yAxis:{type:'value',...ax,min:0,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
       series:[
         // primary line — the selected geography
-        {name:regionName,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,z:3,
+        {name:regionName,type:'line',data:region,smooth:true,connectNulls:true,symbol:monthly?'none':'circle',symbolSize:6,z:3,
          lineStyle:{width:3,color:C.green},itemStyle:{color:C.green}},
         // dashed benchmark — Virginia
-        {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',z:2,
+        {name:'Virginia',type:'line',data:va,smooth:true,connectNulls:true,symbol:'none',z:2,
          lineStyle:{width:2,color:C.blue,type:'dashed'},itemStyle:{color:C.blue}}
       ]
     });
