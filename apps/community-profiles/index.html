@@ -1186,26 +1186,8 @@ class Component {
         series:[{type:'bar',data:[{value:va,itemStyle:{color:C.blue}},{value:region,itemStyle:{color:'#2A7050'}}],barMaxWidth:30,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>vfmt(p.value),fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontWeight:700,fontSize:14,color:C.cobalt}}] }); };
     compareBar('c-medinc', A.medianIncome, A.vaMedianIncome, v=>'$'+fmt(v));
     compareBar('c-disc', A.discretionary, A.vaDiscretionary, v=>'$'+fmt(v));
-    // labor force participation + unemployment
-    c=this.mk('c-labor'); if(c){ const lf=d.laborForce;
-      c.setOption({ grid:{...grid,right:42}, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
-        legend:{data:['Labor force participation','Unemployment rate'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:18,itemHeight:3},
-        xAxis:{type:'category',data:lf.years,...ax,boundaryGap:false},
-        yAxis:[{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},{type:'value',...ax,position:'right',splitLine:{show:false},axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}}],
-        series:[ {name:'Labor force participation',type:'line',yAxisIndex:0,data:lf.participation,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.18)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
-                 {name:'Unemployment rate',type:'line',yAxisIndex:1,data:lf.unemployment,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3,color:'#9F2842'},itemStyle:{color:'#9F2842'}} ] }); }
-    // occupation profile
-    c=this.mk('c-occ'); if(c){ const rows=[...d.occupations].sort((a,b)=>a.value-b.value);
-      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' workers'},
-        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
-        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:170,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); }
-    // commuting
-    c=this.mk('c-commute'); if(c){ const cm=d.commute;
-      c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${p.value}%</b>`},
-        legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
-        title:{ text:cm.meanTravelMin+' min', subtext:'Mean commute', left:'center', top:'37%', textStyle:{fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontSize:24,color:C.cobalt}, subtextStyle:{fontFamily:F,fontSize:11,color:C.slate} },
-        series:[{type:'pie',radius:['52%','73%'],center:['50%','45%'],itemStyle:{borderColor:'#fff',borderWidth:2},label:{show:false},color:this.PALETTE,data:cm.modes}] }); }
+    // Unemployment Rate (s-unemp) — single LAUS trend, selected geography vs Virginia
+    this.renderUnemployment(d);
     // new business formations
     { const b=d.business, f=b.formations, last=f[f.length-1], prev=f[f.length-2]||last, first=f[0]||last;
       // Card 1 headline: latest count + YoY + decade change (answers "is it growing?")
@@ -1279,13 +1261,9 @@ class Component {
        lede:'Median household income and the discretionary income left after typical costs — both benchmarked against Virginia.'},
       {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', hold:true,
        lede:'Held for a later release.'} ]},
-    { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How the community works. Participation and unemployment, the mix of occupations, and commuting patterns show how fully the population is engaged in the labor market and how it connects to jobs.', scenes:[
-      {id:'s-labor', eyebrow:'Participation', title:'Labor Status & Participation', chart:'c-labor', fields:['laborForce'],
-       lede:'Labor force participation alongside the unemployment rate over the past decade — who is working, and who is looking.'},
-      {id:'s-occ', eyebrow:'Occupations', title:'Occupation Profile', chart:'c-occ', fields:['occupations'],
-       lede:'The workforce by major occupation group — the mix of roles people actually hold across employers.'},
-      {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', chart:'c-commute', fields:['commute'],
-       lede:'How people get to work and how far they travel — a signal of regional connectivity and remote-work adoption.'} ]},
+    { id:'th-labor', name:'Unemployment Rate', blurb:'How fully the community is working — the share of the labor force that is unemployed, for the selected geography and the Commonwealth.', scenes:[
+      {id:'s-unemp', eyebrow:'LAUS', title:'Unemployment Rate Trending', custom:'unemployment', fields:['unemployment'],
+       lede:'The unemployment rate over time for the selected geography, benchmarked against Virginia.'} ]},
     { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
       {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', custom:'industry', fields:['industryEmployment'],
        lede:'Where the jobs are, which sectors are growing or shrinking, and what this region specializes in compared with the Commonwealth.'},
@@ -1308,20 +1286,26 @@ class Component {
     html+='<div style="position:relative">';
     html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
     this.themes().forEach((th,ti)=>{
-      const first='theme-'+th.id;
+      // single-scene themes (e.g. Unemployment Rate) link the head straight to the
+      // chart — no chevron, no child bullets, so there's no orphan sub-item.
+      const single=th.scenes.length===1;
+      const headTarget=single?th.scenes[0].id:'theme-'+th.id;
       html+=`<div data-theme-node="${th.id}">
-        <div data-theme-head="${th.id}" data-target="${first}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+        <div data-theme-head="${th.id}" data-target="${headTarget}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
           <span data-theme-node-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.92rem;height:.92rem;border-radius:50%;background:#0A2463;border:2px solid #F5F1E8;box-shadow:0 0 0 2px #0A2463;transition:.16s"></span>
           <span data-theme-label style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.02em;color:#0A2463;line-height:1">${th.name}</span>
-          <span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>
-        </div>
-        <ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
-      th.scenes.forEach(s=>{ n++;
-        if(s.hold){ html+=`<li style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#B7BEC8;cursor:not-allowed;border-radius:7px;display:flex;align-items:center">
-        <span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px dashed #E2E0D8;box-shadow:0 0 0 3px #F5F1E8"></span><span>${s.title}</span><span style="font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9DB4D6;border:1px solid #E2E0D8;border-radius:4px;padding:.05rem .3rem;margin-left:.4rem">On hold</span></li>`; return; }
-        html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
-        <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
-      html+='</ol></div>';
+          ${single?'':`<span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>`}
+        </div>`;
+      if(!single){
+        html+=`<ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
+        th.scenes.forEach(s=>{ n++;
+          if(s.hold){ html+=`<li style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#B7BEC8;cursor:not-allowed;border-radius:7px;display:flex;align-items:center">
+          <span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px dashed #E2E0D8;box-shadow:0 0 0 3px #F5F1E8"></span><span>${s.title}</span><span style="font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9DB4D6;border:1px solid #E2E0D8;border-radius:4px;padding:.05rem .3rem;margin-left:.4rem">On hold</span></li>`; return; }
+          html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+          <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
+        html+='</ol>';
+      }
+      html+='</div>';
     });
     html+='</div>';
     el.innerHTML=html;
@@ -1377,6 +1361,7 @@ class Component {
           : s.custom==='demographics' ? this.demographicsBody()
           : s.custom==='highered' ? this.higherEdBody()
           : s.custom==='industry' ? this.industryBody()
+          : s.custom==='unemployment' ? this.unemploymentBody()
           : s.custom==='business' ? this.businessBody()
           : s.custom==='apprenticeships' ? this.apprenticeshipsBody()
           : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
@@ -1539,6 +1524,59 @@ class Component {
     const setc=(id,n)=>{ const el=document.getElementById(id); if(el) el.textContent=n; };
     set('hied-list', rows.length ? rows.map(item).join('') : `<div class="hied-empty">No colleges or universities are mapped to ${geo} yet.</div>`);
     setc('hied-count', rows.length);
+  }
+
+  /* Unemployment Rate (s-unemp). Single LAUS trend line: the selected geography
+     vs Virginia (dashed benchmark), with a BAN pair of headline rates above it.
+     Design reused from the front-page "Unemployment Rate Trending" card, with the
+     comparison changed from VA-vs-US to locality-vs-VA. */
+  unemploymentBody(){
+    return `
+      <div class="demo-bans" id="unemp-bans" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:.2rem"></div>
+      <div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem">
+        <div id="unemp-rollup" style="display:none;font-size:.78rem;color:#5A6472;margin-bottom:.7rem;padding:.5rem .7rem;background:#F8F6F0;border:1px solid #E2E0D8;border-radius:8px"></div>
+        <div id="c-unemp-trend" style="width:100%;height:360px"></div>
+      </div>`;
+  }
+
+  renderUnemployment(d){
+    const C=this.C, F=this.FONT, ax=this.axis();
+    const u=d.unemployment; if(!u) return;
+    const regionName=(this.current&&this.current.name)||'This locality';
+    // BAN pair — latest rate + change vs prior period, region and Virginia.
+    // Rising unemployment reads as bad (red), falling as good (green).
+    const UP=this.PALETTE[5], DOWN=C.green;
+    const last=a=>a[a.length-1], prev=a=>a[a.length-2];
+    const delta=(cur,pr)=>{ const dv=+(cur-pr).toFixed(1), flat=dv===0, up=dv>0;
+      const col=flat?C.slate:(up?UP:DOWN), ar=flat?'■':(up?'▲':'▼');
+      return `<span style="color:${col};font-weight:700">${ar} ${Math.abs(dv).toFixed(1)} pt${Math.abs(dv)===1?'':'s'}</span> vs last period`; };
+    const banEl=document.getElementById('unemp-bans');
+    if(banEl){ banEl.innerHTML=[
+      {lbl:regionName, val:last(u.msa).toFixed(1)+'%', cmp:delta(last(u.msa),prev(u.msa))},
+      {lbl:'Virginia',  val:last(u.va).toFixed(1)+'%',  cmp:delta(last(u.va),prev(u.va))}
+    ].map(b=>`<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
+    // Geography fallback (locality → LWDA → state) with an on-screen note when
+    // rolled up. LAUS is locality-level and not suppression-limited, so the mock
+    // never rolls up; this is wired for the real LAUS source.
+    const note=document.getElementById('unemp-rollup');
+    if(note){ if(u.rollupNote){ note.textContent=u.rollupNote; note.style.display=''; } else { note.style.display='none'; } }
+    const c=this.mk('c-unemp-trend'); if(!c) return;
+    c.setOption({
+      textStyle:{fontFamily:F},
+      grid:{left:8,right:16,top:22,bottom:8,containLabel:true},
+      legend:{data:[regionName,'Virginia'],top:0,itemWidth:20,itemHeight:8,textStyle:{color:C.slate,fontFamily:F,fontSize:12}},
+      tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:this.rgba(C.blue,.18)}},valueFormatter:v=>v==null?'—':(+v).toFixed(1)+'%'},
+      xAxis:{type:'category',data:u.years,...ax,boundaryGap:false},
+      yAxis:{type:'value',...ax,min:0,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
+      series:[
+        // primary line — the selected geography
+        {name:regionName,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,z:3,
+         lineStyle:{width:3,color:C.green},itemStyle:{color:C.green}},
+        // dashed benchmark — Virginia
+        {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',z:2,
+         lineStyle:{width:2,color:C.blue,type:'dashed'},itemStyle:{color:C.blue}}
+      ]
+    });
   }
 
   /* Industry Trends (s-industry) — two cards. Source (real): QCEW by NAICS
