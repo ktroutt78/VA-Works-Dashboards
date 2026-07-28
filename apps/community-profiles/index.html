@@ -30,19 +30,10 @@
   .demo-ct{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6}
   .demo-ch{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05}
   .demo-cs{font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:64ch;line-height:1.5}
-  .demo-pair{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;align-items:start}
-  .demo-panel-lbl{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.4rem}
   .demo-fact{font-size:.78rem;color:#5A6472;margin-top:13px;padding-top:12px;border-top:1px solid #F0EEE7;line-height:1.5}
   .demo-fact b{color:#1A1A1A;font-weight:600}
-  .demo-cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
-  .demo-yearbox{flex:none;text-align:right;line-height:1}
-  .demo-yearlbl{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9DB4D6}
-  .demo-yearval{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:2.3rem;font-weight:800;color:#0A2463;line-height:.95;font-variant-numeric:tabular-nums;margin-top:1px}
-  .demo-yearnudge{font-size:.66rem;font-weight:700;color:#2A7050;margin-top:3px;white-space:nowrap;animation:demo-nudge 1.7s ease-in-out infinite}
-  .demo-yearnudge.off{display:none}
-  @keyframes demo-nudge{0%,100%{opacity:.4}50%{opacity:1}}
   .varef{color:#0A2463}
-  @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}.demo-pair{grid-template-columns:1fr}}
+  @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}}
   /* ---- Higher Education section (scene: s-highered) ---- */
   .hied-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin-top:.2rem;align-items:start}
   .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
@@ -1461,36 +1452,11 @@ class Component {
     return `
       <div class="demo-bans" id="demo-bans"></div>
       <div class="demo-card">
-        <div class="demo-cardhead">
-          <div>
-            <div class="demo-ct">Chart 1 · Age structure</div>
-            <div class="demo-ch">Population by age and sex</div>
-          </div>
-          <div class="demo-yearbox">
-            <div class="demo-yearlbl">Showing</div>
-            <div id="demo-year" class="demo-yearval">2024</div>
-            <div id="demo-yearnudge" class="demo-yearnudge">drag the slider or press play &darr;</div>
-          </div>
-        </div>
-        <p class="demo-cs">Each bar is the share of the total population in a five-year age band. The dashed line is Virginia&rsquo;s shape, for comparison.</p>
-        <div id="c-demo-pyramid" style="width:100%;height:460px"></div>
-        <div class="demo-fact" id="f-demo-pyramid"></div>
-      </div>
-      <div class="demo-card">
-        <div class="demo-ct">Chart 2 · Working-age structure and population change</div>
-        <div class="demo-ch">Age make-up and the pace of population change</div>
-        <p class="demo-cs">Residents by broad age group compared with Virginia, and how the total population has changed since 2010.</p>
-        <div class="demo-pair">
-          <div class="demo-panel">
-            <div class="demo-panel-lbl">Age make-up vs Virginia</div>
-            <div id="c-demo-shares" style="width:100%;height:210px"></div>
-          </div>
-          <div class="demo-panel">
-            <div class="demo-panel-lbl">Population change since 2010</div>
-            <div id="c-demo-popgrowth" style="width:100%;height:210px"></div>
-          </div>
-        </div>
-        <div class="demo-fact" id="f-demo-struct"></div>
+        <div class="demo-ct">Population trend</div>
+        <div class="demo-ch">Total population over time</div>
+        <p class="demo-cs">How many people live here, and whether that total is growing or declining. The slope of the line is the story; age make-up is summarized in the numbers above.</p>
+        <div id="c-demo-poptrend" style="width:100%;height:320px"></div>
+        <div class="demo-fact" id="f-demo-poptrend"></div>
       </div>`;
   }
 
@@ -1762,185 +1728,62 @@ class Component {
   }
 
   demoData(){
-    const bands=["0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+"];
-    // Virginia reference shape (share % of total), index 0 = 0-4
-    const vaM=[3.5,3.9,4.2,4.2,4.4,4.6,4.8,4.6,4.7,4.5,4.3,4.1,3.9,3.2,2.7,2.1,1.7,1.3];
-    const vaF=[3.4,3.8,4.1,4.1,4.3,4.7,4.9,4.7,4.8,4.6,4.4,4.3,4.2,3.6,3.1,2.7,2.3,1.9];
+    // Representative illustrative data. `pop` = total-population time series
+    // (swap for real totals-by-year later); `bans` = quick context stats.
     return {
-      bands, vaM, vaF,
       A:{ geo:'Fairfax County',
-        pyrYears:['2000','2010','2024'],
-        pyrM:{ '2000':[4.0,4.4,4.6,4.2,4.2,4.7,5.3,5.2,5.0,4.3,3.7,3.0,2.4,1.9,1.5,1.1,0.7,0.5],
-               '2010':[3.8,4.2,4.5,4.1,4.3,4.9,5.2,4.9,5.0,4.5,4.1,3.6,3.0,2.4,1.9,1.4,1.0,0.7],
-               '2024':[3.6,4.1,4.3,4.0,4.4,5.0,5.1,4.7,4.9,4.6,4.4,4.2,4.0,3.3,2.6,1.9,1.4,1.0] },
-        pyrF:{ '2000':[3.8,4.2,4.4,4.0,4.1,4.7,5.4,5.3,5.1,4.4,3.9,3.2,2.7,2.2,1.9,1.5,1.1,0.9],
-               '2010':[3.6,4.0,4.3,3.9,4.2,4.9,5.3,5.0,5.1,4.6,4.2,3.8,3.3,2.8,2.4,1.9,1.5,1.2],
-               '2024':[3.5,3.9,4.1,3.9,4.3,5.0,5.2,4.8,5.0,4.7,4.5,4.4,4.3,3.7,3.1,2.6,2.1,1.7] },
+        pop:{ years:['2010','2014','2018','2021','2024'], totals:[1083100,1104800,1126500,1137300,1150300] },
         bans:[
           {lbl:'Total population', val:'1,150,300', cmp:'<span class="delta up">&#9650; 6.2%</span> since 2010'},
           {lbl:'Median age',       val:'37.3',      cmp:'<span class="delta">&minus;1.1</span> vs <span class="varef">Virginia 38.4</span>'},
           {lbl:'Working age 18&ndash;64',val:'64%',  cmp:'<span class="delta">+3 pts</span> vs <span class="varef">VA 61%</span>'},
-          {lbl:'Within 10 yrs of 65', val:'11%',    cmp:'age 55&ndash;64 &middot; <span class="delta">&minus;1 pt</span> vs <span class="varef">VA 12%</span>'} ],
-        under18:[25,24.5,24,23,22,21], working:[65,65,65,65,65,65], over65:[10,10.5,11,12,13,14],
-        shares:[21,65,14], popIdx:[100,102,104,105,106.2],
-        facts:{ pyrByYear:{
-            '2000':'In 2000 the largest age band was <b>30&ndash;34</b>, at 10.7% of residents.',
-            '2010':'In 2010 the largest age band was <b>30&ndash;34</b>, at 10.5% of residents.',
-            '2024':'In 2024 the largest age band is <b>30&ndash;34</b>, at 10.3% of residents; Virginia&rsquo;s largest band is also 30&ndash;34, at 9.8%.' },
-          lines:'In 2024, <b>21%</b> of residents were under 18, <b>65%</b> were working age (18&ndash;64), and <b>14%</b> were 65 or over. Virginia: 21.5% / 62% / 16%.',
-          struct:'<b>64%</b> of residents are working age (18&ndash;64), compared with 61% across Virginia.' } },
+          {lbl:'Within 10 yrs of 65', val:'11%',    cmp:'age 55&ndash;64 &middot; <span class="delta">&minus;1 pt</span> vs <span class="varef">VA 12%</span>'} ] },
       B:{ geo:'Buchanan County',
-        pyrYears:['2000','2010','2024'],
-        pyrM:{ '2000':[3.4,3.7,3.9,4.0,3.4,3.5,3.9,4.5,5.1,5.0,4.4,3.7,3.1,2.6,2.1,1.6,1.1,0.8],
-               '2010':[3.0,3.3,3.5,3.6,3.2,3.3,3.6,4.0,4.7,5.0,4.9,4.4,3.9,3.3,2.8,2.2,1.7,1.3],
-               '2024':[2.7,3.0,3.2,3.3,3.0,3.2,3.4,3.7,4.3,4.7,5.0,4.9,4.8,4.2,3.6,3.0,2.4,1.9] },
-        pyrF:{ '2000':[3.3,3.6,3.8,3.9,3.3,3.4,3.9,4.5,5.1,5.0,4.5,3.9,3.4,3.0,2.6,2.1,1.6,1.3],
-               '2010':[2.9,3.2,3.4,3.5,3.1,3.2,3.6,4.0,4.7,5.0,5.0,4.6,4.2,3.7,3.3,2.8,2.3,1.9],
-               '2024':[2.6,2.9,3.1,3.2,2.9,3.1,3.4,3.7,4.3,4.7,5.0,5.0,5.0,4.6,4.1,3.7,3.2,2.8] },
+        pop:{ years:['2010','2014','2018','2021','2024'], totals:[40040,39650,39220,38700,38400] },
         bans:[
           {lbl:'Total population', val:'38,400', cmp:'<span class="delta down">&#9660; 4.1%</span> since 2010'},
           {lbl:'Median age',       val:'46.8',   cmp:'<span class="delta">+8.4</span> vs <span class="varef">Virginia 38.4</span>'},
           {lbl:'Working age 18&ndash;64',val:'56%', cmp:'<span class="delta">&minus;5 pts</span> vs <span class="varef">VA 61%</span>'},
-          {lbl:'Within 10 yrs of 65', val:'17%', cmp:'age 55&ndash;64 &middot; <span class="delta">+5 pts</span> vs <span class="varef">VA 12%</span>'} ],
-        under18:[22,20.5,19,17.5,16,15], working:[65,64.5,64,62.5,62,61], over65:[13,15,17,20,22,24],
-        shares:[15,61,24], popIdx:[100,99,98,96.5,95.9],
-        facts:{ pyrByYear:{
-            '2000':'In 2000 the largest age band was <b>40&ndash;44</b>, at 10.2% of residents.',
-            '2010':'In 2010 the largest age band was <b>45&ndash;49</b>, at 10.0% of residents.',
-            '2024':'In 2024 the largest age band is <b>50&ndash;54</b>, at 10.0% of residents; Virginia&rsquo;s largest band is 30&ndash;34, at 9.8%.' },
-          lines:'In 2024, <b>15%</b> of residents were under 18, <b>61%</b> were working age (18&ndash;64), and <b>24%</b> were 65 or over. Virginia: 21.5% / 62% / 16%.',
-          struct:'<b>56%</b> of residents are working age (18&ndash;64), compared with 61% across Virginia.' } }
+          {lbl:'Within 10 yrs of 65', val:'17%', cmp:'age 55&ndash;64 &middot; <span class="delta">+5 pts</span> vs <span class="varef">VA 12%</span>'} ] }
     };
   }
 
-  /* Population & Age charts. Called from renderCharts; ignores the geography
-     record (arch-driven illustrative data) until real Census data is wired. */
+  /* Demographic context (section 01, scene s-pop). Deliberately shallow: a BAN
+     row of quick stats (age lives here as numbers) plus one total-population
+     trend line. No pyramid, no age/sex split — demographics is grounding
+     context, not a deep dive. Arch-driven illustrative data until real Census
+     data is wired. */
   renderDemographics(){
-    const C=this.C, F=this.FONT, ax=this.axis();
-    const grid={left:8,right:24,top:28,bottom:8,containLabel:true};
+    const C=this.C, F=this.FONT, ax=this.axis(), fmt=n=>this.fmt(n);
     // dev-only archetype switch — default 'A' is production. Remove before prod.
     const ARCH=(new URLSearchParams(location.search).get('arch')||'A').toUpperCase()==='B'?'B':'A';
-    const DATA=this.demoData(), dd=DATA[ARCH], bands=DATA.bands;
-    // house convention: Male = blue, Female = green; Virginia = cobalt reference.
-    const REGION_M=C.blue, REGION_F='#EE7625', VA_REF='#1C2A3A';   // navy male / orange female (co-equal peer hues); VA reference overlay = neutral dashed ink, distinct from navy male bars
-    // age-band roles: single-hue sequential navy ramp (light -> dark), not competing category hues.
-    const YOUNG='#9FB4D8', WORK=C.blue, OLD='#00246B', YOUNG_D=C.blue, OLD_D='#001A4D';   // Under18 = navy tint, 18-64 = navy, 65+ = navy deep
+    const dd=this.demoData()[ARCH];
 
+    // BAN row — total population, median age, working-age share; age as numbers.
     const banEl=document.getElementById('demo-bans');
     if(banEl){ banEl.innerHTML=dd.bans.map(b=>
       `<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
     const setFact=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
 
-    /* CHART 1 — population pyramid with year slider (ECharts timeline) */
-    let c1=this.mk('c-demo-pyramid');
-    if(c1){
-      const years=dd.pyrYears;
-      // display in 10-year bins: collapse each adjacent pair of 5-year bands
-      const TEN=['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80+'];
-      const to10=(a)=>{ const o=[]; for(let i=0;i<a.length;i+=2) o.push(+((a[i]||0)+(a[i+1]||0)).toFixed(1)); return o; };
-      const peak10=(m,f)=>{ const rm=to10(m), rf=to10(f), t=rm.map((v,i)=>v+rf[i]); let bi=0; t.forEach((v,i)=>{ if(v>t[bi]) bi=i; }); return {label:TEN[bi], pct:+t[bi].toFixed(1)}; };
-      const pyrTooltip={ trigger:'axis', axisPointer:{type:'shadow'},
-        formatter:(p)=>{ if(!p||!p.length) return '';
-          let rows='<b>Age '+p[0].axisValue+'</b>';
-          p.forEach(sr=>{ if(sr.seriesName==='Virginia') return;
-            rows+='<br/>'+sr.seriesName+': '+Math.abs(sr.value).toFixed(1)+'%'; });
-          return rows; } };
-      c1.setOption({
-        baseOption:{
-          textStyle:{fontFamily:F},
-          grid:{left:8,right:24,top:34,bottom:78,containLabel:true},
-          tooltip:pyrTooltip,
-          legend:{ data:['Male','Female','Virginia'], top:0, itemWidth:14, itemHeight:12,
-                   textStyle:{color:C.slate,fontFamily:F,fontSize:12} },
-          xAxis:{ type:'value', min:-12, max:12,
-            axisLabel:{color:C.slate,fontFamily:F,formatter:(v)=>Math.abs(v)+'%'},
-            axisLine:{lineStyle:{color:C.line}}, splitLine:{lineStyle:{color:'#F0EEE7'}} },
-          yAxis:{ type:'category', data:TEN,
-            axisLabel:{color:C.slate,fontFamily:F,fontSize:10},
-            axisLine:{lineStyle:{color:C.line}}, axisTick:{show:false} },
-          timeline:{ axisType:'category', data:years, currentIndex:years.length-1,
-            autoPlay:false, playInterval:1400, bottom:6, left:40, right:40, height:44,
-            symbol:'circle', symbolSize:7, lineStyle:{color:C.line}, itemStyle:{color:C.slate},
-            checkpointStyle:{color:C.blue,borderColor:'#fff',borderWidth:2,animationDuration:400},
-            controlStyle:{showPlayBtn:true,showPrevBtn:false,showNextBtn:false,itemSize:14,color:C.slate,borderColor:C.slate},
-            emphasis:{itemStyle:{color:C.blue},controlStyle:{color:C.blue,borderColor:C.blue},label:{color:C.blue}},
-            label:{color:C.slate,fontFamily:F,fontSize:11} },
-          series:[
-            {name:'Male',   type:'bar', stack:'r', barWidth:'62%',
-             itemStyle:{color:REGION_M,borderRadius:[3,0,0,3]}, emphasis:{itemStyle:{color:C.cobalt}},
-             animationDurationUpdate:500, animationEasingUpdate:'cubicOut'},
-            {name:'Female', type:'bar', stack:'r', barWidth:'62%',
-             itemStyle:{color:REGION_F,borderRadius:[0,3,3,0]}, emphasis:{itemStyle:{color:'#C85A15'}},
-             animationDurationUpdate:500, animationEasingUpdate:'cubicOut'},
-            // Virginia benchmark — thin dashed silhouette (male left, female right)
-            {name:'Virginia', type:'line', symbol:'none', z:5, silent:true, tooltip:{show:false},
-             lineStyle:{color:VA_REF,width:1.4,type:'dashed'}, itemStyle:{color:VA_REF}, animationDurationUpdate:500},
-            {name:'Virginia', type:'line', symbol:'none', z:5, silent:true, tooltip:{show:false},
-             lineStyle:{color:VA_REF,width:1.4,type:'dashed'}, itemStyle:{color:VA_REF}, animationDurationUpdate:500}
-          ]
-        },
-        options: years.map(y=>({
-          series:[ {data:to10(dd.pyrM[y]).map(v=>-v)}, {data:to10(dd.pyrF[y])}, {data:to10(DATA.vaM).map(v=>-v)}, {data:to10(DATA.vaF)} ]
-        }))
+    /* POPULATION TREND — one line, total population over time. Slope is the
+       story (growing vs declining). No benchmark, no age/sex dimension. Swap
+       dd.pop = {years:[], totals:[]} for a real population time series later. */
+    const c=this.mk('c-demo-poptrend');
+    if(c){ const P=dd.pop, LINE=C.blue;
+      c.setOption({
+        textStyle:{fontFamily:F},
+        grid:{left:8,right:24,top:24,bottom:8,containLabel:true},
+        tooltip:{trigger:'axis',axisPointer:{type:'line'},valueFormatter:fmt},
+        xAxis:{type:'category',data:P.years,...ax,boundaryGap:false},
+        yAxis:{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>v>=1e6?+(v/1e6).toFixed(2)+'M':(v/1000).toFixed(0)+'k'}},
+        series:[{name:'Total population',type:'line',data:P.totals,smooth:true,symbol:'circle',symbolSize:7,
+          lineStyle:{width:3.5,color:LINE},itemStyle:{color:LINE},
+          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(LINE,.26)},{offset:1,color:this.rgba(LINE,0)}])}}]
       });
-      const yearEl=document.getElementById('demo-year'), nudgeEl=document.getElementById('demo-yearnudge');
-      const vp=peak10(DATA.vaM, DATA.vaF);   // Virginia's largest 10-year band (fixed)
-      const syncFact=(idx,userDriven)=>{ const y=years[Math.max(0,Math.min(idx,years.length-1))];
-        const rp=peak10(dd.pyrM[y], dd.pyrF[y]);
-        setFact('f-demo-pyramid', 'In '+y+', the largest age group is <b>'+rp.label+'</b>, at '+rp.pct+'% of residents. Virginia&rsquo;s largest is '+vp.label+', at '+vp.pct+'%.');
-        if(yearEl) yearEl.textContent=y;
-        if(userDriven && nudgeEl) nudgeEl.classList.add('off'); };   // hide the nudge once discovered
-      syncFact(years.length-1,false);
-      c1.off('timelinechanged');
-      c1.on('timelinechanged',(e)=>syncFact(e.currentIndex,true));
+      const first=P.totals[0], last=P.totals[P.totals.length-1], y0=P.years[0], y1=P.years[P.years.length-1];
+      const pct=+(((last-first)/first)*100).toFixed(1), dir=pct>0?'grown':pct<0?'declined':'held steady';
+      setFact('f-demo-poptrend', `Between ${y0} and ${y1}, ${dd.geo}&rsquo;s population has ${dir} from <b>${fmt(first)}</b> to <b>${fmt(last)}</b>, a change of ${(pct>0?'+':'')+pct}% overall.`);
     }
-
-    /* CHART 2a — three broad age shares, region vs VA (stacked) */
-    const vaShares=[21.5,62,16.5];
-    let c3=this.mk('c-demo-shares');
-    if(c3){ c3.setOption({
-      textStyle:{fontFamily:F},
-      grid:{left:4,right:12,top:16,bottom:34,containLabel:true},
-      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:(v)=>v+'%'},
-      legend:{ data:['Under 18','Working age 18–64','65 and over'], bottom:12, itemWidth:13, itemHeight:13, itemGap:16,
-               textStyle:{color:C.slate,fontFamily:F,fontSize:11} },
-      xAxis:{type:'value',max:100,show:false},   // in-segment % labels make the axis redundant
-      yAxis:{type:'category',data:['Virginia','This region'],axisLabel:{color:C.slate,fontFamily:F},axisLine:{lineStyle:{color:C.line}},axisTick:{show:false}},
-      series:[
-        { name:'Under 18', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:YOUNG}, emphasis:{itemStyle:{color:YOUNG_D}},
-          data:[vaShares[0],dd.shares[0]], label:{show:true,color:'#12303f',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} },
-        { name:'Working age 18–64', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:WORK}, emphasis:{itemStyle:{color:C.cobalt}},
-          data:[vaShares[1],dd.shares[1]], label:{show:true,color:'#fff',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} },
-        { name:'65 and over', type:'bar', stack:'t', barWidth:'56%', itemStyle:{color:OLD}, emphasis:{itemStyle:{color:OLD_D}},
-          data:[vaShares[2],dd.shares[2]], label:{show:true,color:'#fff',fontFamily:F,fontWeight:600,formatter:(p)=>p.value+'%'} }
-      ] }); }
-
-    /* CHART 2b — population change since 2010 (region vs VA), plain % bar */
-    const vaPopIdx=[100,101.5,102.8,103.6,104.2];
-    const regionGrowth=+(dd.popIdx[dd.popIdx.length-1]-100).toFixed(1);   // 2010 = 100 baseline
-    const vaGrowth=+(vaPopIdx[vaPopIdx.length-1]-100).toFixed(1);
-    const pctLbl=(v)=>(v>0?'+':'')+v+'%';
-    const gMax=Math.max(Math.abs(regionGrowth),Math.abs(vaGrowth)), gNeg=regionGrowth<0||vaGrowth<0;
-    let c4=this.mk('c-demo-popgrowth');
-    if(c4){ c4.setOption({
-      textStyle:{fontFamily:F},
-      // no y-axis or gridlines — values are printed on the bars; headroom via max so bars nearly fill
-      grid:{left:2,right:2,top:28,bottom:34,containLabel:true},
-      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:pctLbl},
-      xAxis:{type:'category',data:['This region','Virginia'],
-        axisLabel:{color:C.slate,fontFamily:F,fontWeight:600}, axisLine:{lineStyle:{color:C.line}}, axisTick:{show:false}},
-      yAxis:{type:'value', show:false, splitLine:{show:false}, max:+(gMax*1.18).toFixed(2), min:gNeg?-(gMax*1.18):0},
-      series:[{ type:'bar', barWidth:'52%', barMaxWidth:74,
-        label:{show:true,formatter:(p)=>pctLbl(p.value),color:C.cobalt,fontFamily:F,fontWeight:700,fontSize:14},
-        data:[
-          {value:regionGrowth, label:{position:regionGrowth<0?'bottom':'top'},
-           itemStyle:{color:regionGrowth<0?'#9F2842':'#2A7050', borderRadius:regionGrowth<0?[0,0,4,4]:[4,4,0,0]}},
-          {value:vaGrowth, label:{position:vaGrowth<0?'bottom':'top'},
-           itemStyle:{color:C.blue, borderRadius:vaGrowth<0?[0,0,4,4]:[4,4,0,0]}}
-        ]
-      }] }); }
-
-    setFact('f-demo-struct', dd.facts.struct+' Since 2010, its population has changed by '+pctLbl(regionGrowth)+' (Virginia '+pctLbl(vaGrowth)+').');
   }
 
   wireScroll(){
