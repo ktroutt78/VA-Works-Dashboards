@@ -139,7 +139,7 @@
   <section data-screen-label="Report" style="max-width:1240px;margin:0 auto;padding:2.4rem 1.5rem 4rem">
 
     <!-- intro + overview dashboard -->
-    <div data-screen-label="Overview" style="border-bottom:1px solid #E2E0D8;padding-bottom:1.8rem;margin-bottom:2rem">
+    <div id="overview-top" data-screen-label="Overview" style="border-bottom:1px solid #E2E0D8;padding-bottom:1.8rem;margin-bottom:2rem;scroll-margin-top:96px">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.3rem">
         <div>
           <div style="font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7050;margin-bottom:.4rem">Overview · At a glance</div>
@@ -1298,7 +1298,11 @@ class Component {
 
   buildRail(){
     const el=document.getElementById('rail'); let n=0;
-    let html='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
+    // jump-to-top anchor back to the Overview "At a glance" banner (nav only)
+    let html='<div data-overview-top style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .6rem;margin-bottom:.85rem;border:1px solid #E2E0D8;border-radius:8px;background:#F5F1E8;transition:.16s" title="Back to the Overview">'
+      +'<span style="flex:none;width:1.05rem;height:1.05rem;display:inline-flex;align-items:center;justify-content:center;color:#2A7050;font-size:.82rem;font-weight:700">↑</span>'
+      +'<span style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.02em;color:#0A2463;line-height:1">Overview · At a glance</span></div>';
+    html+='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
     // spine container — one continuous vertical line with nodes
     html+='<div style="position:relative">';
     html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
@@ -1324,6 +1328,9 @@ class Component {
     this.railItems=[...el.querySelectorAll('[data-rail]')];
     this.themeHeads=[...el.querySelectorAll('[data-theme-head]')];
     this.collapsed={};
+    // jump-to-top anchor → scroll back to the Overview banner
+    const topLink=el.querySelector('[data-overview-top]');
+    if(topLink) topLink.onclick=()=>this.jumpTo('overview-top');
     // scene click → jump
     this.railItems.forEach(li=>li.onclick=()=>this.jumpTo(li.dataset.target));
     // theme head: chevron toggles collapse, label/row jumps
