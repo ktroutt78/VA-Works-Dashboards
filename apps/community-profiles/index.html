@@ -17,11 +17,9 @@
   @keyframes vw-spin{to{transform:rotate(360deg)}}
   @keyframes vw-fade{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
   #geoSearch::placeholder{color:#5A6472;opacity:1}
-  /* spine-nav jump-to-top link (utility affordance, not a section) */
-  /* spine-nav jump-to-top text link — color set inline from this.C.blue; sized to match "In this profile" */
-  .ov-top{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;font-size:1.05rem;font-weight:700;letter-spacing:.02em;margin-bottom:1.15rem}
+  /* spine-nav jump-to-top: subtle secondary button — colors set inline from this.C.blue, hover wired in JS */
+  .ov-top{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.88rem;font-weight:700;letter-spacing:.01em;line-height:1;padding:.4rem .72rem;border-radius:8px;border:1px solid transparent;margin-bottom:1.15rem;transition:background .16s,border-color .16s}
   .ov-top .ov-arrow{font-weight:800;line-height:1}
-  .ov-top:hover .ov-text{text-decoration:underline}
   /* ---- Demographics & Age section (scene: s-pop) ---- */
   .demo-bans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:.2rem 0 0}
   .demo-ban{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:16px;box-shadow:0 2px 20px rgba(10,36,99,.06)}
@@ -1304,7 +1302,7 @@ class Component {
   buildRail(){
     const el=document.getElementById('rail'); let n=0;
     // jump-to-top link → back to the Overview "At a glance" banner (nav utility, not a section)
-    let html='<div class="ov-top" data-overview-top style="color:'+this.C.blue+'"><span class="ov-arrow">↑</span><span class="ov-text">Overview · At a glance</span></div>';
+    let html='<div class="ov-top" data-overview-top style="color:'+this.C.blue+';background:'+this.rgba(this.C.blue,.07)+';border-color:'+this.rgba(this.C.blue,.32)+'"><span class="ov-arrow">↑</span><span class="ov-text">Overview · At a glance</span></div>';
     html+='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
     // spine container — one continuous vertical line with nodes
     html+='<div style="position:relative">';
@@ -1333,7 +1331,10 @@ class Component {
     this.collapsed={};
     // jump-to-top anchor → scroll back to the Overview banner
     const topLink=el.querySelector('[data-overview-top]');
-    if(topLink) topLink.onclick=()=>this.jumpTo('overview-top');
+    if(topLink){ topLink.onclick=()=>this.jumpTo('overview-top');
+      // subtle button hover: darken tint + border (from this.C.blue, no raw hex)
+      topLink.onmouseenter=()=>{ topLink.style.background=this.rgba(this.C.blue,.14); topLink.style.borderColor=this.rgba(this.C.blue,.5); };
+      topLink.onmouseleave=()=>{ topLink.style.background=this.rgba(this.C.blue,.07); topLink.style.borderColor=this.rgba(this.C.blue,.32); }; }
     // scene click → jump
     this.railItems.forEach(li=>li.onclick=()=>this.jumpTo(li.dataset.target));
     // theme head: chevron toggles collapse, label/row jumps
