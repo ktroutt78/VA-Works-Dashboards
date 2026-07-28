@@ -35,25 +35,17 @@
   .varef{color:#0A2463}
   @media(max-width:760px){.demo-bans{grid-template-columns:repeat(2,1fr)}}
   /* ---- Higher Education section (scene: s-highered) ---- */
-  .hied-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin-top:.2rem;align-items:start}
-  .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
+  .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem}
   .hied-grouphead{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;border-bottom:1px solid #EDE9DF;padding-bottom:.6rem;margin-bottom:.35rem}
   .hied-gt{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:.01em;color:#0A2463;line-height:1.05}
   .hied-gc{flex:none;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1rem;color:#2A7050;font-variant-numeric:tabular-nums}
-  .hied-note{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem}
   .hied-item{display:flex;align-items:flex-start;gap:.7rem;padding:.6rem 0;border-top:1px solid #F4F1EA}
   .hied-item:first-child{border-top:0}
   .hied-ico{flex:none;width:34px;height:34px;border-radius:9px;background:#F0F4FB;display:flex;align-items:center;justify-content:center;margin-top:1px}
   .hied-ico svg{width:19px;height:19px;fill:#1B4DB1}
   .hied-name{font-weight:700;font-size:.95rem;color:#1A1A1A;line-height:1.2}
   .hied-meta{font-size:.76rem;color:#5A6472;margin-top:2px}
-  .hied-pill{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.03em;padding:.06rem .34rem;border-radius:4px;margin-left:.4rem;vertical-align:1px}
-  .hied-pub{background:#E8F1E4;color:#2C6916}
-  .hied-priv{background:#EAF0FA;color:#0A2463}
-  .hied-serves{font-size:.72rem;color:#2A7050;font-weight:600;margin-top:3px}
-  .hied-serves.here{color:#5A6472;font-weight:600}
   .hied-empty{font-size:.82rem;color:#5A6472;background:#F8F6F0;border:1px dashed #E2E0D8;border-radius:9px;padding:.8rem .9rem;line-height:1.45}
-  @media(max-width:760px){.hied-wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -1491,17 +1483,9 @@ class Component {
      ======================================================================== */
   higherEdBody(){
     return `
-      <div class="hied-wrap">
-        <div class="hied-col">
-          <div class="hied-grouphead"><span class="hied-gt">Four-Year Institutions</span><span class="hied-gc" id="hied-4yr-count"></span></div>
-          <div class="hied-note">Located in this locality</div>
-          <div id="hied-4yr"></div>
-        </div>
-        <div class="hied-col">
-          <div class="hied-grouphead"><span class="hied-gt">Community &amp; Junior Colleges</span><span class="hied-gc" id="hied-cc-count"></span></div>
-          <div class="hied-note">Serving this locality · VCCS service region</div>
-          <div id="hied-cc"></div>
-        </div>
+      <div class="hied-col">
+        <div class="hied-grouphead"><span class="hied-gt">Colleges &amp; Universities</span><span class="hied-gc" id="hied-count"></span></div>
+        <div id="hied-list"></div>
       </div>`;
   }
 
@@ -1528,14 +1512,22 @@ class Component {
     const ARCH=(new URLSearchParams(location.search).get('arch')||'A').toUpperCase()==='B'?'B':'A';
     const D=this.higherEdData()[ARCH], geo=D.geo;
     const cap='<svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4C5 18.83 8.13 20 12 20s7-1.17 7-2.82v-4L12 17l-7-3.82z"/></svg>';
-    const pill=c=> c==='Public' ? '<span class="hied-pill hied-pub">Public</span>' : '<span class="hied-pill hied-priv">Private</span>';
-    const item=(o,serves)=>`<div class="hied-item"><span class="hied-ico">${cap}</span><div><div class="hied-name">${o.name}${pill(o.control)}</div><div class="hied-meta">${o.city}, VA${o.enroll?' · '+fmt(o.enroll)+' students':''}</div>${serves?`<div class="hied-serves${o.here?' here':''}">${o.here?'Campus in this locality':'Serves '+geo+' from its '+o.city+' campus'}</div>`:''}</div></div>`;
+    // One flat list: community/junior colleges FIRST, then four-year. Each is a
+    // single row — bold name + one meta line (type · ownership · location ·
+    // students · campus note). No pills, no subheads, no separate boxes.
+    const rows=[
+      ...D.community.map(o=>({...o, type:'Community college',
+        note:o.here?'campus in this locality':'serves '+geo+' from its '+o.city+' campus'})),
+      ...D.fourYear.map(o=>({...o, type:'Four-year', note:'located in this locality'}))
+    ];
+    const item=o=>{
+      const meta=[o.type, o.control, o.city+', VA', o.enroll?fmt(o.enroll)+' students':null, o.note].filter(Boolean).join(' · ');
+      return `<div class="hied-item"><span class="hied-ico">${cap}</span><div><div class="hied-name">${o.name}</div><div class="hied-meta">${meta}</div></div></div>`;
+    };
     const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
     const setc=(id,n)=>{ const el=document.getElementById(id); if(el) el.textContent=n; };
-    set('hied-4yr', D.fourYear.length ? D.fourYear.map(o=>item(o,false)).join('') : `<div class="hied-empty">No four-year institution is located in ${geo}. Residents typically attend institutions in neighboring localities.</div>`);
-    setc('hied-4yr-count', D.fourYear.length);
-    set('hied-cc', D.community.length ? D.community.map(o=>item(o,true)).join('') : `<div class="hied-empty">No community college is mapped to ${geo} yet.</div>`);
-    setc('hied-cc-count', D.community.length);
+    set('hied-list', rows.length ? rows.map(item).join('') : `<div class="hied-empty">No colleges or universities are mapped to ${geo} yet.</div>`);
+    setc('hied-count', rows.length);
   }
 
   /* Industry Trends (s-industry) — two cards. Source (real): QCEW by NAICS
