@@ -1267,8 +1267,8 @@ class Component {
        lede:'Median household income and the discretionary income left after typical costs — both benchmarked against Virginia.'},
       {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', hold:true,
        lede:'Held for a later release.'} ]},
-    { id:'th-labor', name:'Unemployment Rate', blurb:'How fully the community is working — the share of the labor force that is unemployed, for the selected geography and the Commonwealth.', scenes:[
-      {id:'s-unemp', eyebrow:'LAUS', title:'Unemployment Rate Trending', custom:'unemployment', fields:['unemployment'],
+    { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How fully the community is working — the share of the labor force that is unemployed, for the selected geography and the Commonwealth.', scenes:[
+      {id:'s-unemp', eyebrow:'LAUS', title:'Unemployment Rate', custom:'unemployment', fields:['unemployment'],
        lede:'The unemployment rate over time for the selected geography, benchmarked against Virginia.'} ]},
     { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
       {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', custom:'industry', fields:['industryEmployment'],
@@ -1292,26 +1292,20 @@ class Component {
     html+='<div style="position:relative">';
     html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
     this.themes().forEach((th,ti)=>{
-      // single-scene themes (e.g. Unemployment Rate) link the head straight to the
-      // chart — no chevron, no child bullets, so there's no orphan sub-item.
-      const single=th.scenes.length===1;
-      const headTarget=single?th.scenes[0].id:'theme-'+th.id;
+      const first='theme-'+th.id;
       html+=`<div data-theme-node="${th.id}">
-        <div data-theme-head="${th.id}" data-target="${headTarget}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+        <div data-theme-head="${th.id}" data-target="${first}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
           <span data-theme-node-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.92rem;height:.92rem;border-radius:50%;background:#0A2463;border:2px solid #F5F1E8;box-shadow:0 0 0 2px #0A2463;transition:.16s"></span>
           <span data-theme-label style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.02em;color:#0A2463;line-height:1">${th.name}</span>
-          ${single?'':`<span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>`}
-        </div>`;
-      if(!single){
-        html+=`<ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
-        th.scenes.forEach(s=>{ n++;
-          if(s.hold){ html+=`<li style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#B7BEC8;cursor:not-allowed;border-radius:7px;display:flex;align-items:center">
-          <span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px dashed #E2E0D8;box-shadow:0 0 0 3px #F5F1E8"></span><span>${s.title}</span><span style="font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9DB4D6;border:1px solid #E2E0D8;border-radius:4px;padding:.05rem .3rem;margin-left:.4rem">On hold</span></li>`; return; }
-          html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
-          <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
-        html+='</ol>';
-      }
-      html+='</div>';
+          <span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>
+        </div>
+        <ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
+      th.scenes.forEach(s=>{ n++;
+        if(s.hold){ html+=`<li style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#B7BEC8;cursor:not-allowed;border-radius:7px;display:flex;align-items:center">
+        <span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px dashed #E2E0D8;box-shadow:0 0 0 3px #F5F1E8"></span><span>${s.title}</span><span style="font-size:.54rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9DB4D6;border:1px solid #E2E0D8;border-radius:4px;padding:.05rem .3rem;margin-left:.4rem">On hold</span></li>`; return; }
+        html+=`<li data-target="${s.id}" data-rail style="position:relative;padding:.32rem .5rem .32rem 1.85rem;font-size:.86rem;color:#5A6472;cursor:pointer;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
+        <span data-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.62rem;height:.62rem;border-radius:50%;background:#fff;border:2px solid #C4CEDB;box-shadow:0 0 0 3px #fff;transition:.16s"></span><span>${s.title}</span></li>`; });
+      html+='</ol></div>';
     });
     html+='</div>';
     el.innerHTML=html;
