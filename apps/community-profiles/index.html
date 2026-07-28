@@ -17,6 +17,10 @@
   @keyframes vw-spin{to{transform:rotate(360deg)}}
   @keyframes vw-fade{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
   #geoSearch::placeholder{color:#5A6472;opacity:1}
+  /* spine-nav jump-to-top link (utility affordance, not a section) */
+  .ov-top{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;color:#5A6472;font-size:.8rem;font-weight:600;letter-spacing:.01em;margin-bottom:1.15rem;transition:color .16s}
+  .ov-top:hover{color:#0A2463}
+  .ov-top .ov-arrow{color:#2A7050;font-weight:700;font-size:.85rem;line-height:1}
   /* ---- Demographics & Age section (scene: s-pop) ---- */
   .demo-bans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:.2rem 0 0}
   .demo-ban{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:16px;box-shadow:0 2px 20px rgba(10,36,99,.06)}
@@ -1298,14 +1302,12 @@ class Component {
 
   buildRail(){
     const el=document.getElementById('rail'); let n=0;
-    let html='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
+    // jump-to-top link → back to the Overview "At a glance" banner (nav utility, not a section)
+    let html='<div class="ov-top" data-overview-top><span class="ov-arrow">↑</span><span>Overview · At a glance</span></div>';
+    html+='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
     // spine container — one continuous vertical line with nodes
     html+='<div style="position:relative">';
     html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
-    // jump-to-top spine node → back to the Overview "At a glance" banner (nav only)
-    html+='<div data-overview-top style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s">'
-      +'<span style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.92rem;height:.92rem;border-radius:50%;background:#0A2463;border:2px solid #F5F1E8;box-shadow:0 0 0 2px #0A2463;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:.56rem;font-weight:700;line-height:1">↑</span>'
-      +'<span style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em;color:#0A2463;line-height:1">Overview · At a glance</span></div>';
     this.themes().forEach((th,ti)=>{
       const first='theme-'+th.id;
       html+=`<div data-theme-node="${th.id}">
