@@ -785,8 +785,8 @@ class Component {
        occupations:        [{name:str, value:int}]             workers by SOC group
        commute:            {modes:[{name:str, value:num %}], meanTravelMin:int}
        business:           {years:[str], formations:[int]}
-       apprenticeships:    {summary:{active:int, occupations:int, sponsors:int, topIndustry:str},
-                            byOccupation:[{name,value}], byIndustry:[{name,value}], bySponsor:[{name,value}]}
+       apprenticeships:    {summary:{active:int, activeYoyPct:num, occupations:int, sponsors:int, topIndustry:str},
+                            byOccupation:[{name,value}], byIndustry:[{name,value}]}
      }
      =================================================================== */
   hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
@@ -899,10 +899,9 @@ class Component {
     // selected geography: active apprentices by occupation / industry / sponsor.
     // Fixed plausible values (not jittered) so the demo reads as real.
     const apprenticeships={
-      summary:{ active:1240, occupations:38, sponsors:52, topIndustry:'Construction' },
+      summary:{ active:1240, activeYoyPct:12, occupations:38, sponsors:52, topIndustry:'Construction' },
       byOccupation:[ {name:'Electrician',value:210}, {name:'Plumber',value:165}, {name:'Carpenter',value:140}, {name:'HVAC Technician',value:120}, {name:'Registered Nurse',value:105}, {name:'Machinist',value:92}, {name:'Welder',value:85}, {name:'Sheet Metal Worker',value:70}, {name:'Medical Assistant',value:58}, {name:'Pipefitter',value:44} ],
-      byIndustry:[ {name:'Construction',value:680}, {name:'Healthcare',value:210}, {name:'Manufacturing',value:185}, {name:'Transportation',value:70}, {name:'Utilities',value:55}, {name:'Other',value:40} ],
-      bySponsor:[ {name:'IBEW Local 26',value:95}, {name:'Roanoke Valley Assoc. Builders',value:82}, {name:'Carilion Clinic',value:68}, {name:'VA DOT',value:54}, {name:'ABC Virginia',value:47}, {name:'Plumbers Local 10',value:38}, {name:'Trane Technologies',value:30} ] };
+      byIndustry:[ {name:'Construction',value:680}, {name:'Healthcare',value:210}, {name:'Manufacturing',value:185}, {name:'Transportation',value:70}, {name:'Utilities',value:55}, {name:'Other',value:40} ] };
     // affordability & housing (section 03) — illustrative, derived from population/housing/medianIncome
     const avgHHSize=+(2.30+rnd()*0.45).toFixed(2), vaHHSize=2.52;
     const occupancyRate=+(100-housing.vacant).toFixed(1), vaOccupancy=92.5;
@@ -1215,37 +1214,53 @@ class Component {
           xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
           series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
-    // apprenticeships — summary BANs + geography-fallback note + three ranked-bar
-    // breakdowns (occupation / industry / sponsor). Grammar matches Industry Ch.1
-    // and New Business Ch.2: horizontal bars, largest on top highlighted green.
-    { const a=d.apprenticeships;
-      // Summary strip (BAN row)
-      const banEl=document.getElementById('appr-bans');
-      if(banEl && a.summary){ const s=a.summary;
-        const bans=[
-          {lbl:'Active apprentices', val:fmt(s.active), sub:'in training'},
-          {lbl:'Occupations',        val:fmt(s.occupations), sub:'apprenticeable trades'},
-          {lbl:'Sponsors',           val:fmt(s.sponsors), sub:'registered programs'},
-          {lbl:'Top industry',       val:s.topIndustry, sub:'most apprentices'} ];
-        banEl.innerHTML=bans.map(b=>
-          `<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val" style="font-size:${b.val.length>8?'1.5rem':'2.1rem'}">${b.val}</div><div class="demo-ban-cmp">${b.sub}</div></div>`).join(''); }
-      // Geography-fallback transparency: county-level counts are sparse, so say
-      // on screen when the profile falls back to the surrounding LWDA.
+    // apprenticeships (RAPIDS) — RAPIDS BAN strip + top-occupations bars + industry
+    // donut (center BAN = total active) + sponsor-directory callout. All counts are
+    // apprentices, so the byIndustry total reconciles to the donut center.
+    { const a=d.apprenticeships, s=a.summary||{};
+      const setTx=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
+      const totalActive=a.byIndustry.reduce((x,r)=>x+r.value,0);
+      const topInd=[...a.byIndustry].filter(r=>r.name!=='Other').sort((x,y)=>y.value-x.value)[0];
+      const topPct=totalActive?Math.round((topInd.value/totalActive)*100):0;
+      // BAN strip
+      setTx('k-appr-active', fmt(s.active));
+      setTx('k-appr-active-sub', (s.activeYoyPct>=0?'▲ ':'▼ ')+Math.abs(s.activeYoyPct||0)+'% vs 2024');
+      setTx('k-appr-occn', fmt(s.occupations));   setTx('k-appr-occn-sub','distinct trades');
+      setTx('k-appr-spon', fmt(s.sponsors));      setTx('k-appr-spon-sub','programs');
+      setTx('k-appr-topind', s.topIndustry);      setTx('k-appr-topind-sub', topPct+'% of apprentices');
+      // sponsor-directory callout counts
+      setTx('appr-cta-spon', fmt(s.sponsors));    setTx('appr-cta-occ', fmt(s.occupations));
+      // Geography-fallback transparency: county-level counts are sparse, so say on
+      // screen when the profile falls back to the surrounding LWDA.
       const note=document.getElementById('appr-geo-note');
       if(note){ const isCounty=this.current && this.current.type==='County / City';
         note.style.display=isCounty?'flex':'none';
         if(isCounty){ const t=note.querySelector('[data-note-text]');
           if(t) t.textContent=`Apprenticeship counts for ${this.current.name} are limited at the county level, so figures are shown for its surrounding Local Workforce Development Area.`; } }
-      // Shared ranked-horizontal-bar renderer (largest on top, highlighted green)
-      const rankBars=(id,src,unit)=>{ const cc=this.mk(id); if(!cc) return;
-        const rows=[...src].filter(r=>r.value>0).sort((a2,b2)=>a2.value-b2.value);
-        cc.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' '+unit},
-          xAxis:{type:'value',...ax,axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
+      // Top occupations — single-color horizontal ranked bars (top 10), value-labeled,
+      // no value axis (bar-end labels carry the numbers).
+      { const cc=this.mk('c-appr-occ'); if(cc){ const rows=[...a.byOccupation].filter(r=>r.value>0).sort((x,y)=>x.value-y.value).slice(-10);
+        cc.setOption({ grid:{...grid,left:8,right:56}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' apprentices'},
+          xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:150,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); };
-      rankBars('c-appr-occ', a.byOccupation, 'apprentices');
-      rankBars('c-appr-industry', a.byIndustry, 'apprentices');
-      rankBars('c-appr-sponsor', a.bySponsor, 'apprentices'); }
+          series:[{type:'bar',barMaxWidth:18,data:rows.map(r=>r.value),itemStyle:{color:C.blue,borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
+      // By-industry donut — largest-first, Other last (neutral grey); center BAN = total active.
+      { const cc=this.mk('c-appr-donut'); if(cc){ const P=this.PALETTE;
+        const rest=[...a.byIndustry].filter(r=>r.name!=='Other').sort((x,y)=>y.value-x.value);
+        const other=a.byIndustry.filter(r=>r.name==='Other');
+        const ord=[...rest,...other];
+        const data=ord.map((r,i)=>({name:r.name,value:r.value,itemStyle:{color:r.name==='Other'?P[6]:P[i]}}));
+        cc.setOption({ textStyle:{fontFamily:F},
+          tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> apprentices · ${p.percent}%`},
+          legend:{bottom:2,left:'center',icon:'circle',itemWidth:9,itemHeight:9,itemGap:12,textStyle:{fontFamily:F,fontSize:11,color:C.slate},data:ord.map(r=>r.name)},
+          title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'34%',textAlign:'center',
+            textStyle:{fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontSize:27,fontWeight:800,color:C.cobalt},
+            subtextStyle:{fontFamily:F,fontSize:11,fontWeight:600,color:C.slate}},
+          series:[{type:'pie',radius:['52%','70%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
+            itemStyle:{borderColor:C.line,borderWidth:2},
+            label:{show:true,position:'outside',formatter:'{d}%',color:C.slate,fontFamily:F,fontSize:11,fontWeight:700},
+            labelLine:{show:true,length:8,length2:7,lineStyle:{color:C.line}},
+            data}] }); } } }
     // employers list
     this.renderEmployers(d);   // Largest Employers — named table (VI_Top50Employers) + CSV + locality ownership split
     requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize()));
@@ -1276,7 +1291,7 @@ class Component {
       {id:'s-business', eyebrow:'Formation', title:'New Business Growth', custom:'business', fields:['business'],
        lede:'How many new businesses are opening, whether that pace is rising, and which industries new businesses are choosing. An early read on where the local economy is investing.'},
       {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', custom:'apprenticeships', fields:['apprenticeships'],
-       lede:'Registered apprentices in training across this geography — the occupations they are learning, the industries those trades feed, and the programs that sponsor them.'},
+       lede:'Registered apprenticeships are the region’s earn-while-you-learn pipeline: paid, on-the-job training that leads to skilled, credentialed careers without the debt of a traditional path. These charts show what people are training for and the industries putting them to work.'},
       {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', custom:'employers', fields:['topEmployers'],
        lede:'Two views of the biggest employers: the public-versus-private split of jobs in the selected locality, and a statewide list of Virginia’s largest employers, the same for every geography.'} ]}
   ]; }
@@ -1655,45 +1670,54 @@ class Component {
       </div>`;
   }
 
-  /* Apprenticeships (s-appr). Option C: summary strip + hero occupations + a
-     compact industry/sponsor pair. Illustrative until wired. */
+  /* Apprenticeships (s-appr). Two containers: a RAPIDS BAN card, then a chart card
+     with a top-occupations/industry-donut pair and a sponsor-directory callout.
+     Representative data now; shapes swappable to RAPIDS. */
   apprenticeshipsBody(){
-    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
-    const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
-    const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
-    const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
+    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
+    const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
+    const big="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;line-height:.9;color:#0A2463";
+    const sub='font-size:.7rem;font-weight:600;color:#5A6472;margin-top:.45rem';
     return `
-      <!-- MANIFEST — Apprenticeships (data wired later).
-           Real source: RAPIDS (USDOL Registered Apprenticeship Partners Information Database System), provided by client.
-           Tables: apprentices, programs, occupations (linked).
-           - Occupations chart: count of active apprentices grouped by apprenticeable occupation (RAPIDS occupation code / title), filtered to selected geography.
-           - Industry chart: apprentices grouped by industry (derive from occupation->industry or program industry field).
-           - Sponsors chart: apprentices grouped by program sponsor (program name = sponsor).
-           - Geography: apprentice/program location -> county; roll up to LWDA/state per fallback rule (locality -> parent LWDA -> State).
-           - Caveat: VA is a State Apprenticeship Agency (SAA) state; confirm the client extract has disaggregated occupation/industry/sponsor detail (public RAPIDS may be aggregate for SAA states). Sole-proprietor / no-employee note N/A here. -->
-      <div class="demo-bans" id="appr-bans" style="margin-top:.2rem"></div>
+      <!-- MANIFEST — Apprenticeships (representative data now; shapes swappable to RAPIDS).
+           Source RAPIDS (apprentices/programs/occupations tables). Occupations and industry
+           counts = active apprentices grouped by that dimension, filtered to the selected
+           geography. Sponsor≈industry ~1:1; a sponsor runs 1:many occupations. Likely
+           region-level (AreaType=9) granularity floor due to suppression — confirm with Kyle.
+           All counts are apprentices so totals reconcile to the donut center BAN. -->
+      <div style="${card};margin-top:.2rem">
+        <div style="${grp}">Talent pipeline · RAPIDS${ln}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr)">
+          <div style="padding-right:1.1rem"><div style="${eb}">Active apprentices</div><div id="k-appr-active" style="${big};font-size:2.1rem">—</div><div id="k-appr-active-sub" style="${sub}">—</div></div>
+          <div style="border-left:1px solid #EDE9DF;padding:0 1.1rem"><div style="${eb}">Occupations</div><div id="k-appr-occn" style="${big};font-size:2.1rem">—</div><div id="k-appr-occn-sub" style="${sub}">—</div></div>
+          <div style="border-left:1px solid #EDE9DF;padding:0 1.1rem"><div style="${eb}">Sponsors</div><div id="k-appr-spon" style="${big};font-size:2.1rem">—</div><div id="k-appr-spon-sub" style="${sub}">—</div></div>
+          <div style="border-left:1px solid #EDE9DF;padding-left:1.1rem"><div style="${eb}">Top industry</div><div id="k-appr-topind" style="${big};font-size:1.5rem">—</div><div id="k-appr-topind-sub" style="${sub}">—</div></div>
+        </div>
+      </div>
       <div id="appr-geo-note" style="display:none;align-items:center;gap:.55rem;background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.6rem .85rem;margin-top:.7rem">
         <span style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">i</span>
         <span data-note-text style="font-size:.82rem;color:#5A6472;line-height:1.4"></span>
       </div>
-      <div style="${card}">
-        <div style="${ct}">Chart 1 · Occupations</div>
-        <div style="${ch}">Top apprenticeship occupations</div>
-        <p style="${cs}">Active apprentices by the trade they are training for. The longest bars are where the region's earn-while-you-learn pipeline is concentrated.</p>
-        <div id="c-appr-occ" style="width:100%;height:400px"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem">
-        <div style="${card}">
-          <div style="${ct}">Chart 2 · Industry</div>
-          <div style="${ch}">By industry</div>
-          <p style="${cs}">Active apprentices by the industry their trade feeds.</p>
-          <div id="c-appr-industry" style="width:100%;height:300px"></div>
+      <div style="${card};margin-top:.7rem">
+        <div style="${grp}">Apprenticeships${ln}</div>
+        <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:1.6rem;align-items:start">
+          <div>
+            <div style="${eb}">Top apprenticeship occupations</div>
+            <div id="c-appr-occ" style="width:100%;height:380px"></div>
+          </div>
+          <div>
+            <div style="${eb};text-align:center">By industry</div>
+            <div id="c-appr-donut" style="width:100%;height:380px"></div>
+          </div>
         </div>
-        <div style="${card}">
-          <div style="${ct}">Chart 3 · Sponsors</div>
-          <div style="${ch}">Top sponsors</div>
-          <p style="${cs}">Active apprentices by the program sponsor that registers and trains them.</p>
-          <div id="c-appr-sponsor" style="width:100%;height:300px"></div>
+        <div style="border-top:1px solid #EDE9DF;margin-top:.7rem;padding-top:1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1.4rem;flex-wrap:wrap">
+          <div style="flex:1 1 340px;min-width:260px">
+            <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.05rem;color:#0A2463;margin-bottom:.3rem">Looking for a specific sponsor?</div>
+            <p style="font-size:.86rem;color:#5A6472;line-height:1.5;margin:0;max-width:62ch">This region has <b id="appr-cta-spon" style="color:#0A2463">—</b> apprenticeship sponsors across <b id="appr-cta-occ" style="color:#0A2463">—</b> occupations. Search every registered sponsor in Virginia by city and occupation on the state apprenticeship directory.</p>
+          </div>
+          <a href="https://virginiaworks.gov/explore-registered-apprenticeship/apprenticeship-search/" target="_blank" rel="noopener" style="flex:none;display:inline-flex;align-items:center;gap:.5rem;background:#0A2463;color:#fff;text-decoration:none;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.92rem;padding:.62rem 1.1rem;border-radius:9px;white-space:nowrap">Search the directory <span style="font-size:.9rem">&#8599;</span></a>
         </div>
       </div>`;
   }
