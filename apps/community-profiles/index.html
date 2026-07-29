@@ -1102,17 +1102,17 @@ class Component {
     // industry — Card 1: employment by sector + 5-yr trend arrow
     c=this.mk('c-industry'); if(c){ const rows=[...d.industryEmployment].sort((a,b)=>a.value-b.value);
       c.setOption({ grid:{...grid,left:8,right:110}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],g=r.data.growth;return `${r.name}<br/><b>${fmt(r.value)}</b> jobs<br/>${g>=0?'▲':'▼'} ${Math.abs(g)}% over 5 yrs`;}},
-        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v>=1000?(v/1000)+'k':v}},
+        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,growth:r.growth,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),
+        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,growth:r.growth,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),
           label:{show:true,position:'right',formatter:p=>`{v|${fmt(p.value)}}  {${p.data.growth>=0?'up':'dn'}|${p.data.growth>=0?'▲':'▼'}${Math.abs(p.data.growth)}%}`,rich:{v:{color:C.slate,fontFamily:F,fontSize:10},up:{color:C.green,fontFamily:F,fontSize:10,fontWeight:700},dn:{color:'#9F2842',fontFamily:F,fontSize:10,fontWeight:700}}}}] }); }
     // industry — Card 2: Location Quotient, framed for lay readers as a
     // "× vs Virginia" multiplier (same math, self-describing label)
     c=this.mk('c-industry-lq'); if(c){ const rows=[...d.industryEmployment].filter(r=>r.value>0).sort((a,b)=>a.lq-b.lq);
       c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],v=r.data.value;return `${r.name}<br/><b>${v.toFixed(1)}×</b> as concentrated as Virginia<br/><span style="opacity:.65">Location Quotient ${v.toFixed(2)}</span>`;}},
-        xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v.toFixed(1)+'×'}},
+        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // per-bar × labels + the 1.0× line carry the scale
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.green:'#9DB4D6',borderRadius:[0,4,4,0]}})),
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.green:this.rgba(C.green,.4),borderRadius:[0,4,4,0]}})),
           label:{show:true,position:'right',formatter:p=>p.data.value.toFixed(1)+'×',color:C.slate,fontFamily:F,fontSize:10},
           markLine:{symbol:'none',silent:true,lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5},data:[{xAxis:1}],
             label:{show:true,position:'end',rotate:0,formatter:'Virginia avg',color:'#1A1A1A',fontFamily:F,fontWeight:700,fontSize:10,backgroundColor:'rgba(255,255,255,.92)',padding:[3,5],borderRadius:3}}}] }); }
@@ -1206,15 +1206,15 @@ class Component {
         <span style="font-size:.86rem;color:#5A6472">${arrow(yoy)} vs ${b.years[b.years.length-2]||''}</span>
         <span style="font-size:.86rem;color:#5A6472">${arrow(dec)} since ${b.years[0]}</span></div>`;
       // Card 1 chart — formation trend (latest bar highlighted)
-      c=this.mk('c-business'); if(c) c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
-        xAxis:{type:'category',data:b.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(v)}},
-        series:[{type:'bar',barMaxWidth:26,data:f.map((v,i)=>({value:v,itemStyle:{color:i===f.length-1?C.green:'#9DB4D6',borderRadius:[3,3,0,0]}}))}] });
+      c=this.mk('c-business'); if(c) c.setOption({ grid:{...grid,top:34}, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
+        xAxis:{type:'category',data:b.years,...ax}, yAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // per-bar top labels carry the values; axis scale is redundant
+        series:[{type:'bar',barMaxWidth:26,data:f.map((v,i)=>({value:v,itemStyle:{color:i===f.length-1?C.blue:C.blueBright,borderRadius:[3,3,0,0]}})),label:{show:true,position:'top',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] });
       // Card 2 chart — new businesses by industry (most recent year)
       c=this.mk('c-business-industry'); if(c){ const rows=[...b.byIndustry].filter(r=>r.value>0).sort((a2,b2)=>a2.value-b2.value);
         c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' new businesses'},
-          xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>fmt(v)}},
+          xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
+          series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
     // apprenticeships — summary BANs + geography-fallback note + three ranked-bar
     // breakdowns (occupation / industry / sponsor). Grammar matches Industry Ch.1
     // and New Business Ch.2: horizontal bars, largest on top highlighted green.
@@ -1242,7 +1242,7 @@ class Component {
         cc.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' '+unit},
           xAxis:{type:'value',...ax,axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:150,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.green:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); };
+          series:[{type:'bar',barMaxWidth:18,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); };
       rankBars('c-appr-occ', a.byOccupation, 'apprentices');
       rankBars('c-appr-industry', a.byIndustry, 'apprentices');
       rankBars('c-appr-sponsor', a.bySponsor, 'apprentices'); }
