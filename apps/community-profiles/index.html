@@ -1104,7 +1104,7 @@ class Component {
       c.setOption({ grid:{...grid,left:8,right:110}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],g=r.data.growth;return `${r.name}<br/><b>${fmt(r.value)}</b> jobs<br/>${g>=0?'▲':'▼'} ${Math.abs(g)}% over 5 yrs`;}},
         xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,growth:r.growth,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,growth:r.growth,itemStyle:{color:C.blue,borderRadius:[0,4,4,0]}})),
           label:{show:true,position:'right',formatter:p=>`{v|${fmt(p.value)}}  {${p.data.growth>=0?'up':'dn'}|${p.data.growth>=0?'▲':'▼'}${Math.abs(p.data.growth)}%}`,rich:{v:{color:C.slate,fontFamily:F,fontSize:10},up:{color:C.green,fontFamily:F,fontSize:10,fontWeight:700},dn:{color:'#9F2842',fontFamily:F,fontSize:10,fontWeight:700}}}}] }); }
     // industry — Card 2: Location Quotient, framed for lay readers as a
     // "× vs Virginia" multiplier (same math, self-describing label)
@@ -1214,7 +1214,7 @@ class Component {
         c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' new businesses'},
           xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
           yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:17,data:rows.map((r,i)=>({value:r.value,itemStyle:{color:i===rows.length-1?C.blue:C.blueBright,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
+          series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
     // apprenticeships — summary BANs + geography-fallback note + three ranked-bar
     // breakdowns (occupation / industry / sponsor). Grammar matches Industry Ch.1
     // and New Business Ch.2: horizontal bars, largest on top highlighted green.
