@@ -1256,10 +1256,10 @@ class Component {
           title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'34%',textAlign:'center',
             textStyle:{fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontSize:27,fontWeight:800,color:C.cobalt},
             subtextStyle:{fontFamily:F,fontSize:11,fontWeight:600,color:C.slate}},
-          series:[{type:'pie',radius:['52%','70%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
+          series:[{type:'pie',radius:['50%','66%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
             itemStyle:{borderColor:C.line,borderWidth:2},
-            label:{show:true,position:'outside',formatter:'{d}%',color:C.slate,fontFamily:F,fontSize:11,fontWeight:700},
-            labelLine:{show:true,length:8,length2:7,lineStyle:{color:C.line}},
+            label:{show:true,position:'outside',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:11,fontWeight:700},
+            labelLine:{show:true,length:7,length2:6,lineStyle:{color:C.line}},
             data}] }); } } }
     // employers list
     this.renderEmployers(d);   // Largest Employers — named table (VI_Top50Employers) + CSV + locality ownership split
