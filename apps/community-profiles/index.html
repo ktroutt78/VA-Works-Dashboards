@@ -1253,7 +1253,7 @@ class Component {
         cc.setOption({ textStyle:{fontFamily:F},
           tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> apprentices · ${p.percent}%`},
           legend:{bottom:2,left:'center',icon:'circle',itemWidth:9,itemHeight:9,itemGap:12,textStyle:{fontFamily:F,fontSize:11,color:C.slate},data:ord.map(r=>r.name)},
-          title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'34%',textAlign:'center',
+          title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'37%',textAlign:'center',itemGap:4,
             textStyle:{fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontSize:27,fontWeight:800,color:C.cobalt},
             subtextStyle:{fontFamily:F,fontSize:11,fontWeight:600,color:C.slate}},
           series:[{type:'pie',radius:['50%','66%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
