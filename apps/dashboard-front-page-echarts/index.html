@@ -444,7 +444,7 @@ let REGION_LABELS = {};
 
 const STATE = {
   data: null,
-  selectedHcKey: null,
+  selectedFips: null,
   selectedRegion: null,
   selectedCounty: null,
   periodMonths: 36,
@@ -466,13 +466,6 @@ function formatAsOfMonth(yyyymm) {
   if (!yyyymm) return '—';
   const [y, m] = yyyymm.split('-').map(Number);
   return SHORT_MONTHS[m - 1] + ' ' + y;
-}
-
-// "us-va-001" → "51001". VA state FIPS is 51; the 3-digit county FIPS is the
-// suffix in the original data file (already zero-padded). Used to join data
-// rows to GeoJSON features by GEOID.
-function hcKeyToFips(hcKey) {
-  return '51' + hcKey.replace('us-va-', '');
 }
 
 // ECharts tooltip box styling — matches the soft drop-shadow / brand-tinted
@@ -507,8 +500,8 @@ function disambiguateCountyNames() {
   counties.forEach(c => { counts[c.areaname] = (counts[c.areaname] || 0) + 1; });
   counties.forEach(c => {
     if (counts[c.areaname] > 1) {
-      const fips = parseInt(c.hc_key.replace('us-va-', ''), 10);
-      c.areaname = c.areaname + (fips >= 500 ? ' (City)' : ' (County)');
+      const countyCode = parseInt(c.fips.slice(2), 10);   // 3-digit suffix of the 5-digit FIPS
+      c.areaname = c.areaname + (countyCode >= 500 ? ' (City)' : ' (County)');
     }
   });
 }
@@ -584,13 +577,13 @@ function buildMapData(counties) {
     const color = rate == null ? '#f2f1ec' : MAP_RAMP[colorIdx];
     const borderColor = colorIdx <= 1 ? LIGHT_BORDER : '#ffffff';
     return {
-      name: hcKeyToFips(c.hc_key),         // join key → GeoJSON feature.properties.name
+      name: c.fips,                         // join key → GeoJSON feature.properties.name (5-digit FIPS)
       value: rate,                          // displayed in tooltip + visualMap if used
       itemStyle: { areaColor: color, borderColor: borderColor, borderWidth: 0.5 },
       emphasis: { itemStyle: { areaColor: color, borderColor: BRAND_PRIMARY, borderWidth: 1 } },
       select:   { itemStyle: { areaColor: BRAND_ACCENT, borderColor: BRAND_PRIMARY, borderWidth: 1.2 } },
       // Attached metadata — read in tooltip + selectchanged handlers via params.data
-      hcKey: c.hc_key,
+      fips: c.fips,
       countyName: c.areaname,
       region: c.region,
       laborForce: c.labor_force,
@@ -658,10 +651,10 @@ function lineChartOptions(trend, selectedCounty) {
   });
 
   // Per-county series only when a county is selected. trend.counties is
-  // indexed by hc_key in STATE.trendCountyMap.
+  // indexed by fips in STATE.trendCountyMap.
   let countySeries = null;
   if (selectedCounty) {
-    const countyArr = STATE.trendCountyMap[selectedCounty.hcKey];
+    const countyArr = STATE.trendCountyMap[selectedCounty.fips];
     const sliced = countyArr ? countyArr.slice(Math.max(0, countyArr.length - STATE.periodMonths)) : null;
     countySeries = { label: selectedCounty.name, data: sliced };
     document.getElementById('legend-region-name').textContent = countySeries.label;
@@ -885,14 +878,14 @@ function initBoard() {
     const sel = params.selected && params.selected[0];
     const idx = sel && sel.dataIndex && sel.dataIndex.length ? sel.dataIndex[0] : null;
     if (idx == null) {
-      STATE.selectedHcKey  = null;
+      STATE.selectedFips  = null;
       STATE.selectedRegion = null;
       STATE.selectedCounty = null;
     } else {
       const d = STATE.mapData[idx];
-      STATE.selectedHcKey  = d.hcKey;
+      STATE.selectedFips  = d.fips;
       STATE.selectedRegion = d.region;
-      STATE.selectedCounty = { hcKey: d.hcKey, name: d.countyName, region: d.region, value: d.value };
+      STATE.selectedCounty = { fips: d.fips, name: d.countyName, region: d.region, value: d.value };
     }
     applyFilter();
   });
@@ -905,24 +898,24 @@ function initBoard() {
 // ------- 10. Selection helpers -------
 function clearSelection() {
   if (!STATE.charts.map) return;
-  if (STATE.selectedHcKey == null) return;
+  if (STATE.selectedFips == null) return;
   // Unselect the currently-selected feature. selectchanged handles STATE reset.
-  const idx = STATE.mapData.findIndex(d => d.hcKey === STATE.selectedHcKey);
+  const idx = STATE.mapData.findIndex(d => d.fips === STATE.selectedFips);
   if (idx >= 0) {
     STATE.charts.map.dispatchAction({ type: 'unselect', seriesIndex: 0, dataIndex: idx });
   } else {
     // Stale STATE with no matching point — clean up directly.
-    STATE.selectedHcKey  = null;
+    STATE.selectedFips  = null;
     STATE.selectedRegion = null;
     STATE.selectedCounty = null;
     applyFilter();
   }
 }
 
-function selectCountyByKey(hcKey) {
-  if (!hcKey) { clearSelection(); return; }
+function selectByFips(fips) {
+  if (!fips) { clearSelection(); return; }
   if (!STATE.charts.map) return;
-  const idx = STATE.mapData.findIndex(d => d.hcKey === hcKey);
+  const idx = STATE.mapData.findIndex(d => d.fips === fips);
   if (idx < 0) return;
   STATE.charts.map.dispatchAction({ type: 'select', seriesIndex: 0, dataIndex: idx });
 }
@@ -937,17 +930,17 @@ function populateCountySelect() {
   const frag = document.createDocumentFragment();
   counties.forEach(c => {
     const opt = document.createElement('option');
-    opt.value = c.hc_key;
+    opt.value = c.fips;
     opt.textContent = c.areaname;
     frag.appendChild(opt);
   });
   select.appendChild(frag);
-  select.addEventListener('change', (e) => selectCountyByKey(e.target.value));
+  select.addEventListener('change', (e) => selectByFips(e.target.value));
 }
 
 // ------- 12. Cross-filter + KPI county cell -------
 function applyFilter() {
-  const sel = STATE.selectedHcKey;
+  const sel = STATE.selectedFips;
   const bar = document.getElementById('filter-bar');
 
   renderKpis(STATE.data.locality);
@@ -958,7 +951,7 @@ function applyFilter() {
     document.body.classList.add('has-county-selected');
 
     // County KPI: unemployment rate + delta vs Virginia.
-    const county = STATE.data.locality.counties.find(c => c.hc_key === sel);
+    const county = STATE.data.locality.counties.find(c => c.fips === sel);
     const countyUn = county ? county.unemployed_rate : STATE.selectedCounty.value;
     const stateUn  = STATE.data.locality.kpi.virginia.value;
     const deltaVsVa = countyUn - stateUn;
@@ -1009,7 +1002,7 @@ async function boot() {
       loadVAGeoJson()
     ]);
     STATE.data = { locality, trend, industry };
-    STATE.trendCountyMap    = Object.fromEntries((trend.counties || []).map(c => [c.hc_key, c.data]));
+    STATE.trendCountyMap    = Object.fromEntries((trend.counties || []).map(c => [c.fips, c.data]));
     STATE.industryRegionMap = Object.fromEntries((industry.regions || []).map(r => [r.key, r.sectors]));
     REGION_LABELS = buildRegionLabels(locality, industry);
     disambiguateCountyNames();
