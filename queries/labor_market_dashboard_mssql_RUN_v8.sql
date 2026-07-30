@@ -27,10 +27,13 @@
 --   v3 tabular query computed an EMPLOYMENT-rate delta (opposite sign); here the
 --   delta is recomputed from unemployment values.
 --
--- ASSUMPTION (flag): hc_key = 'us-va-' + RIGHT(Area, 3). This assumes the last
+-- COUNTY KEY: fips = '51' + RIGHT(Area, 3) — the 5-digit GEOID the front-end
+--   joins to the US-Atlas county GeoJSON directly (no us-va- prefix). The last
 --   three chars of LABORFORCE.Area are the 3-digit VA county/independent-city
---   FIPS (works for '000001', '51001', or '001' encodings). Verify against one
---   known row (Alexandria -> us-va-510) before trusting the choropleth join.
+--   FIPS (works for '000001', '51001', or '001' encodings). Matches the
+--   validated convention in community_profiles_mssql_RUN.sql (validate P3c,
+--   Alexandria -> 51510). Formerly emitted as the Highcharts key 'us-va-NNN'
+--   and unwound in the browser; see docs/highcharts-legacy-audit.md.
 --
 -- REQUIRES: SQL Server 2017+ for STRING_AGG (Azure SQL — the production host —
 --   qualifies). FOR JSON PATH needs 2016+. Read-only; no temp tables.
@@ -190,7 +193,7 @@ SELECT
     )) AS kpi,
     JSON_QUERY((
         SELECT
-            'us-va-' + RIGHT(cd.Area, 3)               AS hc_key,
+            '51' + RIGHT(cd.Area, 3)                   AS fips,
             cd.AreaName                                AS areaname,
             cd.lwda_code                               AS region,
             cd.lwda_short_name                         AS lwda_short_name,
@@ -303,7 +306,7 @@ SELECT
     )) AS series,
     JSON_QUERY((
         SELECT
-            'us-va-' + RIGHT(cl.Area, 3) AS hc_key,
+            '51' + RIGHT(cl.Area, 3) AS fips,
             JSON_QUERY('[' + (
                 SELECT STRING_AGG(ISNULL(CONVERT(VARCHAR(10), CAST(ct.UnemployedRate AS DECIMAL(5,1))), 'null'), ',')
                        WITHIN GROUP (ORDER BY md.ym)
