@@ -143,6 +143,22 @@ body {
   font-weight: 500; font-variant-numeric: tabular-nums;
 }
 
+/* Two-line stacked header: title on line 1, a full-width muted subtitle on
+   line 2. Used by the Trending + Jobs cards so the second line (a fixed note,
+   or the selected region name) can be any length without pushing the title
+   into a wrap. Line 1 stays on one line; line 2 spans the full card width and
+   wraps if it must, so no LWDA name length can break the layout. */
+.card-head.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+.card-head.stacked .card-title { white-space: nowrap; }
+.card-subtitle {
+  font-size: 12px; font-weight: 500; color: var(--ink-3);
+  line-height: 1.3;
+}
+
 .kpi-row {
   display: grid; grid-template-columns: 1fr 1px 1fr;
   align-items: stretch; gap: 14px;
@@ -337,7 +353,7 @@ body {
     <div class="brand-block">
       <div class="eyebrow">Virginia Works · Workforce Insights<span class="variant-pill">ECharts</span></div>
       <h1>Labor Market Snapshot</h1>
-      <p class="sub">Real-time employment indicators across the Commonwealth, drawn from BLS LAUS and JOLTS feeds.</p>
+      <p class="sub">Employment indicators for Virginia's workforce regions, drawn from BLS LAUS and QCEW data.</p>
     </div>
     <div class="head-right">
       <span class="meta-pill" id="as-of-pill">Updated —</span>
@@ -374,9 +390,9 @@ body {
     </section>
 
     <section class="card">
-      <div class="card-head">
+      <div class="card-head stacked">
         <h2 class="card-title">Unemployment Rate Trending</h2>
-        <span class="card-sub">Monthly, seasonally adjusted (state &amp; US)</span>
+        <span class="card-subtitle">Monthly, seasonally adjusted (state &amp; US)</span>
       </div>
       <div class="kpi-row">
         <div class="kpi kpi-county-cell">
@@ -401,7 +417,7 @@ body {
         </div>
       </div>
       <div class="legend">
-        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#2A7050"></span><span id="legend-region-name">Northern Virginia</span></span>
+        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#2A7050"></span><span id="legend-region-name"></span></span>
         <span class="legend-item"><span class="legend-dot" id="leg-va-dot" style="background:#003595"></span><span>Virginia</span></span>
         <span class="legend-item dashed" style="color:#8A94A3"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
       </div>
@@ -409,9 +425,9 @@ body {
     </section>
 
     <section class="card">
-      <div class="card-head">
+      <div class="card-head stacked">
         <h2 class="card-title">Jobs Added by Industry</h2>
-        <span class="card-sub" id="bar-sub">Net change, latest quarter</span>
+        <span class="card-subtitle" id="bar-region">Statewide</span>
       </div>
       <div class="chart-wrap" id="bar-cell"><div class="loading">Loading industries…</div></div>
       <div class="bar-foot">
@@ -466,6 +482,16 @@ function formatAsOfMonth(yyyymm) {
   if (!yyyymm) return '—';
   const [y, m] = yyyymm.split('-').map(Number);
   return SHORT_MONTHS[m - 1] + ' ' + y;
+}
+
+// RUN_v8 emits verbose GEOGRAPHIES.AreaName values ending in " (LWDA <roman>)",
+// e.g. "Alexandria/Arlington Region (LWDA XII)". Strip that suffix for DISPLAY
+// only — the full string (with suffix) stays in the JSON artifact and anywhere
+// LWDA identity matters (data-source notes, exports). Pre-v8 short labels carry
+// no suffix, so this passes them through unchanged. One helper covers all 14
+// regions since the suffix format is consistent.
+function regionDisplayName(name) {
+  return name == null ? '' : String(name).replace(/\s*\(LWDA\s+[IVXLCDM]+\)\s*$/i, '').trim();
 }
 
 // ECharts tooltip box styling — matches the soft drop-shadow / brand-tinted
@@ -752,10 +778,14 @@ function barChartOptions(industry, regionKey) {
   const total = sorted.reduce((s, d) => s + d.jobs_added, 0);
 
   document.getElementById('bar-total').textContent = (total >= 0 ? '+' : '') + total.toLocaleString();
+  // Footer left is constant: the region no longer lives here (it moved to the
+  // header's line 2), so the scope+period reads the same statewide or per-region.
   document.getElementById('bar-foot-label').textContent =
-    regionKey ? 'Top 5 sectors · ' + REGION_LABELS[regionKey] : 'Top 5 sectors · statewide';
-  document.getElementById('bar-sub').textContent =
-    'Net change, ' + industry.as_of_quarter + (regionKey ? ' · ' + REGION_LABELS[regionKey] : '');
+    'Top ' + sorted.length + ' sectors · Net change, ' + industry.as_of_quarter;
+  // Header line 2: the selected region's display name (LWDA suffix stripped),
+  // or "Statewide" when no region is selected.
+  document.getElementById('bar-region').textContent =
+    regionKey ? regionDisplayName(REGION_LABELS[regionKey]) : 'Statewide';
 
   const max = sorted.length ? sorted[0].jobs_added : 0;
   const min = sorted.length ? sorted[sorted.length - 1].jobs_added : 0;
