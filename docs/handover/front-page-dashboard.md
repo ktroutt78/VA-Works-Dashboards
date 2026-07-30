@@ -879,6 +879,44 @@ ORDER BY i.IndCode;
 
 ---
 
+## Accessibility — the iframe embed does NOT confer it (scoped separately)
+
+The dashboard is embedded in the WordPress demo site (`apps/va-works-wp-theme`,
+page template `page-dashboard.php`) via a single fixed-height `<iframe>` whose
+`src` is the `VA_DASHBOARD_URL` constant. The iframe carries a `title` attribute
+(WCAG 4.1.2 / 2.4.1), and the surrounding WordPress chrome (skip link, landmarks,
+nav `aria-current`, search-toggle focus management, AA-contrast navy/white
+palette) was authored to WCAG 2.1 AA.
+
+**None of that makes the embedded dashboard accessible.** An iframe is a
+transparent window: the content inside must meet WCAG 2.1 AA *on its own*, and
+today it does not. For a public-sector site held to AA, the ECharts app needs,
+at minimum, independent remediation of:
+
+- **Keyboard access.** The choropleth map, the county cross-filter selection,
+  and the trend/industry charts are pointer-driven. County selection must be
+  operable by keyboard (the alphabetical county `<select>` is a start, but the
+  map itself and the chart interactions are not reachable/operable without a
+  mouse) — WCAG 2.1.1.
+- **Tooltips.** ECharts tooltips appear on hover/focus of canvas-rendered marks;
+  they are not exposed to assistive tech and are not keyboard-dismissable/
+  hoverable per 1.4.13. The data they carry needs a non-hover, AT-exposed
+  equivalent (e.g. an accessible data table or `aria` description).
+- **Non-color-dependent encoding.** The map encodes unemployment by a single
+  blue ramp and the bars by navy/gray for positive/negative — meaning is carried
+  by color alone (WCAG 1.4.1). Add a redundant channel: value labels, patterns,
+  or a text/table alternative.
+- **Canvas has no semantic structure.** ECharts renders to `<canvas>`, so there
+  are no headings, roles, or reading order for a screen reader. A parallel
+  accessible representation of each chart's data is the usual remedy.
+
+This is called out here so it is **scoped as its own workstream**, not assumed
+to be handled by the WordPress theme. The theme work deliberately did not touch
+the dashboard's internals. Do not treat "the site passed an AA audit" as
+covering the embedded dashboard — audit the iframe contents separately.
+
+---
+
 ## Appendix — File map
 
 ```
