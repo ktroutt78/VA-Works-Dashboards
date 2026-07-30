@@ -245,11 +245,11 @@ class Component {
     try{ const pr=await fetch('data/profiles.json'); if(pr.ok) this.profileData=await pr.json(); }catch(e){}
     this.profiles={}; ((this.profileData&&this.profileData.profiles)||[]).forEach(p=>{ this.profiles[p.id]=p; });
     // County/City LAUS unemployment trend — reused from the front-page dashboard
-    // (data/unemployment_trend.json: monthly series.virginia + counties[hc_key]).
-    // hc_key = 'us-va-<FIPS3>'. County/City only for now; other levels stay mock.
+    // (data/unemployment_trend.json: monthly series.virginia + counties[].fips).
+    // Keyed by 5-digit FIPS. County/City only for now; other levels stay mock.
     this.laus=null; this.lausByKey={};
     try{ const lr=await fetch('data/unemployment_trend.json'); if(lr.ok) this.laus=await lr.json(); }catch(e){}
-    if(this.laus&&this.laus.counties) this.laus.counties.forEach(c=>{ this.lausByKey[c.hc_key]=c.data; });
+    if(this.laus&&this.laus.counties) this.laus.counties.forEach(c=>{ this.lausByKey[c.fips]=c.data; });
     // build registry + geometry helpers
     this.prepFeatures();
     this.buildRegions();
@@ -1557,13 +1557,12 @@ class Component {
   renderUnemployment(d){
     const C=this.C, F=this.FONT, ax=this.axis();
     const regionName=(this.current&&this.current.name)||'This locality';
-    // Real County/City LAUS (front-page dataset), keyed us-va-<FIPS3>. Other
+    // Real County/City LAUS (front-page dataset), keyed by 5-digit FIPS. Other
     // levels (MSA, statewide-as-selection, aggregated regions) stay on the
     // illustrative series for now — scope is County/City only.
     const isCC=this.current&&this.current.type==='County / City';
     const fips=this.current&&this.current.fips&&this.current.fips[0];
-    const key=fips?('us-va-'+String(fips).slice(-3)):null;
-    const ccData=(isCC&&this.laus&&key)?this.lausByKey[key]:null;
+    const ccData=(isCC&&this.laus&&fips)?this.lausByKey[fips]:null;
     let cats, region, va, monthly;
     if(ccData){
       const SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
