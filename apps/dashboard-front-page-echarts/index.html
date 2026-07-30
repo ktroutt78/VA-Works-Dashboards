@@ -61,11 +61,6 @@ body {
   display: flex; align-items: flex-end; justify-content: space-between;
   margin-bottom: 22px; gap: 24px;
 }
-.brand-block .eyebrow {
-  font-family: var(--font-title);
-  font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--brand-2); margin-bottom: 4px;
-}
 .brand-block h1 {
   font-family: var(--font-title);
   margin: 0; font-size: 24px; font-weight: 700;
@@ -283,14 +278,6 @@ body {
 }
 .county-picker select:hover { border-color: var(--border-strong); }
 
-/* Small "powered by" badge so it's obvious which variant the page renders. */
-.variant-pill {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  background: var(--brand-tint); color: var(--brand-1);
-  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--brand-3);
-  margin-left: 8px;
-}
-
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
   .page { padding: 24px 18px 56px; }
@@ -314,7 +301,6 @@ body {
   .page { padding: 16px 12px 48px; }
   .brand-block h1 { font-size: 20px; letter-spacing: -0.01em; }
   .brand-block .sub { font-size: 12px; }
-  .brand-block .eyebrow { font-size: 10px; }
 
   .head-right { flex-wrap: wrap; gap: 8px; }
 
@@ -351,7 +337,6 @@ body {
 
   <header class="dash-head">
     <div class="brand-block">
-      <div class="eyebrow">Virginia Works · Workforce Insights<span class="variant-pill">ECharts</span></div>
       <h1>Labor Market Snapshot</h1>
       <p class="sub">Employment indicators for Virginia's workforce regions, drawn from BLS LAUS and QCEW data.</p>
     </div>
