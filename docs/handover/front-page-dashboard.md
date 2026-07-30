@@ -42,6 +42,8 @@ This is a deliberate architecture choice:
 
 The same scheduled job emits all three JSON files together. The dashboard's "Updated" pill reads the top-level `as_of` field from `employment_by_locality.json` (Q1's `FOR JSON PATH` projection emits `as_of` as a sibling of `kpi` and `counties`, not nested inside a `meta` envelope — the front page dashboard's JSON has no `meta` wrapper, unlike the Employer Wage Tool's `wages.json` / `industries.json`).
 
+> **Maintenance note — page subtitle names its source programs.** The header subtitle in `index.html` reads *"Employment indicators for Virginia's workforce regions, drawn from BLS **LAUS** and **QCEW** data."* Those two program names are hardcoded copy, not derived from the artifacts. They match today's sources: Q1/Q2 are LAUS (`LABORFORCE`), Q3 is QCEW (`INDUSTRY`). **If the underlying `RUN_v8.sql` queries are ever repointed to different BLS source programs (e.g. CES/JOLTS for the jobs series, or a different labor-force source), update this subtitle to match.** This line previously read "Real-time … BLS LAUS and JOLTS feeds," which was wrong on both counts — the cadence is monthly/quarterly with a lag (not real-time), and JOLTS is not used anywhere in this app. Keep it accurate on cadence and source names.
+
 ### Cross-filter behavior
 
 **Important: there is no region parameter on the SQL.** The SQL emits the full dataset — every county, every LWDA — and the browser does the slicing. This is how:
