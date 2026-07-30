@@ -14,13 +14,15 @@
 // not in this nav (e.g. the Dashboard), nothing is marked current — which is
 // the honest answer. A hardcoded aria-current would lie to a screen reader.
 $va_nav_items = array(
-	'About'     => 'about',
-	'Locations' => 'locations',
-	'Newsroom'  => 'newsroom',
-	'Events'    => 'events',
-	'Policies'  => 'policies',
-	'LMI'       => 'lmi',
-	'Contact'   => 'contact',
+	'Job Seekers' => 'im-a-job-seeker',
+	'Employers'   => 'im-an-employer',
+	'About'       => 'about',
+	'Locations'   => 'locations',
+	'Newsroom'    => 'newsroom',
+	'Events'      => 'events',
+	'Policies'    => 'policies',
+	'LMI'         => 'lmi',
+	'Contact'     => 'contact',
 );
 global $wp;
 $va_current_path = isset( $wp->request ) ? trim( (string) $wp->request, '/' ) : '';

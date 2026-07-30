@@ -28,6 +28,23 @@ if ( ! defined( 'VA_DASHBOARD_URL' ) ) {
 }
 
 /**
+ * Single source of truth for the wage comparison tool URL (apps/wage-tool).
+ * Same rules as VA_DASHBOARD_URL: repoint here or override in wp-config.php;
+ * default is the local demo target, no Vercel URL baked in.
+ */
+if ( ! defined( 'VA_WAGE_TOOL_URL' ) ) {
+	define( 'VA_WAGE_TOOL_URL', 'http://localhost:8124/wage-tool.html' );
+}
+
+/**
+ * Single source of truth for the employer pay-band tool URL (apps/wage-tool-employer).
+ * Same rules: repoint here or override in wp-config.php; local demo default only.
+ */
+if ( ! defined( 'VA_EMPLOYER_WAGE_TOOL_URL' ) ) {
+	define( 'VA_EMPLOYER_WAGE_TOOL_URL', 'http://localhost:8125/wage-tool-employer.html' );
+}
+
+/**
  * Theme supports.
  */
 function va_works_setup() {
@@ -44,15 +61,20 @@ add_action( 'after_setup_theme', 'va_works_setup' );
  * Enqueue the stylesheet and the header-interaction script.
  */
 function va_works_assets() {
-	$version = wp_get_theme()->get( 'Version' );
+	// Version assets by file mtime so edits bust the browser cache automatically
+	// (a static theme version would pin ?ver= and serve stale CSS/JS across edits).
+	$css_path = get_theme_file_path( 'style.css' );
+	$js_path  = get_theme_file_path( 'assets/header.js' );
+	$css_ver  = file_exists( $css_path ) ? (string) filemtime( $css_path ) : wp_get_theme()->get( 'Version' );
+	$js_ver   = file_exists( $js_path ) ? (string) filemtime( $js_path ) : wp_get_theme()->get( 'Version' );
 
-	wp_enqueue_style( 'va-works', get_stylesheet_uri(), array(), $version );
+	wp_enqueue_style( 'va-works', get_stylesheet_uri(), array(), $css_ver );
 
 	wp_enqueue_script(
 		'va-works-header',
 		get_theme_file_uri( 'assets/header.js' ),
 		array(),
-		$version,
+		$js_ver,
 		true // in footer
 	);
 	wp_script_add_data( 'va-works-header', 'defer', true );

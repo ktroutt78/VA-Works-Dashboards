@@ -23,7 +23,7 @@ Text Domain: va-works
   --ink-2:    #45484c;  /* secondary text on white (~8:1)                    */
   --line:     #cfd6e2;  /* borders                                           */
 
-  --container: 1200px;
+  --container: 1360px;  /* matches the dashboard app's own max-width so the charts fill it */
   --radius: 8px;
 
   /* Focus indicator: a white + navy double ring that stays visible on BOTH
@@ -291,21 +291,61 @@ select:focus-visible,
 }
 .segment-card__cta::after { content: " \2192"; }
 
-/* ─── Dashboard page (iframe embed) ────────────────────────────────────────── */
-.dashboard-page { padding-block: 40px; }
-.dashboard-page h1 { margin: 0 0 6px; font-size: 30px; color: var(--navy-700); }
-.dashboard-page .dashboard-note { margin: 0 0 20px; color: var(--ink-2); }
-.dashboard-frame {
+/* ─── Embeds (iframe sections) ─────────────────────────────────────────────── */
+/* Shared markup (template-parts/embed.php) for the front-page dashboard and the
+   job-seeker-page wage tool; only the measured heights differ, per variant. The
+   top padding + divider keep the preceding content from crowding the embed. */
+.embed-section { padding: 16px 0 56px; border-top: 1px solid var(--line); margin-top: 16px; }
+.embed-section__heading { margin: 0 0 6px; font-size: 26px; color: var(--navy-700); }
+.embed-section .embed-note { margin: 0 0 20px; color: var(--ink-2); max-width: 70ch; }
+.embed-frame {
+  display: block;
   width: 100%;
-  /* Fixed height, measured from the embedded dashboard's own rendered content
-     at the iframe's desktop width (~1152px inner → 3-col, ~736px tall). Buffer
-     to 760 to avoid a hairline scrollbar. The stacked height is set in the
-     media query below. Adjust both in this one place. */
-  height: 760px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--navy-050);
 }
+/* Dashboard (front page): ~716px content at the 1152px desktop iframe width
+   (3-col); buffer to 740. Stacked value + breakpoint are in the media queries.
+   The dashboard app caps its own content at 1360px, so cap + centre the iframe
+   there too — on a wider page the charts present as a clean centred block
+   instead of floating at 1360 inside a too-wide frame. */
+.embed-frame.is-dashboard { height: 740px; max-width: 1360px; margin-inline: auto; }
+/* Wage tool (job-seeker page): interactive, grows ~206px per comparison job
+   (measured empty 437 → 1 job 477 → 2 jobs 683 at desktop). Sized to fit a
+   two-job comparison, its core use; 3+ jobs scroll inside the frame. */
+.embed-frame.is-wage { height: 710px; }
+/* Employer pay-band tool (employer page): interactive; measured populated
+   ("Try an example", Financial Clerks) ~1311px desktop / ~1325px stacked. It's
+   width-stable, so one height covers both; larger job families scroll. */
+.embed-frame.is-employer-wage { height: 1360px; }
+
+/* ─── Job-seeker page ──────────────────────────────────────────────────────── */
+.page-content { padding-top: 8px; }
+.page-content h1 { margin: 4px 0 12px; font-size: clamp(28px, 4vw, 38px); color: var(--navy-700); }
+.lede { margin: 0 0 22px; font-size: 19px; max-width: 70ch; color: var(--ink); }
+.want-to { margin: 0 0 16px; font-size: 20px; font-weight: 700; color: var(--navy-700); }
+
+.breadcrumb { margin: 8px 0 14px; font-size: 14px; }
+.breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.breadcrumb li { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.breadcrumb li + li::before { content: "\203A"; color: var(--ink-2); } /* › separator (decorative) */
+.breadcrumb a { color: var(--navy-600); }
+.breadcrumb [aria-current="page"] { color: var(--ink); font-weight: 600; }
+
+.action-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin: 0 0 8px; padding: 0; list-style: none;
+}
+.action-link {
+  display: flex; align-items: center; min-height: 56px; /* comfortable touch target (>44px) */
+  padding: 12px 16px;
+  background: var(--white); color: var(--navy-700);
+  border: 1px solid var(--line); border-left: 4px solid var(--navy-700);
+  border-radius: var(--radius);
+  font-size: 16px; font-weight: 600; text-decoration: none;
+}
+.action-link:hover { background: var(--navy-050); border-left-color: var(--navy-600); }
 
 /* ─── Footer ───────────────────────────────────────────────────────────────── */
 .site-footer {
@@ -327,14 +367,17 @@ select:focus-visible,
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
-/* The embedded dashboard switches to a single-column stacked layout when the
-   IFRAME is <=1023px wide. Because the iframe is the container width (1200px
-   max minus 48px padding), that happens at ~1071px viewport — not at the 900px
-   masthead breakpoint below. Measured stacked height peaks ~1603px across the
-   stacked range; buffer to 1620. Keyed to the iframe-stacking point so there's
-   no internal scroll between 900 and 1071px. */
+/* Each embed stacks at its own iframe width, which (given the 1200px-max
+   container minus 48px padding) maps to a viewport breakpoint, NOT the 900px
+   masthead one below:
+     - dashboard stacks at <=1023px iframe  → ~1071px viewport (content ~1583px)
+     - wage tool stacks at <=760px  iframe  → ~808px  viewport (content ~651px)
+   Heights measured in each stacked state, with a small buffer. */
 @media (max-width: 1071px) {
-  .dashboard-frame { height: 1620px; }
+  .embed-frame.is-dashboard { height: 1600px; }
+}
+@media (max-width: 808px) {
+  .embed-frame.is-wage { height: 680px; }
 }
 
 @media (max-width: 900px) {
@@ -343,4 +386,8 @@ select:focus-visible,
   .primary-nav__list { gap: 0; }
   .primary-nav__list a { padding: 10px 8px; }
   .segment-grid { grid-template-columns: 1fr; }
+  .action-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .action-grid { grid-template-columns: 1fr; }
 }
