@@ -170,3 +170,23 @@ GROUP BY Area, PeriodYear;
 2. Re-run validate P3/P3b (coverage + vintage matrix for the new year).
 3. Run RUN.sql, capture both JSON files, run the P8 smoke tests.
 4. Update this document's Validation Status table.
+
+---
+
+## Part 7 — Embedded in the WordPress demo ("I'm a Job Seeker" page)
+
+This tool is embedded via `<iframe>` on the WordPress theme's job-seeker page
+(`apps/va-works-wp-theme/page-im-a-job-seeker.php`), below the action-link grid.
+The iframe `src` is the single `VA_WAGE_TOOL_URL` constant (`functions.php`),
+default `http://localhost:8124/wage-tool.html`; repoint there or override in
+`wp-config.php`. The iframe height is fixed to fit a **two-job comparison** (the
+tool's core use); adding a third+ comparison job scrolls inside the frame.
+
+**⚠ Fix before this page is client-facing — chart-manifest flag C6.** A literal
+`0` can pass the `p50 IS NOT NULL` gate in Q1, and the front end currently
+compensates with a render-time **cascade-clamp** so the broken cell doesn't draw
+a zero-width band. That is a presentation-layer patch over a data defect: the
+`0` should be suppressed/repaired at the **SQL level** (the p50 gate should
+reject non-publishable `0`s, not just `NULL`s), not relied on the client to hide.
+Until then the embedded tool can surface clamped cells. Not addressed in this
+pass — logged here so it is fixed at source before the page goes public.
