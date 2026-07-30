@@ -998,6 +998,10 @@ class Component {
     // ORDER BY SizeDesc DESC — one rank map is the seam if bands change (V8 sort is stable)
     const sizeRank={'1,000+':2,'500-999':1};
     this._empList=rows.sort((a,b)=>(sizeRank[b.size]||0)-(sizeRank[a.size]||0));
+    // Fake sequential rank. Within a size band the order is arbitrary (no real
+    // headcount to rank by — compliance forbids counts), so this is presentation
+    // only until VI_Top50Employers provides a real ordering.
+    this._empList.forEach((r,i)=>{ r.rank=i+1; });
     return this._empList;
   }
   /* Single column-config array drives BOTH the table and the CSV export. Columns
@@ -1005,6 +1009,7 @@ class Component {
      add. To surface more (PeriodYear, AreaName, ...), add one entry here + one
      field to each row object above — no table or export rewrite needed. */
   empColumns(){ return [
+    {label:'Rank',      align:'left', cell:r=>r.rank},
     {label:'Employer',  align:'left', cell:r=>r.name},
     {label:'Industry',  align:'left', cell:r=>r.industry},
     {label:'Ownership', align:'left', cell:r=>r.ownership, td:r=>this.ownPill(r.ownership)},
