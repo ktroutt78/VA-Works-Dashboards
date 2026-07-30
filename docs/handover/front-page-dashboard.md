@@ -58,19 +58,19 @@ ECharts 'selectchanged' fires with dataIndex of the clicked county
          │
          ▼
 Handler reads attached metadata from the county's data row:
-    STATE.selectedHcKey  = "us-va-059"     ← Fairfax FIPS
+    STATE.selectedFips   = "51059"         ← Fairfax FIPS
     STATE.selectedRegion = "000451"        ← Fairfax's LWDA code (Northern)
          │
          ▼
 applyFilter() re-renders:
     - KPI row     → adds a "Fairfax County" tile
-    - Line chart  → looks up STATE.trendCountyMap["us-va-059"] and adds a new series
+    - Line chart  → looks up STATE.trendCountyMap["51059"] and adds a new series
     - Bar chart   → swaps statewide top-5 for STATE.industryRegionMap["000451"] (Northern LWDA's top-5)
 
 User picks a county from the dropdown instead
          │
          ▼
-selectCountyByKey(hcKey) → dispatchAction({type:'select', dataIndex})
+selectByFips(fips) → dispatchAction({type:'select', dataIndex})
          │
          ▼
 ECharts fires the SAME 'selectchanged' event — single code path, single source of truth
@@ -78,7 +78,7 @@ ECharts fires the SAME 'selectchanged' event — single code path, single source
 
 The **region** that drives the bar chart is **derived from the selected county**, not selected directly. Each county row in `employment_by_locality.json` carries its `region` (= `lwda_code`) and `lwda_short_name`. When the user picks a county, the dashboard auto-routes to that county's LWDA's top-5 industry view. There is no separate region selector.
 
-**Why this matters for refresh:** if you change the SQL to add a column, add a new LWDA, or change the join semantics, the change must be reflected in **all three JSON payloads at once**, because the front-end joins them in memory by `hc_key` (county) and `region` / `lwda_code` (LWDA).
+**Why this matters for refresh:** if you change the SQL to add a column, add a new LWDA, or change the join semantics, the change must be reflected in **all three JSON payloads at once**, because the front-end joins them in memory by `fips` (county) and `region` / `lwda_code` (LWDA).
 
 ---
 
@@ -104,7 +104,7 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
   },
   "counties": [
     {
-      "hc_key": "us-va-001",          // join key for the map
+      "fips": "51001",                // join key for the map (5-digit FIPS GEOID)
       "areaname": "Accomack County",
       "region": "000456",              // LWDA code (drives bar chart on click)
       "lwda_short_name": "Hampton Roads (LWDA XIV)",   // verbose AreaName verbatim, see note below
@@ -125,7 +125,7 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
 - `kpi.virginia.delta_pts` is the **change in unemployment rate** vs. the prior month. Positive delta = unemployment went **up** = colored as "down" / coral in the UI.
 - `kpi.us_average` is computed by summing `Unemployed` and `LaborForce` across all 50 states (any `StFips`, `AreaType='01'`, `Adjusted='1'`), with `HAVING COUNT(*) >= 50` as a guard against partial loads.
 - `counties[].unemployed_rate` is **not** seasonally adjusted (county-level NSA is the only series BLS publishes at this geography).
-- `hc_key` is constructed as `'us-va-' + RIGHT(Area, 3)`. The map registers VA-county GeoJSON keyed by the 5-digit FIPS (e.g. `51059`); see `hcKeyToFips()` in `apps/dashboard-front-page-echarts/index.html:466` for the inverse mapping the browser performs.
+- `fips` is constructed as `'51' + RIGHT(Area, 3)` — the 5-digit GEOID. The map registers VA-county GeoJSON keyed by that same FIPS (`feature.properties.name = String(f.id)`), so the data joins directly with no browser-side conversion. (Formerly emitted as the Highcharts key `'us-va-' + RIGHT(Area,3)` and unwound in JS via a `hcKeyToFips()` helper; both removed. See `docs/highcharts-legacy-audit.md`.)
 
 ### Q2 — Line chart (unemployment trend)
 
@@ -139,7 +139,7 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
   },
   "counties": [
     {
-      "hc_key": "us-va-001",
+      "fips": "51001",
       "data": [4.6, 4.7, null, 5.1, ...]               // NSA, county-level
     },
     ...
@@ -150,7 +150,7 @@ Each visualization is backed by exactly one SQL query, which emits exactly one J
 **Semantics:**
 - The window is **36 months ending at the latest LABORFORCE month** (driven by `latest` CTE, lines 214–223).
 - `months` is the master x-axis. Source gaps (e.g. an Oct 2025 hole in the data) become JSON `null` at the correct index via `LEFT JOIN months_dim`; the front-end uses `connectNulls: false` so gaps render as line breaks, not interpolated values.
-- `series.virginia` and `series.us_national` are always shown. The per-county line is only added when a county is selected — looked up by `hc_key` in `STATE.trendCountyMap`.
+- `series.virginia` and `series.us_national` are always shown. The per-county line is only added when a county is selected — looked up by `fips` in `STATE.trendCountyMap`.
 - `series.virginia` is **seasonally adjusted** (matches the headline KPI); `counties[].data` is **NSA** (only series available at county granularity).
 
 ### Q3 — Top-5 industry bar chart
@@ -384,7 +384,7 @@ Each row marks whether an assumption has been **Confirmed** against the live WID
 | 3 | `LABORFORCE.AreaType = '01'` for the state and national totals | **Confirmed** | Same as #2. |
 | 4 | `LABORFORCE.Adjusted = '1'` = seasonally adjusted | **Confirmed** | Validated in the Employer Wage Tool `_validate.sql` Probe 4 (parallel WID convention). |
 | 5 | `LABORFORCE.PeriodType = '03'` for monthly | **Confirmed** | Same as #4. |
-| 6 | `hc_key = 'us-va-' + RIGHT(LABORFORCE.Area, 3)` produces the GeoJSON join key | **Assumed — pending validation** | Flagged explicitly in the v8 SQL header (lines 30–33). Confirm via [Smoke Test 4 — Alexandria spot-check](#smoke-test-4-hc_key-construction). |
+| 6 | `fips = '51' + RIGHT(LABORFORCE.Area, 3)` produces the 5-digit GeoJSON join key | **Confirmed** | Same construction as `community_profiles_mssql_RUN.sql` (validated there, validate P3c → Alexandria `51510`); prior extract confirmed `RIGHT(Area,3)` = 510/059/710. Formerly the Highcharts `us-va-NNN` key, removed 2026-07-29 (`docs/highcharts-legacy-audit.md`). Re-confirm via [Smoke Test 4](#smoke-test-4-fips-construction). |
 | 7 | `SUBGEOGRAPHIES.SubArea = LABORFORCE.Area` for county→LWDA mapping (with `SubAreaType = '04'`) | **Assumed — pending validation** | The Q1 region_mapping CTE depends on this shape. Run [Smoke Test 3](#smoke-test-3-lwda-county-mapping-completeness). |
 | 8 | 14 LWDAs return after the `AreaName NOT LIKE '%Combined%'` filter | **Confirmed** | Verified for the Employer Wage Tool on 2026-06-05 (`_setup.sql` seed). |
 | 9 | `lwda_short_name` field is now `GEOGRAPHIES.AreaName` verbatim — substring-parser RETIRED per the project dimension-derived-labels standard. Was previously: "AreaName always starts with the LWDA short name followed by ` (LWDA …)` or ` Region`" — an assumption that's no longer load-bearing. | **Confirmed (architectural decision, 2026-06-10)** | `region_mapping` (Q1) and `lwda_dim` (Q3) CTEs both emit `g.AreaName` verbatim into `lwda_short_name` and (in Q3) `regions[].label`. The JSON field names are preserved for front-end compatibility; values are verbose ("Hampton Roads (LWDA XIV)" etc.). Load gap: `GEOGRAPHIES.ShortName` not present on this install (probe RESULTS LOG P6). |
@@ -471,19 +471,19 @@ WHERE sg.StFips = '51' AND sg.AreaType = '15'
   );
 ```
 
-#### Smoke Test 4: hc_key construction
-Resolves Validation Status row **#6**. Spot-check that `RIGHT(Area, 3)` for Alexandria produces `'510'`.
+#### Smoke Test 4: fips construction
+Resolves Validation Status row **#6**. Spot-check that `'51' + RIGHT(Area, 3)` for Alexandria produces `'51510'`.
 ```sql
 -- EXPECT (anchored to 2026-06-05 extract):
---   Alexandria city, hc_key = us-va-510
---   Fairfax County,  hc_key = us-va-059
---   Norfolk city,    hc_key = us-va-710
+--   Alexandria city, fips = 51510
+--   Fairfax County,  fips = 51059
+--   Norfolk city,    fips = 51710
 -- These three are the canonical join-key spot-checks. If any returns a
--- different hc_key, the `RIGHT(Area, 3)` assumption is wrong and the
+-- different fips, the `'51' + RIGHT(Area, 3)` assumption is wrong and the
 -- choropleth will silently mis-color counties.
 SELECT
     g.Area, g.AreaName,
-    'us-va-' + RIGHT(g.Area, 3) AS hc_key
+    '51' + RIGHT(g.Area, 3) AS fips
 FROM WID.dbo.GEOGRAPHIES g
 WHERE g.StFips = '51' AND g.AreaType = '04'
   AND g.AreaTypeVersion = (
