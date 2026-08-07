@@ -121,6 +121,13 @@
         <div id="mapHint" style="font-size:.72rem;color:#9DC0F2;margin-top:.6rem;letter-spacing:.03em">Pick a level above, then click a region on the map to load its profile</div>
       </div>
     </div>
+    <!-- Overview moved into the hero banner — sits on the blue background just below the geography buttons. The map above stays locked at 435px, so only the banner grows taller to accommodate this. -->
+    <div style="position:relative;z-index:3;max-width:1240px;margin:0 auto;padding:1rem 1.5rem 26px">
+      <div id="overview-top" data-screen-label="Overview" style="scroll-margin-top:96px;padding-top:1.1rem">
+        <h2 id="reportTitle" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:clamp(1.7rem,3vw,2.4rem);font-weight:800;color:#fff;line-height:1;margin-bottom:.9rem">—</h2>
+        <div id="overview" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:1rem;align-items:stretch"></div>
+      </div>
+    </div>
   </section>
 
   <!-- STICKY collapsed mini-map bar -->
@@ -140,18 +147,6 @@
 
   <!-- REPORT -->
   <section data-screen-label="Report" style="max-width:1240px;margin:0 auto;padding:2.4rem 1.5rem 4rem">
-
-    <!-- intro + overview dashboard -->
-    <div id="overview-top" data-screen-label="Overview" style="border-bottom:1px solid #E2E0D8;padding-bottom:1.8rem;margin-bottom:2rem;scroll-margin-top:96px">
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.3rem">
-        <div>
-          <div style="font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7050;margin-bottom:.4rem">Overview · At a glance</div>
-          <h2 id="reportTitle" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:clamp(1.9rem,3.4vw,2.8rem);font-weight:800;color:#0A2463;line-height:1">—</h2>
-        </div>
-        <div style="font-size:.78rem;color:#5A6472;max-width:40ch;text-wrap:pretty">A high-level snapshot of the selected geography before the detailed profile below.</div>
-      </div>
-      <div id="overview" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:1rem;align-items:stretch"></div>
-    </div>
 
     <div style="display:grid;grid-template-columns:236px 1fr;gap:3rem;align-items:start">
       <!-- rail -->
@@ -212,7 +207,9 @@
 class Component {
   componentDidMount(){
     // Blue/green sourced from the DWDA brand guide (2023): primary 661/555, secondary 660.
-    this.C = { cobalt:'#002A76', blue:'#003595', blueBright:'#3D7CC9', green:'#2A7050', greenDark:'#1F5A3E', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
+    // Selected-locality accent is the VA Works gold (BRAND_ACCENT from the front-page dashboard);
+    // state/Virginia stays blue. green/greenDark are kept only for good/bad delta arrows.
+    this.C = { cobalt:'#002A76', blue:'#003595', blueBright:'#3D7CC9', green:'#2A7050', greenDark:'#1F5A3E', gold:'#c89b3c', goldDark:'#8a6a24', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
     this.PALETTE = ['#1B4DB1','#2A7050','#5BA3D0','#E8A33D','#9B6FB5','#9F2842','#7A8794'];
     this.FONT = "'Barlow', sans-serif";
     this.charts = {};
@@ -263,11 +260,20 @@ class Component {
     this.buildScenes();
     this.wireScroll();
     document.getElementById('mapLoad').style.display='none';
-    // default selection
-    // default to the County / City level (Fairfax County — the largest locality — with robust fallback)
-    const firstCC = this.regions.find(r=>r.type==='County / City');
-    const def = (this.regionById['c-51059'] && 'c-51059') || (firstCC && firstCC.id) || (this.regionById['state'] && 'state') || (this.regions[0] && this.regions[0].id);
-    this.selectRegion(def);
+    // landing state: no geography chosen. Show the County / City map (that tab is the default)
+    // with nothing highlighted, and fill the Overview with statewide Virginia KPIs.
+    if(this.regionById['state']){
+      this.selectRegion('state','County / City');
+      // no specific place is selected on landing — label the overview as statewide
+      const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+      set('crumb-region','Virginia'); set('reportTitle','Virginia');
+      set('stickyName','Virginia'); set('stickyType','Statewide');
+    } else {
+      // fallback if the state region is somehow missing: first County / City
+      const firstCC = this.regions.find(r=>r.type==='County / City');
+      const def = (firstCC && firstCC.id) || (this.regions[0] && this.regions[0].id);
+      this.selectRegion(def);
+    }
     window.addEventListener('resize', ()=>{ Object.values(this.charts).forEach(c=>c&&c.resize()); this.heroChart&&this.heroChart.resize(); this.miniChart&&this.miniChart.resize(); });
   }
 
@@ -379,7 +385,12 @@ class Component {
 
     // Counties / cities (all)
     F.slice().sort((a,b)=>a.properties.pretty.localeCompare(b.properties.pretty)).forEach(f=>{
-      push({ id:'c-'+f.id, type:'County / City', name:f.properties.pretty, fips:[String(f.id)] });
+      // us-atlas labels both "Fairfax County" and "Fairfax city" as just "Fairfax". VA independent
+      // cities carry a county-part code >=510; counties are <200. Suffix the name so the picker
+      // (and every downstream label) distinguishes "Fairfax County" from "Fairfax City".
+      const kind = Number(String(f.id).slice(-3)) >= 510 ? 'City' : 'County';
+      const nm = /\b(County|City)\b/i.test(f.properties.pretty) ? f.properties.pretty : f.properties.pretty+' '+kind;
+      push({ id:'c-'+f.id, type:'County / City', name:nm, fips:[String(f.id)] });
     });
 
     this.regions=regions;
@@ -391,8 +402,7 @@ class Component {
     {type:'County / City', label:'County / City'},
     {type:'Metro Area (MSA)', label:'Metro (MSA)'},
     {type:'GO Virginia Region', label:'GO Virginia'},
-    {type:'Local Workforce Area (LWDA)', label:'Workforce (LWDA)'},
-    {type:'State', label:'Statewide'}
+    {type:'Local Workforce Area (LWDA)', label:'Workforce (LWDA)'}
   ]; }
   levelMapName(level){ return 'va-'+level.replace(/[^a-z]/gi,'').toLowerCase(); }
   _mergeFips(fipsArr){
@@ -436,7 +446,7 @@ class Component {
     const county=level==='County / City';
     const REGION=o.region||(county?'#C5D3E5':'#93B4DE');
     const REST=o.rest||(o.silent?'#D8E0EC':'#DCE4F0');
-    const SEL=o.sel||'#2A7050', BORD=o.border||'#FFFFFF', RESTBORD=o.restBorder||(o.silent?'#C7D2E1':'rgba(255,255,255,.3)'), EMPH=o.emph||'#B9D0EE';
+    const SEL=o.sel||'#c89b3c', BORD=o.border||'#FFFFFF', RESTBORD=o.restBorder||(o.silent?'#C7D2E1':'rgba(255,255,255,.3)'), EMPH=o.emph||'#B9D0EE';
     const selId=this.current&&this.current.id;
     const data=regions.map(r=>({ name:r.id, itemStyle:{ areaColor: r.id===selId?SEL:REGION } }));
     // remainder area: light, not interactive
@@ -489,7 +499,7 @@ class Component {
         const on = r.id===selId;
         return `<button data-rid="${r.id}" type="button" style="display:flex;width:100%;align-items:center;gap:.6rem;text-align:left;background:${on?'#EAF3E4':'#fff'};border:none;border-bottom:1px solid #F2F0EA;padding:.5rem .7rem;cursor:pointer;font-family:${this.FONT}" style-hover="background:#F5F1E8">
           <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.02rem;color:#0A2463;line-height:1.05">${r.name}</span>${meta?`<span style="font-size:.72rem;color:#5A6472">${meta}</span>`:''}</span>
-          ${on?`<span style="flex:none;color:#2A7050;font-weight:700">✓</span>`:''}
+          ${on?`<span style="flex:none;color:#c89b3c;font-weight:700">✓</span>`:''}
         </button>`;
       }).join('') + (list.length>shown.length?`<div style="padding:.5rem .7rem;color:#9DB4D6;font-size:.74rem">Showing first ${shown.length} — type to narrow…</div>`:'') : `<div style="padding:.8rem;color:#5A6472;font-size:.86rem">No matches</div>`;
       res.style.display='block'; place(); if(caret) caret.style.transform='translateY(-50%) rotate(180deg)';
@@ -509,7 +519,7 @@ class Component {
   buildLevelToolbar(){
     const el=document.getElementById('levelbar'); if(!el) return;
     el.innerHTML=this.LEVELS().map(L=>
-      `<button data-level="${L.type}" type="button" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.10);color:#EaF1FB;border-radius:8px;padding:.42rem .85rem;cursor:pointer;transition:.16s;white-space:nowrap" style-hover="background:rgba(255,255,255,.22)">${L.label}</button>`
+      `<button data-level="${L.type}" type="button" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.10);color:#EaF1FB;border-radius:8px;padding:.42rem .85rem;cursor:pointer;transition:.16s;white-space:nowrap" style-hover="background:rgba(255,255,255,.22)">${L.label}</button>`
     ).join('');
     el.querySelectorAll('button').forEach(b=>b.onclick=()=>this.setLevel(b.dataset.level));
   }
@@ -584,9 +594,9 @@ class Component {
           <p style="margin:0 0 1rem;font-size:1.05rem;color:#1A1A1A"><b>In one line:</b> it shows what your region has <b>more of</b>, and <b>less of</b>, than Virginia as a whole.</p>
           <p style="margin:0 0 1.1rem">Each industry gets one number comparing its share of <b>local</b> jobs to its share of jobs <b>across all of Virginia</b>. It's a simple multiplier against the statewide average. The black line is the Virginia average (1.0×):</p>
           <div style="display:flex;flex-direction:column;gap:.75rem;margin:0 0 1.25rem">
-            ${bar('2.0×',100,'#2A7050','<b>Double.</b> Twice as concentrated here as statewide. A strong local specialty.')}
-            ${bar('1.0×',50,'#94A6BE','<b>Even.</b> Exactly the same as Virginia, no more and no less.')}
-            ${bar('0.5×',25,'#94A6BE','<b>Half.</b> Only half as common here as statewide. Underrepresented.')}
+            ${bar('2.0×',100,'#c89b3c','<b>Double.</b> Twice as concentrated here as statewide. A strong local specialty.')}
+            ${bar('1.0×',50,'#c89b3c','<b>Even.</b> Exactly the same as Virginia, no more and no less.')}
+            ${bar('0.5×',25,'rgba(200,155,60,.4)','<b>Half.</b> Only half as common here as statewide. Underrepresented.')}
           </div>
           <div style="background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.9rem 1rem;margin:0 0 1.15rem">
             <div style="font-weight:700;color:#0A2463;margin-bottom:.35rem;font-size:.88rem">A concrete example</div>
@@ -597,7 +607,7 @@ class Component {
               <li><b>0.5×</b> → it's about <b>4%</b> of local jobs (half)</li>
             </ul>
           </div>
-          <p style="margin:0"><b>On the chart:</b> bars to the <b style="color:#2A7050">right of the dashed line</b> are your region's specialties (more than Virginia); bars to the <b>left</b> are industries the region has less of than the rest of the state.</p>` },
+          <p style="margin:0"><b>On the chart:</b> bars to the <b style="color:#c89b3c">right of the dashed line</b> are your region's specialties (more than Virginia); bars to the <b>left</b> are industries the region has less of than the rest of the state.</p>` },
       newbiz:{ title:'What counts as a new business?',
         body:`
           <p style="margin:0 0 1.1rem;font-size:1.05rem;color:#1A1A1A">A new business is an employer that appears in the state's official payroll records (QCEW) for the very first time. When a business hires its first employees and registers with the state, it gets counted here — so each year's bar is that year's brand-new arrivals.</p>
@@ -635,13 +645,16 @@ class Component {
   }
 
   /* ---------- selection ---------- */
-  selectRegion(id){
+  selectRegion(id, mapLevel){
     const r=this.regionById[id]; if(!r) return;
-    this.current=r; this.level=r.type; this.activeTab=r.type;
+    // mapLevel lets the landing view draw the County/City map while the data region is
+    // statewide — the map then highlights nothing (no county's id equals the state region's).
+    const lvl = mapLevel || r.type;
+    this.current=r; this.level=lvl; this.activeTab=lvl;
     this.heroChart.clear();
-    this.heroChart.setOption(this.mapOption(r.type,{tooltip:true,sel:'#2A7050',base:'#C2D0E2',border:'#FFFFFF',emph:'#9DB8D9',zoom:1.0,aspect:0.85,layoutCenter:['60%','43%'],layoutSize:'170%'}),true); // from Claude Design — keep consistent across all levels
+    this.heroChart.setOption(this.mapOption(lvl,{tooltip:true,sel:'#c89b3c',base:'#C2D0E2',border:'#FFFFFF',emph:'#9DB8D9',zoom:1.0,aspect:0.85,layoutCenter:['60%','43%'],layoutSize:'170%'}),true); // from Claude Design — keep consistent across all levels
     this.miniChart.clear();
-    this.miniChart.setOption(this.mapOption(r.type,{silent:true,sel:'#2A7050',base:'#CBD7E8',border:'#FFFFFF',bw:0.5,emph:'#CBD7E8',zoom:1.0,aspect:0.85,layoutCenter:['50%','50%'],layoutSize:'195%'}),true); // minimap: bigger + natural aspect, full silhouette, selected region green
+    this.miniChart.setOption(this.mapOption(lvl,{silent:true,sel:'#c89b3c',base:'#CBD7E8',border:'#FFFFFF',bw:0.5,emph:'#CBD7E8',zoom:1.0,aspect:0.85,layoutCenter:['50%','50%'],layoutSize:'195%'}),true); // minimap: bigger + natural aspect, full silhouette, selected region green
     setTimeout(()=>{this.heroChart.resize();this.miniChart.resize();},30);
     this.updateLevelToolbar();
     const d=this.genData(r);
@@ -658,14 +671,18 @@ class Component {
     set('stickyName',r.name);
     set('stickyType',r.type);
     set('reportTitle',r.name);
+    // region name is already shown in the breadcrumb and the big overview title, so heroMeta
+    // carries only the supporting meta (sub-label, locality count, data-refresh / illustrative).
     const hm=document.getElementById('heroMeta');
-    if(hm) hm.innerHTML =
-      `<span style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1rem;color:#fff;letter-spacing:.02em">${r.name}</span>`+
-      (r.sub?`<span style="opacity:.85">${r.sub}</span>`:'')+
-      (r.fips.length>1?`<span style="opacity:.45">·</span><span><b style="color:#fff">${r.fips.length}</b> localities</span>`:'')+
-      (this.realFields.size&&this.profileData&&this.profileData.meta&&this.profileData.meta.generated
-        ?`<span style="opacity:.45">·</span><span>Data refreshed ${this.profileData.meta.generated}</span>`
+    if(hm){
+      const parts=[];
+      if(r.sub) parts.push(`<span style="opacity:.85">${r.sub}</span>`);
+      if(r.fips.length>1) parts.push(`<span><b style="color:#fff">${r.fips.length}</b> localities</span>`);
+      parts.push(this.realFields.size&&this.profileData&&this.profileData.meta&&this.profileData.meta.generated
+        ?`<span>Data refreshed ${this.profileData.meta.generated}</span>`
         :`<span style="display:inline-block;background:#E8A33D;color:#3a2400;font-size:.62rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px">Illustrative data</span>`);
+      hm.innerHTML = parts.join('<span style="opacity:.45">·</span>');
+    }
     this.renderOverview(d);
     this.renderCharts(d);
     this.updateBadges();
@@ -694,44 +711,45 @@ class Component {
     const totJobs=d.industryEmployment.reduce((a,b)=>a+b.value,0);
     const top3=[...d.industryEmployment].sort((a,b)=>b.value-a.value).slice(0,3);
     const u=d.unempLatest;   // KPI values render in one consistent color, not a per-value traffic light
-    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.2rem;box-shadow:0 2px 20px rgba(10,36,99,.05);display:flex;flex-direction:column;min-width:0';
+    const card='background:transparent;border:1px solid rgba(255,255,255,.28);border-radius:12px;padding:1.15rem 1.2rem;display:flex;flex-direction:column;min-width:0';
     const rf=this.realFields||new Set();
     const chip=fields=>fields.every(f=>rf.has(f))?'':`<span style="background:#E8A33D;color:#3a2400;font-size:.56rem;font-weight:700;letter-spacing:.05em;padding:.1rem .4rem;border-radius:4px;margin-left:.5rem;vertical-align:1px">Illustrative</span>`;
-    const eb=(t,fields)=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.55rem">${t}${fields?chip(fields):''}</div>`;
+    const eb=(t,fields)=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.55rem">${t}${fields?chip(fields):''}</div>`;
     const big='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:800;font-size:3rem;line-height:.85';
-    const foot='font-size:.72rem;color:#5A6472;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem';
+    const foot='font-size:.72rem;color:#B9CDEE;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem';
     const html=`
       <div style="${card}">
         ${eb('Unemployment Rate',['unempLatest'])}
-        <div style="${big};color:${C.cobalt}">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
-        <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#9DB4D6;font-weight:600;letter-spacing:.02em">${rf.has('unempLatest')?'Latest · '+d.unempLatestYear:'Illustrative'}</div>
+        <div style="${big};color:#fff">${u}<span style="font-size:1.4rem;font-weight:700">%</span></div>
+        <div style="margin-top:auto;padding-top:.9rem;font-size:.72rem;color:#B9CDEE;font-weight:600;letter-spacing:.02em">${rf.has('unempLatest')?'Latest · '+d.unempLatestYear:'Illustrative'}</div>
       </div>
       <div style="${card}">
-        ${eb('Gross Domestic Product',['gdp','gdpTrend'])}
-        <div style="${big};color:${C.cobalt}">${gdpStr}</div>
+        ${eb('GDP',['gdp','gdpTrend'])}
+        <div style="${big};color:#fff">${gdpStr}</div>
         <div id="ov-gdp-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
-        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${C.green};font-weight:700">▲ ${gdpGrowthPct.toFixed(1)}%/yr</span></div>
+        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:#7ED9A8;font-weight:700">▲ ${gdpGrowthPct.toFixed(1)}%/yr</span></div>
       </div>
       <div style="${card}">
         ${eb('Population',['population','popTrend'])}
-        <div style="${big};color:${C.cobalt}">${fmt(d.population)}</div>
+        <div style="${big};color:#fff">${d.population>=1e6?`${(d.population/1e6).toFixed(1)}M`:fmt(d.population)}</div>
         <div id="ov-pop-spark" style="width:100%;height:46px;margin-top:.7rem"></div>
-        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${popGrowthPct>=0?C.green:'#9F2842'};font-weight:700">${popGrowthPct>=0?'▲':'▼'} ${Math.abs(popGrowthPct).toFixed(1)}%/yr</span></div>
+        <div style="${foot}"><span>${yrs[0]}–${yrs[span]}</span><span style="color:${popGrowthPct>=0?'#7ED9A8':'#F28FA0'};font-weight:700">${popGrowthPct>=0?'▲':'▼'} ${Math.abs(popGrowthPct).toFixed(1)}%/yr</span></div>
       </div>
       <div style="${card}">
         ${eb('Top 3 Industries',['industryEmployment'])}
         <div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.05rem">
           ${top3.map((t,i)=>`<div style="display:flex;align-items:center;gap:.65rem">
-            <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?C.cobalt:'#EDE9DF'};color:${i===0?'#fff':'#5A6472'};display:flex;align-items:center;justify-content:center;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.82rem">${i+1}</span>
-            <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.04rem;color:#0A2463;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</span><span style="font-size:.72rem;color:#5A6472">${fmt(t.value)} jobs · ${(t.value/totJobs*100).toFixed(0)}% of employment</span></span>
+            <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?'#fff':'rgba(255,255,255,.16)'};color:${i===0?C.cobalt:'#D7E3F6'};display:flex;align-items:center;justify-content:center;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.82rem">${i+1}</span>
+            <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.04rem;color:#fff;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</span><span style="font-size:.72rem;color:#B9CDEE">${fmt(t.value)} jobs · ${(t.value/totJobs*100).toFixed(0)}% of employment</span></span>
           </div>`).join('')}
         </div>
       </div>`;
     const el=document.getElementById('overview'); if(el) el.innerHTML=html;
     const spark=(id,arr,color)=>{ const c=this.mk(id); if(!c) return; c.setOption({ grid:{left:2,right:2,top:6,bottom:4}, xAxis:{type:'category',show:false,boundaryGap:false,data:arr.map((_,i)=>i)}, yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false}, series:[{type:'line',data:arr,smooth:true,symbol:'none',lineStyle:{width:2.5,color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(color,.26)},{offset:1,color:this.rgba(color,0)}])}}] }); };
-    // both KPI sparklines share one line color — the metric differs, the encoding shouldn't
-    spark('ov-gdp-spark', d.gdpTrend, C.blue);
-    spark('ov-pop-spark', d.popTrend, C.blue);
+    // both KPI sparklines share one line color — the metric differs, the encoding shouldn't.
+    // light blue so the line reads on the hero's blue background (cards are now transparent).
+    spark('ov-gdp-spark', d.gdpTrend, '#9DC0F2');
+    spark('ov-pop-spark', d.popTrend, '#9DC0F2');
     const sk=document.getElementById('stickyKpis'); if(sk) sk.innerHTML='';
   }
 
@@ -909,10 +927,12 @@ class Component {
     const totalUnits=Math.round(occupied/(occupancyRate/100));
     const ownPct=Math.round(housing.owner/(housing.owner+housing.renter)*100), rentPct=100-ownPct;
     const ownCount=Math.round(occupied*ownPct/100), rentCount=occupied-ownCount;
+    // The last point is pinned to the exact "now" value (no jitter) so the header figure
+    // matches the chart endpoint; only the interior/history years carry jitter.
     const rentNow=housing.medianRent, rentYoY=+(3.5+rnd()*2.5).toFixed(1);
-    const rentTrend=[]; for(let i=0;i<8;i++) rentTrend.push(Math.round(rentNow/Math.pow(1+rentYoY/100,7-i)*j(0.015)));
+    const rentTrend=[]; for(let i=0;i<8;i++) rentTrend.push(i===7?rentNow:Math.round(rentNow/Math.pow(1+rentYoY/100,7-i)*j(0.015)));
     const homeNow=housing.medianHomeValue, homeYoY=+(4+rnd()*2.5).toFixed(1);
-    const homeTrend=[]; for(let i=0;i<8;i++) homeTrend.push(Math.round(homeNow/Math.pow(1+homeYoY/100,7-i)*j(0.012)));
+    const homeTrend=[]; for(let i=0;i<8;i++) homeTrend.push(i===7?homeNow:Math.round(homeNow/Math.pow(1+homeYoY/100,7-i)*j(0.012)));
     const burdenRegion=[ +(28+rnd()*8).toFixed(1), +(20+rnd()*5).toFixed(1), +(9+rnd()*4).toFixed(1) ];
     const vaMedianIncome=83200, discretionary=Math.round((medianIncome*0.33+(rnd()-0.5)*4000)/100)*100, vaDiscretionary=26100;
     const afford={ totalUnits, occupied, occupancyRate, occVsVa:+(occupancyRate-vaOccupancy).toFixed(1), vaOccupancy,
@@ -1091,7 +1111,7 @@ class Component {
         xAxis:{type:'category',data:d.populationChange.map(r=>r.year),...ax,boundaryGap:false},
         yAxis:{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>(v/1000).toFixed(0)+'k'}},
         series:[ {name:'Recorded',type:'line',data:actual,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.22)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
-                 {name:'Projected',type:'line',data:proj,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.green,type:'dashed'},itemStyle:{color:C.green},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(42,112,80,.18)'},{offset:1,color:'rgba(42,112,80,0)'}])}} ] }); }
+                 {name:'Projected',type:'line',data:proj,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.gold,type:'dashed'},itemStyle:{color:C.gold},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(200,155,60,.18)'},{offset:1,color:'rgba(200,155,60,0)'}])}} ] }); }
     // race
     c=this.mk('c-race'); if(c) c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> (${p.percent}%)`},
       legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
@@ -1116,7 +1136,7 @@ class Component {
       c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],v=r.data.value;return `${r.name}<br/><b>${v.toFixed(1)}×</b> as concentrated as Virginia<br/><span style="opacity:.65">Location Quotient ${v.toFixed(2)}</span>`;}},
         xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // per-bar × labels + the 1.0× line carry the scale
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.green:this.rgba(C.green,.4),borderRadius:[0,4,4,0]}})),
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.gold:this.rgba(C.gold,.4),borderRadius:[0,4,4,0]}})),
           label:{show:true,position:'right',formatter:p=>p.data.value.toFixed(1)+'×',color:C.slate,fontFamily:F,fontSize:10},
           markLine:{symbol:'none',silent:true,lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5},data:[{xAxis:1}],
             label:{show:true,position:'end',rotate:0,formatter:'Virginia avg',color:'#1A1A1A',fontFamily:F,fontWeight:700,fontSize:10,backgroundColor:'rgba(255,255,255,.92)',padding:[3,5],borderRadius:3}}}] }); }
@@ -1125,18 +1145,18 @@ class Component {
       c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>'$'+fmt(v)+'/wk'},
         xAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v>=1000?(v/1000)+'k':v)}},
         yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:r.name.includes('Total')?C.cobalt:(r.value>=avg?C.green:'#9DB4D6'),borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>'$'+fmt(p.value),color:C.slate,fontFamily:F,fontSize:10},
+        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:r.name.includes('Total')?C.cobalt:(r.value>=avg?C.gold:'#9DB4D6'),borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>'$'+fmt(p.value),color:C.slate,fontFamily:F,fontSize:10},
           markLine:{symbol:'none',silent:true,lineStyle:{color:C.cobalt,type:'dashed',width:1.5},data:[{xAxis:avg}],label:{formatter:'avg $'+fmt(avg),color:C.cobalt,fontFamily:F,fontWeight:700,position:'insideEndTop'}}}] }); }
     // unemployment
     c=this.mk('c-unemp'); if(c){ const u=d.unemployment;
       c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
         legend:{data:[this.current.name,'Virginia','United States'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:18,itemHeight:3},
         xAxis:{type:'category',data:u.years,...ax,boundaryGap:false}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
-        series:[ {name:this.current.name,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:'#2A7050'},itemStyle:{color:'#2A7050'}},
+        series:[ {name:this.current.name,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:'#c89b3c'},itemStyle:{color:'#c89b3c'}},
                  {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}},
                  {name:'United States',type:'line',data:u.us,smooth:true,symbol:'none',lineStyle:{width:2,color:'#8A94A3'},itemStyle:{color:'#8A94A3'}} ] }); }
     // education
-    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,'#2A7050'],['Virginia',e.va,C.blue]];
+    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,'#c89b3c'],['Virginia',e.va,C.blue]];
       // horizontal category labels wrapped to ~2 balanced lines (break on space
       // and after '/') so we avoid angled text — e.g. "Graduate/\nProfessional"
       const wrapLbl=s=>{ const toks=String(s).replace(/\//g,'/ ').split(/\s+/).filter(Boolean); const lines=[]; let cur='';
@@ -1159,16 +1179,28 @@ class Component {
     const setHtml=(id,h)=>{ const e=document.getElementById(id); if(e) e.innerHTML=h; };
     const kfmt=n=> n>=1000?(n/1000).toFixed(1)+'k':String(n);
     // Housing Profile — Group A KPIs
-    setTxt('k-hh-total', fmt(A.totalUnits));
-    setHtml('k-hh-occupied', 'Occupied <b style="color:#1A1A1A">'+fmt(A.occupied)+'</b>');
+    // shorten to X.XM at/above a million — precision to the ones unit isn't useful at that scale
+    const hhFmt=n=> n>=1e6 ? (n/1e6).toFixed(1)+'M' : fmt(n);
+    setTxt('k-hh-total', hhFmt(A.totalUnits));
+    setHtml('k-hh-occupied', 'Occupied <b style="color:#1A1A1A">'+hhFmt(A.occupied)+'</b>');
     setHtml('k-occ-rate', A.occupancyRate.toFixed(1)+'<span style="font-size:1.1rem">%</span>');
     const occUp=A.occVsVa>=0;
     setHtml('k-occ-vsva', '<span style="color:'+(occUp?C.green:'#9F2842')+';font-weight:700">'+(occUp?'▲':'▼')+' '+Math.abs(A.occVsVa).toFixed(1)+' pts</span> vs VA '+A.vaOccupancy+'%');
     setTxt('k-hhsize', A.avgHHSize.toFixed(2));
     const dev=Math.abs(A.avgHHSize-A.vaHHSize)<0.15?'little deviation':(A.avgHHSize>A.vaHHSize?'above VA':'below VA');
     setHtml('k-hhsize-va', 'VA '+A.vaHHSize.toFixed(2)+' <span style="color:#9DB4D6">· '+dev+'</span>');
-    setTxt('k-own-pct', A.ownPct+'%'); setTxt('k-own-cnt', 'Own·'+kfmt(A.ownCount));
-    setTxt('k-rent-pct', A.rentPct+'%'); setTxt('k-rent-cnt', 'Rent·'+kfmt(A.rentCount));
+    // Own vs Rent — one 10×10 waffle (each cell = 1%): green cells are owners, blue are renters.
+    // It lives in its own card, so the grid is large with room to breathe; percentages sit
+    // beside it in their series colors, no raw counts.
+    { const GCW="'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif";
+      // Fill bottom-up: rent (grey) takes the top rows, own (green) forms the base at the bottom.
+      let sq=''; for(let i=0;i<100;i++) sq+=`<span style="width:13px;height:13px;border-radius:3px;background:${i<A.rentPct?'#7A8794':'#2A7050'}"></span>`;
+      const pctBox=(pct,color,label)=>`<div style="font-family:${GCW};font-weight:800;font-size:1.9rem;color:${color};line-height:1">${pct}<span style="font-size:1rem">%</span><div style="font-size:.64rem;color:#5A6472;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem">${label}</div></div>`;
+      setHtml('ownrent-waffle', `<div style="display:flex;align-items:center;gap:1.1rem">
+        <div style="display:grid;grid-template-columns:repeat(10,13px);grid-auto-rows:13px;gap:3px">${sq}</div>
+        <div style="display:flex;flex-direction:column;gap:1rem">${pctBox(A.rentPct,'#7A8794','Rent')}${pctBox(A.ownPct,'#2A7050','Own')}</div>
+      </div>`);
+    }
     setHtml('k-rent-hdr', '<b style="color:#0A2463">$'+fmt(A.rentNow)+'</b>/mo · <span style="color:#2A7050;font-weight:700">▲'+A.rentYoY+'%/yr</span>');
     setHtml('k-home-hdr', '<b style="color:#0A2463">$'+(A.homeNow/1000).toFixed(0)+'k</b> · <span style="color:#2A7050;font-weight:700">▲'+A.homeYoY+'%/yr</span>');
     // Group B — rent & home-price trend lines
@@ -1176,26 +1208,49 @@ class Component {
     const trendLine=(id,arr,color,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
       cc.setOption({ grid:{left:6,right:12,top:14,bottom:6,containLabel:true}, tooltip:{trigger:'axis',valueFormatter:vfmt},
         xAxis:{type:'category',data:ayrs,boundaryGap:false,...ax}, yAxis:{type:'value',scale:true,axisLabel:{...ax.axisLabel,formatter:vfmt},splitLine:ax.splitLine},
-        series:[{type:'line',data:arr,smooth:true,symbol:'circle',symbolSize:5,lineStyle:{width:3,color},itemStyle:{color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:color+'33'},{offset:1,color:color+'00'}])}}] }); };
-    trendLine('c-rent', A.rentTrend, C.green, v=>'$'+fmt(v));
-    trendLine('c-home', A.homeTrend, C.blue, v=>'$'+(v/1000).toFixed(0)+'k');
+        series:[{type:'line',data:arr,smooth:true,symbol:'circle',symbolSize:5,lineStyle:{width:3,color},itemStyle:{color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:color+'66'},{offset:1,color:color+'0D'}])}}] }); };
+    // Match the waffle: renting is grey, ownership (home price) is green.
+    trendLine('c-rent', A.rentTrend, '#7A8794', v=>'$'+fmt(v));
+    trendLine('c-home', A.homeTrend, '#2A7050', v=>'$'+(v/1000).toFixed(0)+'k');
     // Group B — housing cost burden vs Virginia (grouped bar + 30% threshold)
     c=this.mk('c-burden'); if(c) c.setOption({
-      legend:{data:['This region','Virginia'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:16,itemHeight:8},
-      grid:{left:6,right:18,top:38,bottom:6,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'% of income'},
+      legend:{data:['This region','Virginia'],bottom:0,left:'center',textStyle:{fontFamily:F,color:C.slate},itemWidth:16,itemHeight:8},
+      grid:{left:6,right:18,top:14,bottom:32,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'% of income'},
       xAxis:{type:'category',data:A.burdenCats,...ax,axisLabel:{...ax.axisLabel,fontSize:11,fontWeight:600}},
       yAxis:{type:'value',max:40,axisLabel:{...ax.axisLabel,formatter:'{value}%'},splitLine:ax.splitLine},
-      series:[ {name:'This region',type:'bar',data:A.burdenRegion,barMaxWidth:38,itemStyle:{color:'#2A7050',borderRadius:[4,4,0,0]},
-          markLine:{symbol:'none',silent:true,data:[{yAxis:30,label:{formatter:'30% cost-burden threshold',color:'#1C2A3A',fontSize:12,position:'insideEndTop'},lineStyle:{color:'#9F2842',type:'dashed',width:1.5}}]}},
+      series:[ {name:'This region',type:'bar',data:A.burdenRegion,barMaxWidth:38,itemStyle:{color:'#c89b3c',borderRadius:[4,4,0,0]},
+          markLine:{symbol:'none',silent:true,data:[{yAxis:30,label:{formatter:'30% cost-burden threshold',color:'#1C2A3A',fontSize:12,position:'insideEndTop'},lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5}}]}},
         {name:'Virginia',type:'bar',data:A.burdenVa,barMaxWidth:38,itemStyle:{color:C.blue,borderRadius:[4,4,0,0]}} ] });
     // Household Income — horizontal compare bars (region vs VA)
-    const compareBar=(id,region,va,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
-      cc.setOption({ grid:{left:6,right:70,top:8,bottom:6,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:vfmt},
-        xAxis:{type:'value',axisLabel:{show:false},splitLine:{show:false},axisLine:{show:false}},
-        yAxis:{type:'category',data:['Virginia','This region'],axisLine:{lineStyle:{color:C.line}},axisLabel:{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600}},
-        series:[{type:'bar',data:[{value:va,itemStyle:{color:C.blue}},{value:region,itemStyle:{color:'#2A7050'}}],barMaxWidth:30,itemStyle:{borderRadius:[0,4,4,0]},label:{show:true,position:'right',formatter:p=>vfmt(p.value),fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontWeight:700,fontSize:14,color:C.cobalt}}] }); };
-    compareBar('c-medinc', A.medianIncome, A.vaMedianIncome, v=>'$'+fmt(v));
-    compareBar('c-disc', A.discretionary, A.vaDiscretionary, v=>'$'+fmt(v));
+    // Diverging "gap to VA" bars. Bar length = (region − VA)/VA, so 0 is the Virginia benchmark
+    // (dashed blue line) and the bar reaches left (below VA) or right (above VA). The big number
+    // stack lives beside each bar in the markup; here we fill it and draw the bar.
+    const GCF="'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif";
+    setTxt('k-medinc-val','$'+fmt(A.medianIncome)); setTxt('k-medinc-vs','vs VA $'+fmt(A.vaMedianIncome));
+    setTxt('k-disc-val','$'+fmt(A.discretionary)); setTxt('k-disc-vs','vs VA $'+fmt(A.vaDiscretionary));
+    // Shared symmetric axis so both rows' benchmark lines align and stay comparable. The max
+    // carries ~40% headroom past the longest bar (÷0.6) so the dollar-gap label never runs off
+    // the edge, whichever side the bar points.
+    const gapPctOf=(r,v)=>v? (r-v)/v*100 : 0;
+    const gaps=[gapPctOf(A.medianIncome,A.vaMedianIncome), gapPctOf(A.discretionary,A.vaDiscretionary)];
+    const axisMax=Math.max(10, Math.ceil(Math.max(...gaps.map(Math.abs))/0.6/5)*5);
+    const gapBar=(id,region,va,axisMax,showAxis,showVaLabel)=>{ const cc=this.mk(id); if(!cc) return;
+      const gapPct=gapPctOf(region,va), dGap=region-va;
+      const gapLbl=(dGap<0?'−$':'+$')+fmt(Math.abs(dGap));
+      cc.setOption({
+        grid:{left:10,right:16,top:showVaLabel?24:8,bottom:showAxis?22:8,containLabel:false},
+        xAxis:{type:'value',min:-axisMax,max:axisMax,interval:axisMax,
+          axisLine:{show:false},axisTick:{show:false},splitLine:{show:false},
+          axisLabel:showAxis?{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600,formatter:v=>v===0?'':(v>0?'+':'−')+Math.abs(v)+'%'}:{show:false}},
+        yAxis:{type:'category',data:[''],axisLine:{show:false},axisTick:{show:false},axisLabel:{show:false}},
+        series:[{ type:'bar',data:[+gapPct.toFixed(2)],barWidth:26,itemStyle:{color:C.gold,borderRadius:3},
+          label:{show:true,position:gapPct<0?'left':'right',formatter:()=>gapLbl,color:C.slate,fontFamily:GCF,fontWeight:700,fontSize:12},
+          markLine:{silent:true,symbol:'none',lineStyle:{color:C.blue,width:2,type:'dashed'},data:[{xAxis:0}],
+            label:showVaLabel?{show:true,position:'end',formatter:()=>'VA benchmark',color:C.blue,fontFamily:F,fontWeight:700,fontSize:11}:{show:false}} }]
+      });
+    };
+    gapBar('c-medinc', A.medianIncome, A.vaMedianIncome, axisMax, false, true);
+    gapBar('c-disc',   A.discretionary, A.vaDiscretionary, axisMax, true,  false);
     // Unemployment Rate (s-unemp) — single LAUS trend, selected geography vs Virginia
     this.renderUnemployment(d);
     // new business formations
@@ -1277,7 +1332,9 @@ class Component {
       {id:'s-pop', eyebrow:'Population', title:'Population & Age', custom:'demographics', fields:['ageCohorts'],
        lede:'The size and shape of the working-age population — the people who make up the local labor supply — shown alongside Virginia for comparison.'},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
-       lede:'Educational attainment compared with the Commonwealth — a read on the skills supply employers can draw from.'},
+       lede:'Educational attainment compared with the Commonwealth — a read on the skills supply employers can draw from.',
+       chartEyebrow:'Educational attainment', chartTitle:'Attainment by level — vs Virginia',
+       chartSub:'The share of adults at each education level, this locality against the Commonwealth. Local bars taller than Virginia’s point to a deeper local talent pool at that level.'},
       {id:'s-highered', eyebrow:'Institutions', title:'Higher Education', custom:'highered', fields:['higherEd'],
        lede:'The colleges and universities that feed the region’s degree and credential pipeline — four-year institutions located in the locality, and the community college whose service region covers it.'} ]},
     { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
@@ -1335,7 +1392,8 @@ class Component {
     this.collapsed={};
     // jump-to-top anchor → scroll back to the Overview banner
     const topLink=el.querySelector('[data-overview-top]');
-    if(topLink){ topLink.onclick=()=>this.jumpTo('overview-top');
+    // overview now lives in the hero banner, so scroll all the way to the top to include the map
+    if(topLink){ topLink.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
       // subtle button hover: darken tint + border (from this.C.blue, no raw hex)
       topLink.onmouseenter=()=>{ topLink.style.background=this.rgba(this.C.blue,.14); topLink.style.borderColor=this.rgba(this.C.blue,.5); };
       topLink.onmouseleave=()=>{ topLink.style.background=this.rgba(this.C.blue,.07); topLink.style.borderColor=this.rgba(this.C.blue,.32); }; }
@@ -1371,7 +1429,7 @@ class Component {
         <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.15rem">Section ${tnum} of ${tot}</div>
         <div style="display:flex;align-items:center;gap:1rem">
           <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.9rem;color:#0A2463;line-height:1;white-space:nowrap">${th.name}</div>
-          <div style="flex:1;height:2px;background:linear-gradient(90deg,#2A7050,rgba(42,112,80,0))"></div>
+          <div style="flex:1;height:2px;background:linear-gradient(90deg,#1B4DB1,rgba(27,77,177,0))"></div>
         </div>${th.blurb?`<p style="font-size:1.02rem;color:#5A6472;max-width:74ch;margin-top:.7rem;text-wrap:pretty">${th.blurb}</p>`:''}
       </div>`;
       th.scenes.forEach((s,si)=>{ if(s.hold) return; n++;
@@ -1384,7 +1442,7 @@ class Component {
           : s.custom==='unemployment' ? this.unemploymentBody()
           : s.custom==='business' ? this.businessBody()
           : s.custom==='apprenticeships' ? this.apprenticeshipsBody()
-          : `<div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem"><div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
+          : `<div class="demo-card" style="margin-top:.2rem">${s.chartTitle?`${s.chartEyebrow?`<div class="demo-ct">${s.chartEyebrow}</div>`:''}<div class="demo-ch">${s.chartTitle}</div>${s.chartSub?`<p class="demo-cs">${s.chartSub}</p>`:''}`:''}<div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7050;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
           <h3 style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem">${s.title}</h3>
@@ -1400,7 +1458,7 @@ class Component {
   /* ---- Affordability & Housing (section 03) custom bodies ---- */
   housingBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
     const big="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;line-height:.9;color:#0A2463";
@@ -1409,22 +1467,19 @@ class Component {
     return `
       <div style="${card};margin-top:.2rem">
         <div style="${grp}">Households · Census${ln}</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
           <div><div style="${eb}">Total Households</div><div id="k-hh-total" style="${big};font-size:2.3rem">—</div><div id="k-hh-occupied" style="${vs}">—</div></div>
           <div><div style="${eb}">Occupancy Rate</div><div id="k-occ-rate" style="${big};font-size:2.3rem">—</div><div id="k-occ-vsva" style="${vs}">—</div></div>
           <div><div style="${eb}">Avg Household Size</div><div id="k-hhsize" style="${big};font-size:2.3rem">—</div><div id="k-hhsize-va" style="${vs}">—</div></div>
-          <div><div style="${eb}">Own vs Rent</div>
-            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.1rem">
-              <div><div id="k-own-pct" style="${big};font-size:1.9rem;color:#2A7050">—</div><div id="k-own-cnt" style="${sub}">—</div></div>
-              <div style="color:#E2E0D8;font-size:1.5rem">/</div>
-              <div><div id="k-rent-pct" style="${big};font-size:1.9rem;color:#1B4DB1">—</div><div id="k-rent-cnt" style="${sub}">—</div></div>
-            </div>
-          </div>
         </div>
       </div>
       <div style="${card};margin-top:.7rem">
         <div style="${grp}">Rent vs Own · Census${ln}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin-bottom:1rem">
+        <div style="display:grid;grid-template-columns:0.95fr 1fr 1fr;gap:1.2rem;margin-bottom:1rem;align-items:start">
+          <div>
+            <div style="${eb}">Own vs Rent</div>
+            <div id="ownrent-waffle" style="margin-top:.5rem"></div>
+          </div>
           <div>
             <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="${eb};margin-bottom:0">Avg Rent · trend</div><div id="k-rent-hdr" style="font-size:.74rem;color:#5A6472">—</div></div>
             <div id="c-rent" style="width:100%;height:190px"></div>
@@ -1435,23 +1490,35 @@ class Component {
           </div>
         </div>
         <div style="border-top:1px solid #EDE9DF;padding-top:.9rem">
-          <div style="${eb}">Housing costs as % of income — vs Virginia</div>
+          <div style="${grp}">Housing costs as % of income — vs Virginia${ln}</div>
           <div id="c-burden" style="width:100%;height:300px"></div>
         </div>
       </div>`;
   }
   incomeBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
+    const lbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-bottom:.15rem';
+    const bigval="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:2.4rem;color:#0A2463;line-height:1";
+    const vslbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-top:.25rem';
+    const row=(name,valId,vsId,chartId)=>`
+      <div style="display:grid;grid-template-columns:minmax(0,0.82fr) minmax(0,1.18fr);gap:1.4rem;align-items:center">
+        <div>
+          <div style="${lbl}">${name}</div>
+          <div id="${valId}" style="${bigval}">—</div>
+          <div id="${vsId}" style="${vslbl}">—</div>
+        </div>
+        <div id="${chartId}" style="width:100%;height:96px"></div>
+      </div>`;
     return `
       <div style="${card};margin-top:.2rem">
         <div style="${grp}">Household Income${ln}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem">
-          <div><div style="${eb}">Median HH Income · current vs VA</div><div id="c-medinc" style="width:100%;height:150px"></div></div>
-          <div><div style="${eb}">Discretionary Income · current vs VA</div><div id="c-disc" style="width:100%;height:150px"></div></div>
-        </div>
+        ${row('Median HH income','k-medinc-val','k-medinc-vs','c-medinc')}
+        <div style="height:1px;background:#EDE9DF;margin:1rem 0"></div>
+        ${row('Discretionary income','k-disc-val','k-disc-vs','c-disc')}
+        <div style="font-size:.76rem;color:#9DB4D6;font-weight:600;margin-top:.9rem">Bar length is the gap to Virginia as a share of the benchmark.</div>
       </div>`;
   }
 
@@ -1464,7 +1531,6 @@ class Component {
         <div class="demo-ch">Total population over time</div>
         <p class="demo-cs">How many people live here, and whether that total is growing or declining. The slope of the line is the story; age make-up is summarized in the numbers above.</p>
         <div id="c-demo-poptrend" style="width:100%;height:320px"></div>
-        <div class="demo-fact" id="f-demo-poptrend"></div>
       </div>`;
   }
 
@@ -1554,6 +1620,9 @@ class Component {
     return `
       <div class="demo-bans" id="unemp-bans" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:.2rem"></div>
       <div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem">
+        <div class="demo-ct">Labor force · LAUS</div>
+        <div class="demo-ch">Unemployment rate over time</div>
+        <p class="demo-cs">The monthly unemployment rate for the selected geography, with Virginia shown as a dashed benchmark.</p>
         <div id="unemp-rollup" style="display:none;font-size:.78rem;color:#5A6472;margin-bottom:.7rem;padding:.5rem .7rem;background:#F8F6F0;border:1px solid #E2E0D8;border-radius:8px"></div>
         <div id="c-unemp-trend" style="width:100%;height:360px"></div>
       </div>`;
@@ -1595,18 +1664,20 @@ class Component {
     const c=this.mk('c-unemp-trend'); if(!c) return;
     c.setOption({
       textStyle:{fontFamily:F},
-      grid:{left:8,right:16,top:22,bottom:8,containLabel:true},
-      legend:{data:[regionName,'Virginia'],top:0,itemWidth:20,itemHeight:8,textStyle:{color:C.slate,fontFamily:F,fontSize:12}},
+      grid:{left:8,right:52,top:14,bottom:34,containLabel:true},
+      legend:{data:[regionName,'Virginia'],bottom:0,left:'center',itemWidth:20,itemHeight:8,textStyle:{color:C.slate,fontFamily:F,fontSize:12}},
       tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:this.rgba(C.blue,.18)}},valueFormatter:v=>v==null?'—':(+v).toFixed(1)+'%'},
       xAxis:{type:'category',data:cats,...ax,boundaryGap:false,axisLabel:{...ax.axisLabel,interval:monthly?5:0}},
       yAxis:{type:'value',...ax,min:0,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
       series:[
         // primary line — the selected geography
         {name:regionName,type:'line',data:region,smooth:true,connectNulls:true,symbol:monthly?'none':'circle',symbolSize:6,z:3,
-         lineStyle:{width:3,color:C.green},itemStyle:{color:C.green}},
+         lineStyle:{width:3,color:C.gold},itemStyle:{color:C.gold},
+         endLabel:{show:true,formatter:p=>p.value==null?'':(+p.value).toFixed(1)+'%',color:C.gold,fontFamily:F,fontWeight:700,fontSize:12,offset:[4,0]}},
         // dashed benchmark — Virginia
         {name:'Virginia',type:'line',data:va,smooth:true,connectNulls:true,symbol:'none',z:2,
-         lineStyle:{width:2,color:C.blue,type:'dashed'},itemStyle:{color:C.blue}}
+         lineStyle:{width:2,color:C.blue,type:'dashed'},itemStyle:{color:C.blue},
+         endLabel:{show:true,formatter:p=>p.value==null?'':(+p.value).toFixed(1)+'%',color:C.blue,fontFamily:F,fontWeight:700,fontSize:12,offset:[4,0]}}
       ]
     });
   }
@@ -1679,7 +1750,7 @@ class Component {
      Representative data now; shapes swappable to RAPIDS. */
   apprenticeshipsBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp='font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem';
+    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
     const big="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;line-height:.9;color:#0A2463";
@@ -1735,7 +1806,7 @@ class Component {
     const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
     // Scope chip — makes statewide-vs-local unmistakable on each element
-    const chip=(txt,sw)=>`<span style="display:inline-block;align-self:flex-start;background:${sw?'#EAF1FB':'#EAF3EE'};border:1px solid ${sw?'#C4D6F0':'#BFE0CD'};color:${sw?'#1B4DB1':'#1F5A3E'};font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:20px">${txt}</span>`;
+    const chip=(txt,sw)=>`<span style="display:inline-block;align-self:flex-start;background:${sw?'#EAF1FB':'#F4E8C6'};border:1px solid ${sw?'#C4D6F0':'#E7D3A0'};color:${sw?'#1B4DB1':'#8a6a24'};font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:20px">${txt}</span>`;
     const banLbl='margin:.5rem 0 0;color:#5A6472;text-transform:none;letter-spacing:0;font-size:.8rem;font-weight:600;line-height:1.35';
     // THE ONE UNKNOWN — everything statewide-vs-locality keys off this single flag.
     const sw=this.empListScope()==='statewide';
