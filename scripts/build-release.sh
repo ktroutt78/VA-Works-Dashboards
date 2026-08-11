@@ -18,17 +18,28 @@
 # It also SYNCs apps/wage-tool/data and apps/wage-tool-employer/data into the WP theme's
 # assets/embeds/<tool>/data so those embedded copies can't silently drift.
 #
-# Usage:  scripts/build-release.sh            # build all four
-#         scripts/build-release.sh wage-tool  # build one (by source dir name)
+# Usage:  scripts/build-release.sh <version> [app]
+#           scripts/build-release.sh 0.9              # build all four at v0.9
+#           scripts/build-release.sh 0.9 wage-tool    # build one (by source dir name)
+#
+# The version is stamped into each README and into the zip filename. wage-tool carries
+# its own version (it already shipped a public v1.0, so it stays a minor ahead); the
+# other three take the passed version. See the run() calls at the bottom.
 #
 set -euo pipefail
 
+VERSION="${1:?usage: scripts/build-release.sh <version> [app]   e.g. 0.9}"
+TARGET="${2:-all}"
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/dist/releases"
-WORK="$(mktemp -d)"
-CACHE="$WORK/_cache"
-mkdir -p "$OUT" "$CACHE"
-trap 'rm -rf "$WORK"' EXIT
+# Staging is WIPED every run so a repeat build can't carry stale files forward. The
+# vendor cache persists (pinned versions are deterministic) so re-releases don't
+# re-download — cheap to run each round.
+STAGING="$ROOT/dist/.build-staging"
+CACHE="$ROOT/dist/.vendor-cache"
+rm -rf "$STAGING"
+mkdir -p "$OUT" "$STAGING" "$CACHE"
 
 # Pinned CDN versions (reproducible builds; bump deliberately).
 ECHARTS_VER="5.5.0"
@@ -37,12 +48,13 @@ TOPOJSON_VER="3.1.0"
 
 log() { printf '  %s\n' "$*"; }
 
-# ---- download the vendored libraries once into the cache -----------------------------
+# ---- download the vendored libraries into the cache (skip if already present) --------
 fetch() { # url dest
+  [ -s "$2" ] && return 0
   curl -sSL --fail "$1" -o "$2" || { echo "FAILED to download $1" >&2; exit 1; }
 }
 prime_cache() {
-  log "downloading vendored libraries (echarts@$ECHARTS_VER, tom-select@$TOMSELECT_VER, topojson-client@$TOPOJSON_VER)"
+  log "vendored libraries (echarts@$ECHARTS_VER, tom-select@$TOMSELECT_VER, topojson-client@$TOPOJSON_VER; cached)"
   fetch "https://cdn.jsdelivr.net/npm/echarts@${ECHARTS_VER}/dist/echarts.min.js"                 "$CACHE/echarts.min.js"
   fetch "https://cdn.jsdelivr.net/npm/tom-select@${TOMSELECT_VER}/dist/js/tom-select.complete.min.js" "$CACHE/tom-select.complete.min.js"
   fetch "https://cdn.jsdelivr.net/npm/tom-select@${TOMSELECT_VER}/dist/css/tom-select.css"         "$CACHE/tom-select.css"
@@ -140,10 +152,14 @@ emit_fonts_css() { # dest
 CSS
 }
 
-emit_readme() { # dest  "Title"
-  local dest="$1" title="$2"
+emit_readme() { # dest  "Title"  version
+  local dest="$1" title="$2" version="$3"
   cat > "$dest" <<README
 # ${title}
+
+_Version ${version} — deployment-test build for your dev pages, not a final
+deliverable. A data refresh and a color/typography pass from your designer are still
+queued, so the placeholder numbers and current colors/fonts are expected to change._
 
 A self-contained, static build. Everything it needs ships in this folder — no
 backend, no database, no API keys, and (once served) no internet connection.
@@ -265,11 +281,13 @@ README
 }
 
 # ---- per-app build ------------------------------------------------------------------
-build_app() { # srcdirname  srchtml  "Deliverable Title"  folder  "libs"
-  local srcname="$1" srchtml="$2" title="$3" folder="$4" libs="$5"
+build_app() { # srcdirname  srchtml  "Deliverable Title"  folder  "libs"  version
+  local srcname="$1" srchtml="$2" title="$3" folder="$4" libs="$5" version="$6"
   local src="$ROOT/apps/$srcname"
-  local stage="$WORK/$folder"
-  log "building: $folder  (from apps/$srcname/$srchtml; libs: $libs)"
+  local stage="$STAGING/$folder"
+  local zip="$OUT/$folder-v$version.zip"
+  log "building: $folder v$version  (from apps/$srcname/$srchtml; libs: $libs)"
+  rm -rf "$stage"                    # wipe any prior staging so nothing stale carries forward
   mkdir -p "$stage/vendor" "$stage/fonts"
   cp -R "$src/data" "$stage/data"
   rm -rf "$stage/data/raw"   # raw source artifacts the app never fetches — not for the client
@@ -279,7 +297,7 @@ build_app() { # srcdirname  srchtml  "Deliverable Title"  folder  "libs"
   for lib in $libs; do vendor_lib "$lib" "$stage"; done
   inject_fonts_link "$stage/index.html"
   emit_fonts_css "$stage/fonts.css"
-  emit_readme "$stage/README.md" "$title"
+  emit_readme "$stage/README.md" "$title" "$version"
   # keep an empty fonts/ dir in the zip
   touch "$stage/fonts/.gitkeep" 2>/dev/null || true
   # sanity: no CDN refs should remain as a real dependency (src=/href=). A CDN name
@@ -288,8 +306,8 @@ build_app() { # srcdirname  srchtml  "Deliverable Title"  folder  "libs"
     echo "WARN: $folder/index.html still loads a lib from a CDN — vendoring missed one" >&2
     grep -nE '(src|href)="https?://cdn\.jsdelivr\.net' "$stage/index.html" >&2
   fi
-  ( cd "$WORK" && rm -f "$OUT/$folder.zip" && zip -rq "$OUT/$folder.zip" "$folder" -x '*/.gitkeep' )
-  log "  -> $OUT/$folder.zip"
+  ( cd "$STAGING" && rm -f "$zip" && zip -rq "$zip" "$folder" -x '*/.gitkeep' )
+  log "  -> $zip"
 }
 
 # ---- keep the WP-theme data copies in sync ------------------------------------------
@@ -306,15 +324,16 @@ sync_theme_data() {
 prime_cache
 sync_theme_data
 
-TARGET="${1:-all}"
-run() { # srcname ...
+run() { # srcname srchtml title folder libs version
   if [ "$TARGET" = "all" ] || [ "$TARGET" = "$1" ]; then build_app "$@"; fi
 }
-#    srcdir                         srchtml                    "Title"                    folder                    libs
-run "wage-tool"                     "wage-tool.html"           "Wage Comparison Tool"     "wage-comparison-tool"    "echarts tomselect"
-run "wage-tool-employer"            "wage-tool-employer.html"  "Employer Pay-Band Tool"   "employer-pay-band-tool"  "echarts tomselect"
-run "dashboard-front-page-echarts"  "index.html"              "Labor Market Dashboard"   "labor-market-dashboard"  "echarts topojson"
-run "community-profiles"            "index.html"              "Community Profile"        "community-profile"       "echarts topojson"
+# wage-tool shipped a public v1.0, so it stays a minor ahead — its own version, not the
+# passed one. The other three take $VERSION.
+#    srcdir                         srchtml                    "Title"                    folder                    libs                version
+run "wage-tool"                     "wage-tool.html"           "Wage Comparison Tool"     "wage-comparison-tool"    "echarts tomselect"  "1.1"
+run "wage-tool-employer"            "wage-tool-employer.html"  "Employer Pay-Band Tool"   "employer-pay-band-tool"  "echarts tomselect"  "$VERSION"
+run "dashboard-front-page-echarts"  "index.html"              "Labor Market Dashboard"   "labor-market-dashboard"  "echarts topojson"   "$VERSION"
+run "community-profiles"            "index.html"              "Community Profile"        "community-profile"       "echarts topojson"   "$VERSION"
 
 echo ""
 echo "Done. Zips in: $OUT"
