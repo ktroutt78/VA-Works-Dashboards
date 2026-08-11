@@ -79,11 +79,17 @@ if [ -n "${DEPLOY_URL:-}" ]; then
   echo "  new production deployment: $DEPLOY_URL"
   vercel alias set "$DEPLOY_URL" wage-comparison-tool.vercel.app --scope "$TEAM" \
     || echo "  WARN: alias set failed — run: vercel alias set $DEPLOY_URL wage-comparison-tool.vercel.app --scope $TEAM" >&2
-  # verify the public alias now serves the new build (branded, no Google Fonts)
-  if curl -s "https://wage-comparison-tool.vercel.app/" | grep -q 'vw-font-display'; then
+  # verify the public alias now serves the new build (branded, no Google Fonts). The
+  # alias can take a few seconds to propagate, so poll briefly before warning.
+  ok=""
+  for _ in 1 2 3 4 5 6; do
+    if curl -s "https://wage-comparison-tool.vercel.app/" | grep -q 'vw-font-display'; then ok=1; break; fi
+    sleep 3
+  done
+  if [ -n "$ok" ]; then
     echo "  OK: wage-comparison-tool.vercel.app serves the new build"
   else
-    echo "  WARN: alias set but the public URL doesn't show the new build yet — check manually" >&2
+    echo "  WARN: alias set but the public URL didn't show the new build within ~18s — check manually" >&2
   fi
 else
   echo "  WARN: could not determine a production URL (deploy may have been canceled)." >&2
