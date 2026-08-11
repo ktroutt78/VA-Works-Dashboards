@@ -16,3 +16,4 @@
 # Local backups
 .backups/
 .env*
+dist/
