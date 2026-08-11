@@ -1,0 +1,598 @@
+    /* Scoped to the .wage-embed container (was :root in the standalone app) so the
+       tool's design tokens don't clobber the theme's same-named :root vars (--ink)
+       globally. Descendants inherit these through the container. */
+    .wage-embed {
+      /* Design tokens — ported from docs/employer-wage-tool/employer-data.jsx T object. */
+      --header-bg:    #00246B;
+      --header-sub:   #aab3c4;
+      --paper:        #f3f0e9;
+      --shell:        #ffffff;
+      --card-line:    #dfe2e8;
+      --field-line:   #d2d7df;
+      --ink:          #1b2536;
+      --body:         #27303f;
+      --muted:        #6b7280;
+      --label:        #727a89;
+      --faint:        #edeae1;
+      --range-lt:     #aab9d6;
+      --range-dk:     #34537d;
+      --median:       #11151c;
+      --you:          #b5392b;
+      --accent:       #b5392b;
+      --industry-bg:  #eceff5;
+      --industry-line:#d8dde8;
+      --industry-sub: #5b6577;
+
+      /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
+         falls back to a blocky sans where the licensed face is not bundled. */
+      --serif: "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
+      --sans:  "Inter", system-ui, sans-serif;
+
+      --frame-w: 760px;
+    }
+
+    /* Was `html, body { ... }` in the standalone app; scoped to the container so it
+       styles the tool's own canvas instead of repainting the whole WordPress page. */
+    .wage-embed { background: #f0eee9; font-family: var(--sans); color: var(--ink); }
+    .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
+    .frame {
+      width: var(--frame-w);
+      background: var(--paper);
+      border: 1px solid var(--card-line);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    /* ─── Header band ────────────────────────────────────────────────── */
+    .header {
+      background: var(--header-bg);
+      padding: 15px 20px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .header-title { font-family: var(--serif); font-weight: 600; font-size: 20px; color: #fff; letter-spacing: 0.2px; }
+    .header-sub   { font-size: 12px; color: var(--header-sub); margin-top: 3px; }
+    .header-guide {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
+      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      cursor: pointer;
+      background: transparent; font-family: inherit;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .header-guide:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
+    .header-guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .header-guide .q {
+      font-family: var(--sans); font-size: 14px; font-weight: 700;
+      line-height: 1;
+    }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-reset {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
+      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      letter-spacing: 1.2px; text-transform: uppercase; cursor: pointer;
+      background: transparent; font-family: inherit;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .header-reset:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
+    .header-reset:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .header-reset .ic { font-size: 14px; line-height: 1; }
+
+    /* ─── Guide modal ────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(20,25,38,0.55);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+      z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      background: #fff; width: 760px; max-width: 100%; max-height: calc(100vh - 48px);
+      border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      overflow: auto; transform: translateY(8px); transition: transform .18s;
+    }
+    .modal-backdrop.show .modal-card { transform: translateY(0); }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 4px; gap: 12px;
+    }
+    .modal-head h2 { margin: 0; font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--ink); }
+    .modal-close {
+      background: transparent; border: none; cursor: pointer; color: var(--muted);
+      width: 30px; height: 30px; font-size: 22px; line-height: 1; border-radius: 4px;
+    }
+    .modal-close:hover { background: #f1f3f7; color: var(--ink); }
+    .modal-body { padding: 8px 24px 24px; font-size: 13px; line-height: 1.55; color: var(--ink); }
+    .modal-body p { margin: 0 0 6px; color: #3a4153; }
+    .modal-body h3 {
+      margin: 12px 0 4px; font-family: var(--serif); font-size: 14.5px;
+      font-weight: 600; color: var(--ink);
+    }
+    .modal-body h3:first-child { margin-top: 4px; }
+    .help-illustration {
+      display: block; width: 100%; height: auto; margin: 4px 0 2px;
+    }
+    .help-bullets { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 4px; }
+    .help-bullets li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+    .help-bullets .swatch {
+      display: inline-block; width: 18px; height: 12px; border-radius: 2px; margin-top: 3px;
+    }
+    .help-bullets .swatch.tick    { width: 4px; height: 16px; margin-left: 7px; }
+    .help-bullets .swatch.diamond { width: 11px; height: 11px; transform: rotate(45deg); margin: 4px 0 0 4px; box-shadow: 0 0 0 1.5px #fff inset; }
+    .help-bullets b { color: var(--ink); }
+    /* Simple disc-bullet list for non-legend content (Region/Slider). */
+    .help-list { padding: 0 0 0 22px; margin: 6px 0 4px; display: grid; gap: 6px; color: #3a4153; }
+    .help-list li { padding-left: 2px; }
+    .help-list b { color: var(--ink); }
+    .help-footnote { font-size: 11px; color: var(--muted); margin-top: 12px !important; font-style: italic; }
+
+    /* Tom Select dropdown_input — keep the search box within the dropdown's
+       width instead of overflowing past the option rows. */
+    .ts-dropdown .dropdown-input-wrap { padding: 8px; box-sizing: border-box; }
+    .ts-dropdown .dropdown-input { width: 100%; box-sizing: border-box; }
+
+    /* Region dropdown: counties + indep cities render as two-line options.
+       Primary line = county/city name. Secondary line = parent LWDA (the
+       actual scope the report runs at — user picks the place they know
+       and the tool resolves to the right region). Statewide is a single
+       line (it IS its own scope, no LWDA subtitle to show). */
+    .region-option-dual,
+    .region-item-dual {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .region-option-dual .region-county,
+    .region-item-dual .region-county {
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .region-option-dual .region-lwda,
+    .region-item-dual .region-lwda {
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    /* ─── Global region bar ──────────────────────────────────────────── */
+    /* Region drives the WHOLE page, so it lives in its own full-width band
+       directly under the header — visually OUTSIDE and ABOVE the two section
+       cards. The distinct slate fill + the 2px divider make it read as
+       page-level chrome, not as the first field of the section below. */
+    .region-bar {
+      display: flex; align-items: center; gap: 18px;
+      padding: 13px 20px;
+      background: #e6eaf2;
+      border-bottom: 2px solid #c4ccda;
+    }
+    .region-field { width: 340px; }
+    .region-bar-label { gap: 5px; color: #46506a; }
+    .region-pin { width: 11px; height: 13px; fill: #5b6577; flex-shrink: 0; }
+    .region-bar-note {
+      margin-left: auto; text-align: right;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .region-bar-note-strong { font-size: 11.5px; font-weight: 600; color: #3a4458; }
+    .region-bar-note-sub { font-size: 10.5px; color: var(--muted); }
+
+    /* ─── Controls ───────────────────────────────────────────────────── */
+    .controls { display: grid; gap: 14px; }
+    .controls-2 { grid-template-columns: 1.7fr 1fr; }
+
+    /* Each field cell is itself a 2-row grid so the label and the control
+       sit in fixed-height tracks. This guarantees the box (Tom Select or
+       slider) starts at exactly the same y on every column, regardless of
+       which label has an (i) icon or which control type fills row 2. */
+    .controls > div, .field {
+      display: grid;
+      grid-template-rows: 16px var(--ctl-h);
+      row-gap: 5px;
+      align-content: start;
+    }
+
+    .field-label {
+      font-size: 10.5px; color: var(--label);
+      text-transform: uppercase; letter-spacing: 1px;
+      /* margin-bottom moved to the parent grid's row-gap so all columns
+         share the same vertical rhythm. */
+      display: flex; align-items: center; gap: 4px;
+      height: 16px; line-height: 14px;
+    }
+    .field-label .info {
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1px solid var(--muted); color: var(--muted);
+      font-size: 8px; font-style: italic;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help;
+    }
+
+    /* Lock the height across all controls (Tom Select dropdowns + slider)
+       so they sit on the same row baseline. */
+    .wage-embed { --ctl-h: 38px; }
+
+    .ts-wrapper.single .ts-control {
+      /* Flex + align-items: center on the control vertically centers the
+         selected-text .item and the typing input regardless of their
+         individual line-heights. Resetting line-height to normal here
+         matters — a tall line-height on the parent makes inline content
+         baseline-align (sitting near the bottom of the line) rather than
+         center, which is what made earlier attempts float the text high. */
+      background: #fff !important;
+      border: 1px solid var(--field-line) !important;
+      border-radius: 6px !important;
+      padding: 0 28px 0 12px !important;
+      font-size: 14px;
+      color: var(--body);
+      height: var(--ctl-h) !important;
+      min-height: var(--ctl-h) !important;
+      max-height: var(--ctl-h) !important;
+      line-height: normal !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+      cursor: pointer;
+      position: relative;
+      display: flex !important;
+      align-items: center !important;
+    }
+    .ts-wrapper.single .ts-control .item {
+      display: block;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      line-height: normal;
+    }
+    .ts-wrapper.single .ts-control input {
+      padding: 0 !important;
+      margin: 0 !important;
+      line-height: normal !important;
+      height: auto;
+    }
+    /* Match the input's native ::placeholder to the painted ::before placeholder
+       (industry control) so all dropdown placeholders share one visual style. */
+    .ts-wrapper.single .ts-control input::placeholder {
+      color: var(--muted);
+      opacity: 1;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 400;
+    }
+    /* Chevron anchored to the control itself (not the wrapper) so it tracks
+       the box exactly. Tom Select's background shorthand can override
+       background-image, so we use a pseudo-element instead. */
+    .ts-wrapper.single .ts-control::after {
+      content: '';
+      position: absolute;
+      right: 12px; top: 50%;
+      width: 12px; height: 12px;
+      transform: translateY(-50%);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%235a6376' d='M3 5 L6 8 L9 5 Z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+    .ts-wrapper.single.dropdown-active .ts-control {
+      border-radius: 6px 6px 0 0 !important;
+    }
+
+    /* Percentile slider control — same height pin as the dropdowns. */
+    .slider-control {
+      background: #fff;
+      border: 1px solid var(--field-line);
+      border-radius: 6px;
+      padding: 0 12px;
+      display: flex; align-items: center; gap: 10px;
+      height: var(--ctl-h);
+      box-sizing: border-box;
+    }
+    .slider-value {
+      font-family: var(--serif); font-weight: 600; font-size: 16px;
+      color: var(--you); min-width: 42px;
+    }
+    .slider-track {
+      flex: 1; height: 5px; background: var(--faint);
+      border-radius: 3px; position: relative;
+    }
+    .slider-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      background: var(--you); border-radius: 3px;
+    }
+    .slider-handle {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--you);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .slider-control input[type="range"] {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer; margin: 0;
+    }
+    .slider-track-wrap { flex: 1; position: relative; height: 14px; display: flex; align-items: center; }
+
+    /* ─── Industry summary band (cool tint) ──────────────────────────── */
+    .industry-band {
+      margin: 0 20px 14px;
+      background: var(--industry-bg);
+      border: 1px solid var(--industry-line);
+      border-radius: 6px;
+      padding: 10px 14px;
+      display: grid;
+      /* Equal-weight stat columns. The NAICS chip stays `auto` so it doesn't
+         steal space; the three QCEW stats divide the remaining width evenly. */
+      grid-template-columns: auto 1fr 1fr 1fr;
+      gap: 18px;
+      /* align-items: start so each column's label sits at the top and each
+         column's big value sits on the same baseline below it, regardless of
+         whether a sub-line (e.g. the avg-wage's hourly) exists in that cell.
+         Was `center`, which vertically centered each block as a whole and
+         pushed the avg-wage value up relative to employment / establishments. */
+      align-items: start;
+    }
+    .ind-naics {
+      display: flex; flex-direction: column; gap: 2px;
+      /* Was 148px; given more room so the industry name fits on fewer wrapped
+         lines (e.g. "Health Care & Social Assistance" lands cleanly). */
+      max-width: 200px;
+    }
+    .ind-naics-code {
+      /* fontSize 10 matches .ind-stat-label so the NAICS code label and the
+         stat labels share a vertical baseline. */
+      font-size: 10px; color: var(--industry-sub);
+      text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
+    }
+    .ind-naics-name {
+      /* Bumped 12 → 14 to match the visual weight of the other column headers
+         (the uppercase letter-spaced labels read heavier than proper-case 12px
+         even though the latter is technically larger). Treats the industry name
+         as a title-tier element rather than a sub-label. */
+      font-size: 14px; color: var(--ink); font-weight: 600; line-height: 1.2;
+    }
+    /* Center the three stat cells (Avg wage / Employment / Establishments).
+       NAICS chip stays left-aligned by virtue of having the .ind-naics class. */
+    .industry-band > div:not(.ind-naics) { text-align: center; }
+    .ind-stat-label {
+      font-size: 10px; color: var(--industry-sub);
+      text-transform: uppercase; letter-spacing: 1px;
+      line-height: 1.3;
+      /* Labels are short now (QCEW mean qualifier moved into the (i) tooltip),
+         so single-line + nowrap reads cleaner than letting them wrap. */
+      white-space: nowrap;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    /* Small (i) help icon, same visual pattern as .field-label .info but sized
+       for the 10px band label. The native `title` attribute renders the long
+       source/QCEW-mean context on hover so the visible label can stay short. */
+    .ind-stat-label .help {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 1px solid var(--industry-sub);
+      color: var(--industry-sub);
+      font-size: 8px; font-style: italic; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+      letter-spacing: 0; text-transform: none;
+    }
+    .ind-stat-value {
+      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      color: var(--ink); line-height: 1.05; margin-top: 2px;
+    }
+    .ind-stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ─── Pay-band card ──────────────────────────────────────────────── */
+    .card {
+      background: var(--shell);
+      border: 1px solid var(--card-line);
+      border-radius: 8px;
+      margin: 0 16px 16px;
+      padding: 16px;
+      border-left: 4px solid var(--accent);
+    }
+
+    .family-header {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--faint);
+      margin-bottom: 14px;
+    }
+    .family-eyebrow {
+      font-size: 10.5px; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
+    }
+    .family-title {
+      font-family: var(--serif); font-weight: 600; font-size: 19px;
+      line-height: 1.15; margin-top: 3px; color: var(--ink);
+    }
+    .family-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+    .family-sub .pct-emph { color: var(--you); font-weight: 600; }
+
+    /* ─── KPI strip ──────────────────────────────────────────────────── */
+    .kpi-strip {
+      display: grid;
+      /* Equal-weight columns. With labels tightened to single-line phrases
+         and tooltips carrying the longer context, four 1fr columns line up
+         the big values on the same baseline (matches the industry band). */
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--faint);
+      margin-bottom: 8px;
+      /* Same as industry band: labels at top, values aligned across the strip
+         regardless of which cells carry a sub-line. */
+      align-items: start;
+    }
+    /* Center each KPI block as a vertical stack (label / value / sub). */
+    .kpi-strip > div { text-align: center; }
+    .kpi-label {
+      font-size: 10.5px; color: var(--label);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 4px;
+      /* Tooltip-bearing (i) icon sits beside the text on a single line,
+         and the flex row is centered within the cell. */
+      white-space: nowrap;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .kpi-label .help {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 1px solid var(--label); color: var(--label);
+      font-size: 8px; font-style: italic; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+      letter-spacing: 0; text-transform: none;
+    }
+    .kpi-value {
+      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      line-height: 1.05; color: var(--ink); white-space: nowrap;
+    }
+    .kpi-value.accent { color: var(--you); }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ─── Chart container ────────────────────────────────────────────── */
+    /* Height is dynamic — task #4 (ECharts) sizes this based on family row count. */
+    .chart {
+      width: 100%;
+      min-height: 320px;
+      margin-top: 6px;
+    }
+
+    /* ─── Legend ─────────────────────────────────────────────────────── */
+    .legend {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-top: 14px; align-items: center;
+    }
+    .legend-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11.5px; color: var(--body);
+    }
+    .sw { display: inline-block; }
+    .sw.bar { width: 18px; height: 11px; border-radius: 2px; }
+    .sw.bar.lt { background: var(--range-lt); }
+    .sw.bar.dk { background: var(--range-dk); }
+    .sw.tick { width: 3px; height: 13px; background: var(--median); }
+    .sw.diamond {
+      width: 11px; height: 11px;
+      background: var(--you); transform: rotate(45deg);
+    }
+    .legend-fallback {
+      font-size: 11.5px; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .legend-fallback .star { color: var(--muted); font-weight: 600; }
+
+    /* ─── Card footer ────────────────────────────────────────────────── */
+    .card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 12px;
+    }
+    .footer-source { font-size: 11px; color: var(--muted); }
+
+    /* ─── Loading state ──────────────────────────────────────────────── */
+    .frame.loading .section { opacity: 0.45; pointer-events: none; }
+
+    /* ─── Section cards (two boxed reports under the global region bar) ── */
+    /* Each "report" is its own visually-contained card. With the region bar
+       sitting full-width ABOVE both, the spanning relationship is structural:
+       one control on top, two boxes beneath = region governs both. The two
+       cards carry different accent colors (slate=QCEW, red=OEWS) so they read
+       as two distinct datasets, not one continuous form. */
+    /* Scoped to the container: .page-content is also a theme class (the outer page
+       wrapper). Without the .wage-embed prefix this rule would repad the theme's
+       wrapper. The prefix also gives it the specificity to win over the theme's
+       own `.page-content { padding-top: 8px }` on the tool's inner element. */
+    .wage-embed .page-content { padding: 16px 20px 20px; }
+    .section {
+      background: #fff;
+      border: 1px solid var(--card-line);
+      border-radius: 8px;
+      margin: 0 0 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .section:last-child { margin-bottom: 0; }
+    .section-industry { border-left: 4px solid #34537d; }     /* QCEW blue */
+    .section-payband  { border-left: 4px solid var(--accent); } /* OEWS red  */
+    .section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; padding: 11px 16px;
+      border-bottom: 1px solid var(--faint);
+      background: #fcfbf9;
+    }
+    .section-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.1px;
+      text-transform: uppercase;
+    }
+    .section-industry .section-eyebrow { color: #34537d; }
+    .section-payband  .section-eyebrow { color: var(--accent); }
+    .section-source { font-size: 11px; color: var(--muted); }
+    .section-region { font-weight: 600; color: #46506a; }
+    .section-body { padding: 14px 16px 16px; }
+
+    /* Pay-band content lives directly in its section now — strip the old
+       inner card chrome so we don't double-box. */
+    .section-payband .card {
+      border: none; border-left: none; border-radius: 0;
+      margin: 0; padding: 14px 0 0; background: transparent;
+    }
+    .section-industry .industry-band { margin: 12px 0 0; }
+
+    /* ─── Empty / hint states ─────────────────────────────────────────── */
+    .industry-empty {
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+      padding: 12px 2px 2px;
+    }
+    .payband-empty {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 16px 2px 6px;
+    }
+    .payband-empty-icon svg { width: 40px; height: 40px; display: block; }
+    .empty-state-eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      color: var(--you); text-transform: uppercase; margin-bottom: 4px;
+    }
+    .empty-state-heading {
+      font-family: var(--serif); font-size: 18px; font-weight: 600;
+      color: var(--ink); margin: 0 0 6px; line-height: 1.25;
+    }
+    .empty-state-desc { font-size: 13px; line-height: 1.5; color: #3a4153; margin: 0; }
+    .empty-state-cta {
+      margin-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .empty-state-btn {
+      background: var(--you); color: #fff; border: none; padding: 9px 16px;
+      border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: var(--sans);
+    }
+    .empty-state-btn:hover { background: #9d2f23; }
+    .empty-state-cta-note { font-size: 11.5px; color: var(--muted); }
+
+    /* ─── State-driven visibility ─────────────────────────────────────── */
+    /* Industry band shows only when an industry is picked; otherwise its hint.
+       Pay-band card shows only when a family is picked; otherwise its hint.
+       Region bar + both section shells are ALWAYS visible — the page never
+       collapses, so the region's page-level scope is always on screen. */
+    /* data-state was carried on <body> in the standalone app; inlined it lives on
+       the .wage-embed container (set by the tool JS) so we don't mutate WordPress's
+       shared <body>. Selectors rescoped to match. */
+    .industry-empty, .payband-empty { display: none; }
+    .wage-embed[data-state="empty"] .industry-band,
+    .wage-embed[data-state="family-only"] .industry-band { display: none; }
+    .wage-embed[data-state="empty"] .industry-empty,
+    .wage-embed[data-state="family-only"] .industry-empty { display: block; }
+    .wage-embed[data-state="empty"] .card,
+    .wage-embed[data-state="industry-only"] .card { display: none; }
+    .wage-embed[data-state="empty"] .payband-empty,
+    .wage-embed[data-state="industry-only"] .payband-empty { display: flex; }
+
+    /* Industry uses controlInput:null so Tom Select's `placeholder` prop has
+       no search input to host the text. Paint the placeholder via CSS while
+       the control sits empty. JS toggles .show-ts-placeholder on change.
+       Absolute-positioned so it doesn't shift the control's flex layout. */
+    .ts-wrapper.show-ts-placeholder .ts-control { position: relative; }
+    .ts-wrapper.show-ts-placeholder .ts-control::before {
+      content: "Select an industry...";
+      color: var(--muted);
+      pointer-events: none;
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--sans);
+      font-size: 14px;
+    }

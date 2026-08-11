@@ -1,0 +1,473 @@
+    /* Scoped to the .wage-embed container (was :root in the standalone app) so the
+       tool's design tokens don't clobber the theme's same-named :root vars (--ink,
+       --line) globally. Descendants inherit these through the container. */
+    .wage-embed {
+      --ink:    #1a1f2c;
+      --muted:  #5a6376;
+      --line:   #cdd3df;
+      --paper:  #fbfaf6;
+      --shell:  #ffffff;
+      --faint:  #eceadf;
+      --hi:     #b03a2e;
+      --accent: #2a4470;
+      /* Bullet-chart palette — outer band darker than before (4.4:1 against white),
+         inner band lighter than accent so the median tick (ink) reads on top with
+         clear separation. Median tick uses --ink + 3px for strong target signal. */
+      --band-outer: #8aa0c4;
+      --band-inner: #3a5a8a;
+      /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
+         falls back to a blocky sans where the licensed face is not bundled. */
+      --serif:  "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
+      --mono:   "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --sans:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    }
+    /* Was `html, body { ... }` in the standalone app; scoped to the container so it
+       styles the tool's own canvas instead of repainting the whole WordPress page. */
+    .wage-embed { background: #f0eee9; font-family: var(--sans); color: var(--ink); }
+    .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
+    .frame { width: 760px; background: var(--shell); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+    /* Agency header */
+    .header { background: #00246B; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
+    .header-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
+    .header-sub   { font-size: 11px; color: #c8cdd9; margin-top: 2px; letter-spacing: 0.4px; }
+    .header-brand { font-size: 10px; color: #9ea6b8; font-family: var(--mono); letter-spacing: 0.6px; text-transform: uppercase; }
+
+    /* Controls */
+    .controls { padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+    .control-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .control-grid + .control-grid { margin-top: 10px; }
+    /* Lock label height so any inline marker (e.g. the "reset" link on the
+       comparison-salary label) doesn't render that label taller than its peers —
+       uneven label heights push the inputs to different y-positions and break
+       the row's horizontal box alignment. */
+    .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; height: 14px; line-height: 14px; }
+    /* Shared box geometry — every field control resolves to exactly --field-h tall.
+       The !important locks on min/max-height defend against Tom Select setting
+       inline heights that disagree with the plain inputs (the wrapper otherwise
+       renders 1–3px taller than .field-input on Chrome/Safari). */
+    .wage-embed { --field-h: 30px; }
+    .field-input, .field-select {
+      background: #fff; border: 1px solid var(--line); border-radius: 3px;
+      padding: 0 28px 0 10px; font-size: 12px; line-height: calc(var(--field-h) - 2px);
+      width: 100%; box-sizing: border-box;
+      height: var(--field-h) !important;
+      min-height: var(--field-h) !important;
+      max-height: var(--field-h) !important;
+      font-family: var(--sans); color: var(--ink);
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    }
+    .field-select {
+      /* Same 12×12 icon footprint as the search-glass, so locations and job inputs read at the same visual weight. */
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%235a6376' d='M3 5 L6 8 L9 5 Z'/></svg>");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .field-input:focus, .field-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    /* Freeform job-search input — text in, SOC code out. Discovery via the
+       placeholder; focus-state via .job-helper; live matches via .job-suggest. */
+    .job-field { position: relative; }
+    .job-input {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6376' stroke-width='2.2'><circle cx='10.5' cy='10.5' r='6.5'/><path d='m20 20-3.5-3.5'/></svg>");
+      background-repeat: no-repeat; background-position: right 8px center; padding-right: 28px;
+    }
+    .job-input.matched   { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231f7a4d' stroke-width='3'><path d='M5 12 l5 5 L20 7'/></svg>"); }
+    .job-input.unmatched { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b03a2e' stroke-width='2.4'><path d='M6 6 L18 18 M18 6 L6 18'/></svg>"); border-color: var(--hi); }
+    .match-hint {
+      font-size: 10px; color: var(--muted); margin-top: 3px; min-height: 12px;
+      font-family: var(--mono); line-height: 1.2;
+    }
+    .match-hint.ok  { color: #1f7a4d; }
+    .match-hint.bad { color: var(--hi); }
+
+    /* Focus hint — appears under a job input when the user clicks in and hasn't
+       typed yet. Same absolute position as the suggestion dropdown so the two
+       never stack; JS makes them mutually exclusive. Modeled on O*NET's
+       "Type a title or code for matches" affordance (we omit "code" since the
+       scorer only matches label + aliases, not SOC numbers). */
+    .job-helper {
+      position: absolute;
+      top: calc(14px + 3px + var(--field-h) + 2px);
+      left: 0; right: 0;
+      margin: 0; padding: 8px 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+      z-index: 39;
+    }
+    .job-helper[hidden] { display: none; }
+
+    /* Typeahead dropdown — sits under a job input. O*NET-style: ranked candidates
+       from bestMatchJob's scorer, click or Enter to commit. Hidden by default;
+       JS toggles [hidden] as the user types. */
+    .job-suggest {
+      position: absolute;
+      top: calc(14px + 3px + var(--field-h) + 2px);
+      left: 0; right: 0;
+      margin: 0; padding: 2px 0;
+      list-style: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      font-size: 12px;
+      z-index: 40;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .job-suggest[hidden] { display: none; }
+    .job-suggest li {
+      padding: 6px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--ink);
+    }
+    .job-suggest li.active { background: var(--accent); color: #fff; }
+    .job-suggest .alias-hint {
+      color: var(--muted);
+      font-size: 11px;
+      margin-left: 6px;
+      font-style: italic;
+    }
+    .job-suggest li.active .alias-hint { color: rgba(255,255,255,0.78); }
+
+    /* Tom Select overrides — pixel-for-pixel match with .field-input. */
+    /* Strip the outer wrapper's chrome so .ts-control is the only visible box. */
+    .ts-wrapper {
+      padding: 0 !important; margin: 0 !important;
+      border: 0 !important; background: transparent !important;
+      box-shadow: none !important;
+      height: var(--field-h) !important;
+      min-height: var(--field-h) !important;
+      max-height: var(--field-h) !important;
+      width: 100%; box-sizing: border-box;
+      line-height: 1;
+      /* Block layout (Tom Select defaults to inline-block, which picks up
+         baseline alignment offsets from the grid cell and shifts the dropdown
+         a pixel or two below the plain inputs on the same row). */
+      display: block !important;
+      vertical-align: top !important;
+    }
+    .ts-wrapper.single .ts-control {
+      background: #fff; border: 1px solid var(--line); border-radius: 3px;
+      padding: 0 28px 0 10px; font-size: 12px; line-height: calc(var(--field-h) - 2px);
+      height: var(--field-h) !important;
+      min-height: var(--field-h) !important;
+      max-height: var(--field-h) !important;
+      box-sizing: border-box;
+      font-family: var(--sans); color: var(--ink); box-shadow: none;
+      flex-wrap: nowrap; overflow: hidden; display: flex; align-items: center; gap: 4px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%235a6376' d='M3 5 L6 8 L9 5 Z'/></svg>");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .ts-wrapper.single .ts-control > * { min-width: 0; }
+    .ts-wrapper.single .ts-control .item {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 0 1 auto; min-width: 0; max-width: 100%;
+      line-height: calc(var(--field-h) - 2px);
+    }
+    .ts-wrapper.single .ts-control input {
+      font-size: 12px; flex: 1 1 60px; min-width: 60px !important;
+      height: calc(var(--field-h) - 2px) !important;
+      padding: 0 !important; margin: 0 !important; line-height: calc(var(--field-h) - 2px);
+      background: transparent;
+    }
+    /* (Previously: hide .item while focused — left over from when job fields used Tom Select.
+        Now jobs are plain inputs, and hiding the area select's value on focus causes a blank
+        box after picking from the dropdown. Removed.) */
+    /* Suppress Tom Select's own ::after triangle — we use a CSS background chevron instead. */
+    .ts-wrapper.single .ts-control:after { display: none !important; content: none !important; }
+    .ts-wrapper.single.input-active .ts-control { background-image: none; }
+    .ts-wrapper.focus .ts-control { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--line); box-shadow: none; }
+    .ts-dropdown { border: 1px solid var(--line); border-radius: 3px; margin-top: 2px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .ts-dropdown .option { padding: 6px 10px; }
+    .ts-dropdown .active { background: var(--accent); color: #fff; }
+    .ts-dropdown .optgroup-header {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--muted); background: var(--paper);
+      padding: 6px 10px; font-weight: 600;
+    }
+    .ts-dropdown .no-results { padding: 8px 10px; color: var(--muted); font-style: italic; }
+
+    .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; align-content: end; font-size: 11px; color: var(--muted); }
+    .legend-chip { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-chip i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+    .legend-chip i.tall { width: 3px; height: 12px; border-radius: 1px; }
+    .legend-chip i.dot  { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1.5px #fff inset; }
+
+    /* Chart area — W3-style cards: stat callouts on top, full-width band below. */
+    .chart-area { padding: 12px 16px 16px; }
+
+    /* Card per occupation. Accent strip on the left signals YOUR ROLE (red) vs COMPARISON (navy). */
+    .row-card {
+      position: relative;
+      background: var(--shell);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 14px 12px 17px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .row-card::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    }
+    .row-card.you::before { background: var(--hi); }
+    .row-card.cmp::before { background: var(--accent); }
+    .row-card:last-of-type { margin-bottom: 0; }
+
+    /* Top row: occupation block, two stat callouts, two sparkline blocks, × gutter.
+       Sparkline columns are 85px so "WAGE TREND" and "EMPLOYMENT" labels don't truncate. */
+    .row-top {
+      display: grid;
+      grid-template-columns: minmax(150px, 1.3fr) 90px 140px 85px 85px 24px;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .role-tag {
+      font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;
+      font-family: var(--mono); font-weight: 600;
+      margin-bottom: 2px; line-height: 1.1;
+    }
+    .row-card.you .role-tag { color: var(--hi); }
+    .row-card.cmp .role-tag { color: var(--muted); }
+
+    .row-occ { min-width: 0; }
+    .row-job { font-size: 14px; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 1px; }
+    .row-area { font-size: 11px; color: var(--muted); line-height: 1.25; }
+
+    /* Stat callouts (Median, Your percentile) — big serif value with small-caps label. */
+    .stat-block { min-width: 0; }
+    .stat-label {
+      font-size: 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;
+      margin-bottom: 3px; line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .stat-value {
+      font-family: var(--serif); font-size: 22px; font-weight: 700;
+      line-height: 1.05; color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-sub {
+      font-size: 10px; color: var(--muted); line-height: 1.25; margin-top: 2px;
+    }
+    .stat-sub.pos { color: #1f7a4d; font-family: var(--mono); font-weight: 500; }
+    .stat-sub.neg { color: var(--hi); font-family: var(--mono); font-weight: 500; }
+    /* Two-line label for sparkline blocks ("Wage trend" / "5-yr"). */
+    .stat-spark .stat-label-sub {
+      display: block; font-size: 9px; opacity: 0.8; font-weight: 500;
+      letter-spacing: 0.3px; text-transform: none; margin-top: 1px;
+    }
+
+    .pct-bar { width: 100%; height: 34px; margin-top: 6px; }
+    .sparkline { width: 100%; height: 32px; }
+    .sparkline.empty { display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--muted); font-style: italic; opacity: 0.55; }
+
+    .row-actions { display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; }
+    .row-remove {
+      width: 22px; height: 22px; padding: 0; line-height: 1;
+      background: #fff; border: 1px solid var(--line); border-radius: 50%;
+      color: var(--muted); cursor: pointer; font-size: 14px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .12s, border-color .12s, color .12s;
+    }
+    .row-remove:hover { background: var(--hi); border-color: var(--hi); color: #fff; }
+
+    /* Shared bottom axis. Transparent 1px border + matching padding aligns its inner
+       width with the card bands above (cards have 1px border + 17/14 padding). */
+    .axis-row { border: 1px solid transparent; padding: 0 14px 0 17px; margin-top: 4px; }
+    .axis-chart { width: 100%; height: 26px; }
+
+    .legend-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--faint);
+      gap: 12px; flex-wrap: wrap;
+    }
+    .action-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 12px; }
+    /* Hide the comparison-controls row when there's only one job */
+    .frame:not(.has-cmp) .cmp-controls { display: none; }
+    /* Hide the Add button when both jobs are already shown */
+    .frame.has-cmp #add-job { display: none; }
+    /* No-data state: hide the wage axis + legend-row when no job is picked.
+       The empty card carries the only call-to-action. */
+    .frame.no-data .axis-row,
+    .frame.no-data .legend-row { display: none; }
+
+    /* Empty-state card — replaces the YOUR ROLE row card before a job is picked.
+       Dashed border + paper background signals "this is a slot waiting for data"
+       rather than the solid cards used once data is loaded. */
+    .empty-card {
+      background: var(--paper);
+      border-style: dashed;
+      border-color: var(--line);
+      padding: 28px 20px;
+      text-align: center;
+    }
+    .empty-card::before { display: none; }
+    .empty-arrow {
+      font-size: 22px; color: var(--muted);
+      line-height: 1; margin-bottom: 6px;
+    }
+    .empty-heading {
+      font-family: var(--serif); font-size: 16px; font-weight: 600;
+      color: var(--ink); margin-bottom: 14px;
+    }
+    .empty-sub {
+      font-size: 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+    .empty-chips {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    }
+    .demo-chip {
+      background: #fff; border: 1px solid var(--accent); color: var(--accent);
+      padding: 6px 14px; border-radius: 16px;
+      font-size: 12px; font-family: var(--sans); cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    .demo-chip:hover { background: var(--accent); color: #fff; }
+    /* Reset link inside the "Comparison salary" label — visible only when the
+       user has overridden the auto-follow default. */
+    .cmp-salary-reset {
+      background: transparent; border: 0; padding: 0; margin-left: 6px;
+      color: var(--accent); cursor: pointer;
+      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      vertical-align: baseline; line-height: 14px;
+    }
+    .cmp-salary-reset:hover { text-decoration: underline; }
+    .cmp-salary-reset[hidden] { display: none; }
+    .btn {
+      font-size: 12px; padding: 7px 14px; border-radius: 4px; font-weight: 500;
+      border: 1px solid var(--accent); color: var(--accent); background: #fff; cursor: pointer; font-family: var(--sans);
+    }
+    .btn:hover { background: var(--accent); color: #fff; }
+    .source-note { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+    /* "How to read this" header button */
+    .help-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
+      background: rgba(255,255,255,0.08); color: #d6dbe6;
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+      padding: 5px 10px; cursor: pointer; transition: background .12s, color .12s;
+    }
+    .help-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .help-btn svg { flex: 0 0 auto; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(20,25,38,0.55);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+      z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      background: #fff; width: 520px; max-width: 100%; max-height: calc(100vh - 48px);
+      border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      overflow: auto; transform: translateY(8px); transition: transform .18s;
+    }
+    .modal-backdrop.show .modal-card { transform: translateY(0); }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 4px; gap: 12px;
+    }
+    .modal-head h2 { margin: 0; font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--ink); }
+    .modal-close {
+      background: transparent; border: none; cursor: pointer; color: var(--muted);
+      width: 28px; height: 28px; font-size: 20px; line-height: 1; border-radius: 4px;
+    }
+    .modal-close:hover { background: var(--paper); color: var(--ink); }
+    .modal-body { padding: 8px 24px 22px; font-size: 13px; line-height: 1.55; color: var(--ink); }
+    .modal-body p { margin: 0 0 10px; color: #3a4153; }
+    .help-illustration {
+      display: block; width: 100%; height: auto; margin: 14px 0 10px;
+      background: var(--paper); border-radius: 6px; border: 1px solid var(--faint); padding: 10px 0;
+    }
+    .help-bullets { list-style: none; padding: 0; margin: 14px 0 8px; display: grid; gap: 10px; }
+    .help-bullets li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+    .help-bullets .swatch {
+      display: inline-block; width: 18px; height: 12px; border-radius: 2px; margin-top: 3px;
+    }
+    .help-bullets .swatch.tick { width: 4px; height: 16px; margin-left: 7px; }
+    .help-bullets .swatch.dot  { width: 12px; height: 12px; border-radius: 50%; margin-left: 3px; margin-top: 4px; box-shadow: 0 0 0 1.5px #fff inset; }
+    .help-bullets b { color: var(--ink); }
+    .help-footnote { font-size: 11px; color: var(--muted); margin-top: 10px !important; font-style: italic; }
+
+    /* Diagnostic banner (used only if scripts fail) */
+    .diag { display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 8px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .diag.show { display: block; }
+
+    /* ----- Box alignment ----------------------------------------------------
+       The comparison-controls row has an empty trailing cell to keep its
+       location field's column width in lockstep with the row above. Tom Select
+       can set inline pixel widths on its wrappers when initialized while the
+       parent is display:none — these rules force the wrapper to 100% of its
+       grid track so both rows' fields end at the same x. */
+    .cmp-controls { grid-template-columns: 1fr 1fr 1fr; }
+    .cmp-controls > div:last-child { min-width: 1px; }
+    .cmp-controls .ts-wrapper,
+    .cmp-controls .ts-wrapper .ts-control { width: 100% !important; max-width: 100% !important; }
+
+    /* ----- Responsive: tablet ----------------------------------------------
+       Frame goes fluid; controls collapse to 2 columns so the salary input
+       has room. Employment sparkline narrows but stays visible. */
+    @media (max-width: 760px) {
+      .page-wrap { padding: 16px 12px; }
+      .frame { width: 100%; }
+    }
+    @media (max-width: 640px) {
+      .page-wrap { padding: 0; }
+      .frame { border-radius: 0; border-left: none; border-right: none; }
+      .controls { padding: 12px; }
+      .control-grid,
+      .cmp-controls { grid-template-columns: 1fr; gap: 10px; }
+      .control-grid + .control-grid { margin-top: 10px; }
+    }
+
+    /* ----- Responsive: mobile ----------------------------------------------
+       Cards reflow vertically: occupation block on top, stat row below, then
+       the full-width band. Employment sparkline hides — only the 5-yr wage
+       trend stays, matching the mobile mockup. */
+    @media (max-width: 560px) {
+      .chart-area { padding: 10px 10px 14px; }
+      .row-card { padding: 12px 12px 12px 15px; }
+      .row-top {
+        grid-template-columns: 1fr 1fr 70px 24px;
+        grid-template-areas:
+          "occ occ occ actions"
+          "median pct wage wage";
+        gap: 10px 12px;
+        align-items: start;
+      }
+      .row-occ        { grid-area: occ; }
+      .stat-median    { grid-area: median; }
+      .stat-pct       { grid-area: pct; }
+      .stat-wage      { grid-area: wage; }
+      .stat-emp       { display: none; }
+      .row-actions    { grid-area: actions; }
+      .stat-value     { font-size: 19px; }
+      .stat-label     { font-size: 9px; letter-spacing: 0.5px; }
+      .row-job        { font-size: 13px; }
+      .axis-row       { padding: 0 12px 0 15px; }
+
+      /* Guide modal — was too cramped on phones at the desktop font sizes. */
+      .modal-backdrop  { padding: 10px; }
+      .modal-card      { max-height: calc(100vh - 20px); }
+      .modal-head      { padding: 14px 16px 2px; }
+      .modal-head h2   { font-size: 20px; }
+      .modal-body      { padding: 8px 16px 18px; font-size: 15px; line-height: 1.55; }
+      .modal-body p    { margin: 0 0 12px; }
+      .help-bullets    { gap: 14px; margin: 16px 0 10px; }
+      .help-bullets li { gap: 12px; }
+      .help-footnote   { font-size: 13px !important; }
+    }

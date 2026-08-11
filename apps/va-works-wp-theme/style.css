@@ -311,14 +311,10 @@ select:focus-visible,
    there too — on a wider page the charts present as a clean centred block
    instead of floating at 1360 inside a too-wide frame. */
 .embed-frame.is-dashboard { height: 740px; max-width: 1360px; margin-inline: auto; }
-/* Wage tool (job-seeker page): interactive, grows ~206px per comparison job
-   (measured empty 437 → 1 job 477 → 2 jobs 683 at desktop). Sized to fit a
-   two-job comparison, its core use; 3+ jobs scroll inside the frame. */
-.embed-frame.is-wage { height: 710px; }
-/* Employer pay-band tool (employer page): interactive; measured populated
-   ("Try an example", Financial Clerks) ~1311px desktop / ~1325px stacked. It's
-   width-stable, so one height covers both; larger job families scroll. */
-.embed-frame.is-employer-wage { height: 1360px; }
+/* The wage comparison and employer pay-band tools are no longer iframed — they're
+   embedded inline (see template-parts/*-inline.php + assets/embeds/), so they grow
+   with their own content and need no fixed frame height. Their .is-wage /
+   .is-employer-wage variants (and the media override below) were removed. */
 
 /* ─── Job-seeker page ──────────────────────────────────────────────────────── */
 .page-content { padding-top: 8px; }
@@ -367,17 +363,12 @@ select:focus-visible,
 }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
-/* Each embed stacks at its own iframe width, which (given the 1200px-max
-   container minus 48px padding) maps to a viewport breakpoint, NOT the 900px
-   masthead one below:
-     - dashboard stacks at <=1023px iframe  → ~1071px viewport (content ~1583px)
-     - wage tool stacks at <=760px  iframe  → ~808px  viewport (content ~651px)
-   Heights measured in each stacked state, with a small buffer. */
+/* The dashboard iframe stacks its 3-col layout at <=1023px iframe width (~1071px
+   viewport), where its content grows taller — so give it more height there. The
+   inline wage tools are not iframed and reflow on their own, so they need no
+   per-breakpoint height. */
 @media (max-width: 1071px) {
   .embed-frame.is-dashboard { height: 1600px; }
-}
-@media (max-width: 808px) {
-  .embed-frame.is-wage { height: 680px; }
 }
 
 @media (max-width: 900px) {

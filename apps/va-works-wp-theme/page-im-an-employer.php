@@ -57,17 +57,8 @@ get_header();
 </div>
 
 <?php
-get_template_part(
-	'template-parts/embed',
-	null,
-	array(
-		'id'      => 'employer-wage',
-		'heading' => 'Build a competitive pay band',
-		'note'    => 'Pick a region and job family to see full wage distributions and set a recommended pay range, drawn from Bureau of Labor Statistics OEWS and QCEW data.',
-		'url'     => VA_EMPLOYER_WAGE_TOOL_URL,
-		'title'   => 'Employer pay-band tool',
-		'variant' => 'is-employer-wage',
-	)
-);
+// Employer pay-band tool, embedded inline (no iframe) so it grows with its own
+// content. Assets are enqueued in functions.php, gated to this page slug.
+get_template_part( 'template-parts/employer-wage-tool-inline' );
 
 get_footer();

@@ -64,17 +64,8 @@ get_header();
 </div>
 
 <?php
-get_template_part(
-	'template-parts/embed',
-	null,
-	array(
-		'id'      => 'wage-tool',
-		'heading' => 'Compare wages by occupation',
-		'note'    => 'Search an occupation to see its Virginia wage range and compare roles side by side, drawn from Bureau of Labor Statistics OEWS data.',
-		'url'     => VA_WAGE_TOOL_URL,
-		'title'   => 'Wage comparison tool',
-		'variant' => 'is-wage',
-	)
-);
+// Wage comparison tool, embedded inline (no iframe) so it grows with its own
+// content. Assets are enqueued in functions.php, gated to this page slug.
+get_template_part( 'template-parts/wage-tool-inline' );
 
 get_footer();
