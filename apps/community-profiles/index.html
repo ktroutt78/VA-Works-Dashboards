@@ -63,6 +63,11 @@
 ================================================================= -->
 <div style="background:#fff;color:#1A1A1A;min-width:0">
 
+  <!-- DEMO CHROME START — simulated "Virginia Works" site chrome (gov utility bar + VW
+       logo/nav header). Intentional on the review / Vercel build: it's what the client
+       reviews the profile inside of. The release packaging script strips everything
+       between DEMO CHROME START and DEMO CHROME END so the standalone deliverable ships
+       without it (the client's own site supplies the real header there). -->
   <!-- gov utility bar -->
   <div style="background:#1A1A1A;color:#cfd3da;font-size:.74rem;padding:.5rem 1.5rem;display:flex;align-items:center;gap:.6rem">
     <b style="color:#fff;font-weight:600">Virginia Works</b>
@@ -83,6 +88,7 @@
       <span>About</span><span>Locations</span><span>Newsroom</span><span>Events</span><span style="color:#1B4DB1">LMI</span><span>Contact</span>
     </div>
   </div>
+  <!-- DEMO CHROME END -->
 
   <!-- HERO with interactive map (full-bleed map background — from Claude Design) -->
   <section data-screen-label="Hero — region picker &amp; map" style="background:linear-gradient(120deg,#0A2463 0%,#1B4DB1 58%,#2E6BD6 128%);color:#fff;position:relative;overflow:hidden;min-height:435px">
@@ -1234,13 +1240,26 @@ class Component {
     const gapPctOf=(r,v)=>v? (r-v)/v*100 : 0;
     const gaps=[gapPctOf(A.medianIncome,A.vaMedianIncome), gapPctOf(A.discretionary,A.vaDiscretionary)];
     const axisMax=Math.max(10, Math.ceil(Math.max(...gaps.map(Math.abs))/0.6/5)*5);
-    const gapBar=(id,region,va,axisMax,showAxis,showVaLabel)=>{ const cc=this.mk(id); if(!cc) return;
+    const gapBar=(id,region,va,axisMax,showAxis,showVaLabel,title)=>{ const cc=this.mk(id); if(!cc) return;
       const gapPct=gapPctOf(region,va), dGap=region-va;
       const gapLbl=(dGap<0?'−$':'+$')+fmt(Math.abs(dGap));
+      const pctTxt=(dGap<0?'−':'+')+Math.abs(gapPct).toFixed(1)+'%';
       cc.setOption({
+        // Hover anywhere in the (thin) row to read the underlying numbers; appendToBody
+        // so the panel isn't clipped by the short chart container.
+        tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,appendToBody:true,
+          backgroundColor:'#fff',borderColor:C.line,borderWidth:1,padding:[8,11],
+          extraCssText:'box-shadow:0 4px 14px rgba(10,36,99,.12);border-radius:8px',
+          textStyle:{color:C.ink,fontFamily:F,fontSize:12},
+          formatter:()=>`<div style="font-family:${GCF};font-weight:700;color:${C.cobalt};margin-bottom:4px">${title||''}</div>`
+            +`<div style="display:flex;justify-content:space-between;gap:20px"><span style="color:${C.slate}">Region</span><b>$${fmt(region)}</b></div>`
+            +`<div style="display:flex;justify-content:space-between;gap:20px"><span style="color:${C.slate}">Virginia</span><b>$${fmt(va)}</b></div>`
+            +`<div style="display:flex;justify-content:space-between;gap:20px;margin-top:4px;padding-top:4px;border-top:1px solid ${C.line}"><span style="color:${C.slate}">Gap to VA</span><b style="color:${dGap<0?C.goldDark:C.green}">${gapLbl} · ${pctTxt}</b></div>`},
         grid:{left:10,right:16,top:showVaLabel?24:8,bottom:showAxis?22:8,containLabel:false},
+        // Baseline drawn so the −/+% labels sit on an axis (not floating) and the dashed
+        // VA line visibly meets it at 0%. Shown on both rows so each bar reads as anchored.
         xAxis:{type:'value',min:-axisMax,max:axisMax,interval:axisMax,
-          axisLine:{show:false},axisTick:{show:false},splitLine:{show:false},
+          axisLine:{show:true,lineStyle:{color:C.slate,width:1}},axisTick:{show:false},splitLine:{show:false},
           axisLabel:showAxis?{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600,formatter:v=>v===0?'':(v>0?'+':'−')+Math.abs(v)+'%'}:{show:false}},
         yAxis:{type:'category',data:[''],axisLine:{show:false},axisTick:{show:false},axisLabel:{show:false}},
         series:[{ type:'bar',data:[+gapPct.toFixed(2)],barWidth:26,itemStyle:{color:C.gold,borderRadius:3},
@@ -1249,8 +1268,8 @@ class Component {
             label:showVaLabel?{show:true,position:'end',formatter:()=>'VA benchmark',color:C.blue,fontFamily:F,fontWeight:700,fontSize:11}:{show:false}} }]
       });
     };
-    gapBar('c-medinc', A.medianIncome, A.vaMedianIncome, axisMax, false, true);
-    gapBar('c-disc',   A.discretionary, A.vaDiscretionary, axisMax, true,  false);
+    gapBar('c-medinc', A.medianIncome, A.vaMedianIncome, axisMax, false, true,  'Median HH income');
+    gapBar('c-disc',   A.discretionary, A.vaDiscretionary, axisMax, true,  false, 'Discretionary income');
     // Unemployment Rate (s-unemp) — single LAUS trend, selected geography vs Virginia
     this.renderUnemployment(d);
     // new business formations
