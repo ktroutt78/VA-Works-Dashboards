@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pay-Band Planner · Virginia Works</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fonts are supplied via CSS variables (--vw-font-display / --vw-font-body); no
+       Google Fonts here. Defaults to a Public Sans / system stack; the client drops
+       in their own webfont via fonts.css. See fonts.css + the README. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <script src="va-works-theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
+  <!-- va-works-theme.js is loaded after the <style> below (and, in the release, after
+       fonts.css) so it can resolve --vw-font-* from :root at load. Do not move it back
+       above the stylesheet or the charts fall back to the default font. -->
   <style>
     :root {
       /* Design tokens — ported from docs/employer-wage-tool/employer-data.jsx T object. */
@@ -36,13 +38,17 @@
 
       /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
          falls back to a blocky sans where the licensed face is not bundled. */
-      --serif: "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
-      --sans:  "Inter", system-ui, sans-serif;
+      /* Fonts — two roles only. Default to a Public Sans / system stack; the client
+         overrides these two variables in fonts.css to drop in their own webfont.
+         --vw-font-display: headings + KPI numerals.  --vw-font-body: everything else.
+         (Formerly --serif / --sans.) */
+      --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
       --frame-w: 760px;
     }
 
-    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--sans); color: var(--ink); }
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--vw-font-body); color: var(--ink); }
     .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
     .frame {
       width: var(--frame-w);
@@ -59,7 +65,7 @@
       padding: 15px 20px;
       display: flex; justify-content: space-between; align-items: flex-start;
     }
-    .header-title { font-family: var(--serif); font-weight: 600; font-size: 20px; color: #fff; letter-spacing: 0.2px; }
+    .header-title { font-family: var(--vw-font-display); font-weight: 600; font-size: 20px; color: #fff; letter-spacing: 0.2px; }
     .header-sub   { font-size: 12px; color: var(--header-sub); margin-top: 3px; }
     .header-guide {
       display: flex; align-items: center; gap: 6px;
@@ -73,7 +79,7 @@
     .header-guide:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
     .header-guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
     .header-guide .q {
-      font-family: var(--sans); font-size: 14px; font-weight: 700;
+      font-family: var(--vw-font-body); font-size: 14px; font-weight: 700;
       line-height: 1;
     }
     .header-actions { display: flex; align-items: center; gap: 8px; }
@@ -106,7 +112,7 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 18px 22px 4px; gap: 12px;
     }
-    .modal-head h2 { margin: 0; font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--ink); }
+    .modal-head h2 { margin: 0; font-family: var(--vw-font-display); font-size: 19px; font-weight: 600; color: var(--ink); }
     .modal-close {
       background: transparent; border: none; cursor: pointer; color: var(--muted);
       width: 30px; height: 30px; font-size: 22px; line-height: 1; border-radius: 4px;
@@ -115,7 +121,7 @@
     .modal-body { padding: 8px 24px 24px; font-size: 13px; line-height: 1.55; color: var(--ink); }
     .modal-body p { margin: 0 0 6px; color: #3a4153; }
     .modal-body h3 {
-      margin: 12px 0 4px; font-family: var(--serif); font-size: 14.5px;
+      margin: 12px 0 4px; font-family: var(--vw-font-display); font-size: 14.5px;
       font-weight: 600; color: var(--ink);
     }
     .modal-body h3:first-child { margin-top: 4px; }
@@ -262,7 +268,7 @@
     .ts-wrapper.single .ts-control input::placeholder {
       color: var(--muted);
       opacity: 1;
-      font-family: var(--sans);
+      font-family: var(--vw-font-body);
       font-size: 14px;
       font-weight: 400;
     }
@@ -295,7 +301,7 @@
       box-sizing: border-box;
     }
     .slider-value {
-      font-family: var(--serif); font-weight: 600; font-size: 16px;
+      font-family: var(--vw-font-display); font-weight: 600; font-size: 16px;
       color: var(--you); min-width: 42px;
     }
     .slider-track {
@@ -381,7 +387,7 @@
       letter-spacing: 0; text-transform: none;
     }
     .ind-stat-value {
-      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      font-family: var(--vw-font-display); font-weight: 600; font-size: 18px;
       color: var(--ink); line-height: 1.05; margin-top: 2px;
     }
     .ind-stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
@@ -406,7 +412,7 @@
       text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;
     }
     .family-title {
-      font-family: var(--serif); font-weight: 600; font-size: 19px;
+      font-family: var(--vw-font-display); font-weight: 600; font-size: 19px;
       line-height: 1.15; margin-top: 3px; color: var(--ink);
     }
     .family-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
@@ -447,7 +453,7 @@
       letter-spacing: 0; text-transform: none;
     }
     .kpi-value {
-      font-family: var(--serif); font-weight: 600; font-size: 18px;
+      font-family: var(--vw-font-display); font-weight: 600; font-size: 18px;
       line-height: 1.05; color: var(--ink); white-space: nowrap;
     }
     .kpi-value.accent { color: var(--you); }
@@ -552,7 +558,7 @@
       color: var(--you); text-transform: uppercase; margin-bottom: 4px;
     }
     .empty-state-heading {
-      font-family: var(--serif); font-size: 18px; font-weight: 600;
+      font-family: var(--vw-font-display); font-size: 18px; font-weight: 600;
       color: var(--ink); margin: 0 0 6px; line-height: 1.25;
     }
     .empty-state-desc { font-size: 13px; line-height: 1.5; color: #3a4153; margin: 0; }
@@ -562,7 +568,7 @@
     .empty-state-btn {
       background: var(--you); color: #fff; border: none; padding: 9px 16px;
       border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer;
-      font-family: var(--sans);
+      font-family: var(--vw-font-body);
     }
     .empty-state-btn:hover { background: #9d2f23; }
     .empty-state-cta-note { font-size: 11.5px; color: var(--muted); }
@@ -595,10 +601,12 @@
       left: 12px;
       top: 50%;
       transform: translateY(-50%);
-      font-family: var(--sans);
+      font-family: var(--vw-font-body);
       font-size: 14px;
     }
   </style>
+  <!-- Loaded here (after the stylesheet / fonts.css) so it can read --vw-font-* at load. -->
+  <script src="va-works-theme.js"></script>
 </head>
 <body data-state="empty">
   <div class="page-wrap">
@@ -886,6 +894,17 @@
   </div>
 
   <script>
+    /* Chart text renders to <canvas>, which can't read CSS variables — resolve the two
+       font tokens from :root ONCE and reuse the cached strings for every chart (never
+       getComputedStyle per-render). Falls back to a system stack on a malformed value. */
+    var VWFONT = (function () {
+      var cs = getComputedStyle(document.documentElement);
+      return {
+        display: cs.getPropertyValue('--vw-font-display').trim() || 'system-ui, sans-serif',
+        body:    cs.getPropertyValue('--vw-font-body').trim()    || 'system-ui, sans-serif'
+      };
+    })();
+
     /* SOC-3 family-bucket KEY derivation: "15-1211" → "15-1000".
        Used purely as a grouping key in buildState — every SOC-6 detail
        whose 4-digit prefix matches goes into the same family bucket. The
@@ -1331,7 +1350,7 @@
           backgroundColor: 'rgba(255,255,255,0.97)',
           borderColor: C.line,
           borderWidth: 1,
-          textStyle: { color: C.ink, fontSize: 12, fontFamily: 'Inter, system-ui, sans-serif' },
+          textStyle: { color: C.ink, fontSize: 12, fontFamily: VWFONT.body },
           extraCssText: 'box-shadow: 0 6px 18px rgba(0,0,0,0.10); border-radius: 6px; max-width: 320px; white-space: normal; word-wrap: break-word;',
           formatter: (params) => {
             const idx = params.data[0];
@@ -1372,7 +1391,7 @@
           axisTick:  { show: true, length: 4, lineStyle: { color: C.muted } },
           axisLabel: {
             color: C.ink,
-            fontFamily: 'Inter, system-ui, sans-serif',
+            fontFamily: VWFONT.body,
             fontSize: 11,
             fontWeight: 500,
             margin: 6,
@@ -1408,11 +1427,11 @@
             rich: {
               name: {
                 color: C.ink, fontSize: 11.5, fontWeight: 600,
-                lineHeight: LINE_H, fontFamily: 'Inter, system-ui, sans-serif',
+                lineHeight: LINE_H, fontFamily: VWFONT.body,
               },
               sub: {
                 color: C.muted, fontSize: 10,
-                lineHeight: LINE_H, fontFamily: 'Inter, system-ui, sans-serif',
+                lineHeight: LINE_H, fontFamily: VWFONT.body,
               },
             },
           },

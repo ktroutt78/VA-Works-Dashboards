@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wage Comparison Tool · Virginia Works</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Fonts are supplied via CSS variables (--vw-font-display / --vw-font-body); no
+       Google Fonts here. Defaults to a Public Sans / system stack; the client drops
+       in their own webfont via fonts.css. See fonts.css + the README. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2/dist/css/tom-select.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <script src="va-works-theme.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2/dist/js/tom-select.complete.min.js"></script>
+  <!-- va-works-theme.js is loaded after the <style> below (and, in the release, after
+       fonts.css) so it can resolve --vw-font-* from :root at load. Do not move it back
+       above the stylesheet or the charts fall back to the default font. -->
   <style>
     :root {
       --ink:    #1a1f2c;
@@ -26,21 +28,23 @@
          clear separation. Median tick uses --ink + 3px for strong target signal. */
       --band-outer: #8aa0c4;
       --band-inner: #3a5a8a;
-      /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
-         falls back to a blocky sans where the licensed face is not bundled. */
-      --serif:  "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
-      --mono:   "JetBrains Mono", ui-monospace, Menlo, monospace;
-      --sans:   -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      /* Fonts — two roles only. Default to a Public Sans / system stack; the client
+         overrides these two variables in fonts.css to drop in their own webfont.
+         --vw-font-display: headings + KPI numerals.  --vw-font-body: everything else.
+         (Formerly --serif / --sans / --mono; the mono numeral face was retired in
+         favour of font-variant-numeric: tabular-nums so no second font is required.) */
+      --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--sans); color: var(--ink); }
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--vw-font-body); color: var(--ink); }
     .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
     .frame { width: 760px; background: var(--shell); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
     /* Agency header */
     .header { background: #00246B; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
-    .header-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
+    .header-title { font-family: var(--vw-font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
     .header-sub   { font-size: 11px; color: #c8cdd9; margin-top: 2px; letter-spacing: 0.4px; }
-    .header-brand { font-size: 10px; color: #9ea6b8; font-family: var(--mono); letter-spacing: 0.6px; text-transform: uppercase; }
+    .header-brand { font-size: 10px; color: #9ea6b8; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; letter-spacing: 0.6px; text-transform: uppercase; }
 
     /* Controls */
     .controls { padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -63,7 +67,7 @@
       height: var(--field-h) !important;
       min-height: var(--field-h) !important;
       max-height: var(--field-h) !important;
-      font-family: var(--sans); color: var(--ink);
+      font-family: var(--vw-font-body); color: var(--ink);
       appearance: none; -webkit-appearance: none; -moz-appearance: none;
     }
     .field-select {
@@ -84,7 +88,7 @@
     .job-input.unmatched { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b03a2e' stroke-width='2.4'><path d='M6 6 L18 18 M18 6 L6 18'/></svg>"); border-color: var(--hi); }
     .match-hint {
       font-size: 10px; color: var(--muted); margin-top: 3px; min-height: 12px;
-      font-family: var(--mono); line-height: 1.2;
+      font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; line-height: 1.2;
     }
     .match-hint.ok  { color: #1f7a4d; }
     .match-hint.bad { color: var(--hi); }
@@ -170,7 +174,7 @@
       min-height: var(--field-h) !important;
       max-height: var(--field-h) !important;
       box-sizing: border-box;
-      font-family: var(--sans); color: var(--ink); box-shadow: none;
+      font-family: var(--vw-font-body); color: var(--ink); box-shadow: none;
       flex-wrap: nowrap; overflow: hidden; display: flex; align-items: center; gap: 4px;
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%235a6376' d='M3 5 L6 8 L9 5 Z'/></svg>");
       background-repeat: no-repeat; background-position: right 8px center;
@@ -242,7 +246,7 @@
 
     .role-tag {
       font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;
-      font-family: var(--mono); font-weight: 600;
+      font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-weight: 600;
       margin-bottom: 2px; line-height: 1.1;
     }
     .row-card.you .role-tag { color: var(--hi); }
@@ -261,15 +265,15 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .stat-value {
-      font-family: var(--serif); font-size: 22px; font-weight: 700;
+      font-family: var(--vw-font-display); font-size: 22px; font-weight: 700;
       line-height: 1.05; color: var(--ink);
       font-variant-numeric: tabular-nums;
     }
     .stat-sub {
       font-size: 10px; color: var(--muted); line-height: 1.25; margin-top: 2px;
     }
-    .stat-sub.pos { color: #1f7a4d; font-family: var(--mono); font-weight: 500; }
-    .stat-sub.neg { color: var(--hi); font-family: var(--mono); font-weight: 500; }
+    .stat-sub.pos { color: #1f7a4d; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-weight: 500; }
+    .stat-sub.neg { color: var(--hi); font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-weight: 500; }
     /* Two-line label for sparkline blocks ("Wage trend" / "5-yr"). */
     .stat-spark .stat-label-sub {
       display: block; font-size: 9px; opacity: 0.8; font-weight: 500;
@@ -326,7 +330,7 @@
       line-height: 1; margin-bottom: 6px;
     }
     .empty-heading {
-      font-family: var(--serif); font-size: 16px; font-weight: 600;
+      font-family: var(--vw-font-display); font-size: 16px; font-weight: 600;
       color: var(--ink); margin-bottom: 14px;
     }
     .empty-sub {
@@ -340,7 +344,7 @@
     .demo-chip {
       background: #fff; border: 1px solid var(--accent); color: var(--accent);
       padding: 6px 14px; border-radius: 16px;
-      font-size: 12px; font-family: var(--sans); cursor: pointer;
+      font-size: 12px; font-family: var(--vw-font-body); cursor: pointer;
       transition: background .12s, color .12s;
     }
     .demo-chip:hover { background: var(--accent); color: #fff; }
@@ -349,7 +353,7 @@
     .cmp-salary-reset {
       background: transparent; border: 0; padding: 0; margin-left: 6px;
       color: var(--accent); cursor: pointer;
-      font-family: var(--mono); font-size: 9px; font-weight: 500;
+      font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-size: 9px; font-weight: 500;
       letter-spacing: 0.6px; text-transform: uppercase;
       vertical-align: baseline; line-height: 14px;
     }
@@ -357,15 +361,15 @@
     .cmp-salary-reset[hidden] { display: none; }
     .btn {
       font-size: 12px; padding: 7px 14px; border-radius: 4px; font-weight: 500;
-      border: 1px solid var(--accent); color: var(--accent); background: #fff; cursor: pointer; font-family: var(--sans);
+      border: 1px solid var(--accent); color: var(--accent); background: #fff; cursor: pointer; font-family: var(--vw-font-body);
     }
     .btn:hover { background: var(--accent); color: #fff; }
-    .source-note { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+    .source-note { font-size: 10px; color: var(--muted); font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; }
 
     /* "How to read this" header button */
     .help-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
+      font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
       background: rgba(255,255,255,0.08); color: #d6dbe6;
       border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
       padding: 5px 10px; cursor: pointer; transition: background .12s, color .12s;
@@ -390,7 +394,7 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px 20px 4px; gap: 12px;
     }
-    .modal-head h2 { margin: 0; font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--ink); }
+    .modal-head h2 { margin: 0; font-family: var(--vw-font-display); font-size: 18px; font-weight: 600; color: var(--ink); }
     .modal-close {
       background: transparent; border: none; cursor: pointer; color: var(--muted);
       width: 28px; height: 28px; font-size: 20px; line-height: 1; border-radius: 4px;
@@ -413,7 +417,7 @@
     .help-footnote { font-size: 11px; color: var(--muted); margin-top: 10px !important; font-style: italic; }
 
     /* Diagnostic banner (used only if scripts fail) */
-    .diag { display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 8px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .diag { display: none; margin: 16px 24px; padding: 12px 16px; border-radius: 8px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
     .diag.show { display: block; }
 
     /* ----- Box alignment ----------------------------------------------------
@@ -481,6 +485,8 @@
       .help-footnote   { font-size: 13px !important; }
     }
   </style>
+  <!-- Loaded here (after the stylesheet / fonts.css) so it can read --vw-font-* at load. -->
+  <script src="va-works-theme.js"></script>
 </head>
 <body>
   <div class="page-wrap">
@@ -616,6 +622,18 @@
 
   <script>
   (async function () {
+    // Chart text renders to <canvas>, which can't read CSS variables — so resolve the
+    // two font tokens from :root ONCE here and reuse the cached strings for every chart
+    // (never call getComputedStyle per-render). Falls back to a system stack if a client
+    // supplies a malformed value so a bad font string can't blank the charts.
+    const VWFONT = (function () {
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        display: cs.getPropertyValue('--vw-font-display').trim() || 'system-ui, sans-serif',
+        body:    cs.getPropertyValue('--vw-font-body').trim()    || 'system-ui, sans-serif',
+      };
+    })();
+
     // ------- 0. Diagnostic helper -------
     function fatal(msg) {
       const el = document.getElementById('diag');
@@ -1477,7 +1495,7 @@
           axisTick: { lineStyle: { color: COL.muted }, length: 4 },
           axisLabel: {
             color: COL.ink,
-            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+            fontFamily: VWFONT.display,
             fontSize: 11,
             fontWeight: 500,
             formatter: (v) => '$' + Math.round(v / 1000) + 'K',

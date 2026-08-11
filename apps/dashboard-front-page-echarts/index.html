@@ -5,15 +5,17 @@
 <title>VA Works — Labor Market Snapshot · ECharts variant</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Fonts are supplied via CSS variables (--vw-font-display / --vw-font-body); no
+     Google Fonts here. Defaults to a Public Sans / system stack; the client drops
+     in their own webfont via fonts.css. See fonts.css + the README. -->
 
 <!-- Apache ECharts + topojson-client (the US-Atlas counties layer ships as TopoJSON;
      topojson.feature() converts it to GeoJSON that echarts.registerMap can consume). -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script src="va-works-theme.js"></script>
+<!-- va-works-theme.js is loaded after the <style> below (and, in the release, after
+     fonts.css) so it can resolve --vw-font-* from :root at load. Do not move it back
+     above the stylesheet or the charts fall back to the default font. -->
 
 <style>
 :root {
@@ -35,9 +37,12 @@
   --coral:   #b75049;
   --success: #2f7a4a;
 
-  /* Blocky Greycliff Demi Bold for titles (VA Works type scale); falls back to a
-     blocky sans where the licensed face is not bundled. */
-  --font-title: 'Greycliff CF','Greycliff','Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* Fonts — two roles only. Default to a Public Sans / system stack; the client
+     overrides these two variables in fonts.css to drop in their own webfont.
+     --vw-font-display: headings + KPI numerals.  --vw-font-body: everything else.
+     (Formerly --font-title + a hardcoded body stack.) */
+  --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   --shadow-card: 0 0.5px 0 rgba(20,30,50,0.04), 0 1px 2px rgba(20,30,50,0.04), 0 8px 24px rgba(20,30,50,0.04);
   --radius-card: 14px;
@@ -46,7 +51,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--vw-font-body);
   background: var(--bg-page);
   color: var(--ink-1);
   font-size: 14px;
@@ -62,7 +67,7 @@ body {
   margin-bottom: 22px; gap: 24px;
 }
 .brand-block h1 {
-  font-family: var(--font-title);
+  font-family: var(--vw-font-display);
   margin: 0; font-size: 24px; font-weight: 700;
   letter-spacing: -0.015em; color: var(--ink-1);
 }
@@ -129,7 +134,7 @@ body {
   margin-bottom: 6px; gap: 8px;
 }
 .card-title {
-  font-family: var(--font-title);
+  font-family: var(--vw-font-display);
   margin: 0; font-size: 15px; font-weight: 600;
   letter-spacing: -0.005em; color: var(--ink-1);
 }
@@ -330,6 +335,8 @@ body {
   .kpi { padding: 4px 0; }
 }
 </style>
+<!-- Loaded here (after the stylesheet / fonts.css) so it can read --vw-font-* at load. -->
+<script src="va-works-theme.js"></script>
 </head>
 <body>
 
@@ -426,6 +433,16 @@ body {
 </div>
 
 <script>
+// Chart text renders to <canvas>, which can't read CSS variables — resolve the two
+// font tokens from :root ONCE and reuse the cached strings (never getComputedStyle
+// per-render). Falls back to a system stack on a malformed value.
+const VWFONT = (function () {
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    display: cs.getPropertyValue('--vw-font-display').trim() || 'system-ui, sans-serif',
+    body:    cs.getPropertyValue('--vw-font-body').trim()    || 'system-ui, sans-serif',
+  };
+})();
 // ============================================================================
 // VA Works · Labor Market Snapshot — Apache ECharts variant
 // Mirrors the Highcharts implementation in ../dashboard-front-page-original/
@@ -485,7 +502,7 @@ const TOOLTIP_BASE = {
   backgroundColor: 'rgba(255,255,255,0.98)',
   borderColor: 'rgba(0,53,149,0.12)',
   borderWidth: 1,
-  textStyle: { color: '#1a1d1f', fontFamily: 'Public Sans, sans-serif', fontSize: 12 },
+  textStyle: { color: '#1a1d1f', fontFamily: VWFONT.body, fontSize: 12 },
   padding: 10,
   extraCssText: 'border-radius: 8px; box-shadow: 0 4px 8px rgba(15,30,55,0.12);'
 };
@@ -550,7 +567,9 @@ function renderKpis(locality) {
 // properties.name = feature.id (the 5-digit FIPS GEOID) so ECharts' name-based
 // join lines up with the data rows produced by buildMapData().
 async function loadVAGeoJson() {
-  const url = 'https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json';
+  // Bundled locally (data/counties-10m.json, us-atlas@3.0.1) so the map works on
+  // CDN-blocked networks — no runtime call to jsdelivr.
+  const url = 'data/counties-10m.json';
   const topo = await fetch(url).then(r => r.json());
   // counties-10m exposes the counties object as 'counties'
   const fc = topojson.feature(topo, topo.objects.counties);

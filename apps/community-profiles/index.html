@@ -4,16 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Community Profile · Virginia Works</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<!-- Fonts are supplied via CSS variables (--vw-font-display / --vw-font-body); no
+     Google Fonts here. Defaults to a Public Sans / system stack; the client drops
+     in their own webfont via fonts.css. See fonts.css + the README. -->
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-<script src="va-works-theme.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<!-- va-works-theme.js is loaded after the <style> below (and, in the release, after
+     fonts.css) so it can resolve --vw-font-* from :root at load. Do not move it back
+     above the stylesheet or the charts fall back to the default font. -->
 <style>
+/* Fonts — two roles only. Default to a Public Sans / system stack; the client
+   overrides these two variables in fonts.css to drop in their own webfont.
+   --vw-font-display: headings + KPI numerals.  --vw-font-body: everything else. */
+:root {
+  --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth;scroll-padding-top:96px}
-  body{font-family:'Barlow',system-ui,sans-serif;color:#1A1A1A;background:#fff;line-height:1.55;-webkit-font-smoothing:antialiased}
+  body{font-family:var(--vw-font-body);color:#1A1A1A;background:#fff;line-height:1.55;-webkit-font-smoothing:antialiased}
   @keyframes vw-spin{to{transform:rotate(360deg)}}
   @keyframes vw-fade{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
   #geoSearch::placeholder{color:#5A6472;opacity:1}
@@ -24,14 +33,14 @@
   .demo-bans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:.2rem 0 0}
   .demo-ban{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:16px;box-shadow:0 2px 20px rgba(10,36,99,.06)}
   .demo-ban-lbl{font-size:.72rem;color:#9DB4D6;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
-  .demo-ban-val{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.01em;color:#0A2463;font-variant-numeric:tabular-nums}
+  .demo-ban-val{font-family:var(--vw-font-display);font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.01em;color:#0A2463;font-variant-numeric:tabular-nums}
   .demo-ban-cmp{font-size:.72rem;margin-top:9px;color:#5A6472}
   .demo-ban-cmp .delta{font-weight:700;font-variant-numeric:tabular-nums}
   .demo-ban-cmp .up{color:#2A7050}
   .demo-ban-cmp .down{color:#9F2842}
   .demo-card{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.2rem 1.35rem;margin-top:1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
   .demo-ct{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6}
-  .demo-ch{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05}
+  .demo-ch{font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05}
   .demo-cs{font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:64ch;line-height:1.5}
   .demo-fact{font-size:.78rem;color:#5A6472;margin-top:13px;padding-top:12px;border-top:1px solid #F0EEE7;line-height:1.5}
   .demo-fact b{color:#1A1A1A;font-weight:600}
@@ -40,8 +49,8 @@
   /* ---- Higher Education section (scene: s-highered) ---- */
   .hied-col{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.2rem}
   .hied-grouphead{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;border-bottom:1px solid #EDE9DF;padding-bottom:.6rem;margin-bottom:.35rem}
-  .hied-gt{font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:.01em;color:#0A2463;line-height:1.05}
-  .hied-gc{flex:none;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1rem;color:#2A7050;font-variant-numeric:tabular-nums}
+  .hied-gt{font-family:var(--vw-font-display);font-size:1.2rem;font-weight:800;letter-spacing:.01em;color:#0A2463;line-height:1.05}
+  .hied-gc{flex:none;font-family:var(--vw-font-display);font-weight:700;font-size:1rem;color:#2A7050;font-variant-numeric:tabular-nums}
   .hied-item{display:flex;align-items:flex-start;gap:.7rem;padding:.6rem 0;border-top:1px solid #F4F1EA}
   .hied-item:first-child{border-top:0}
   .hied-ico{flex:none;width:34px;height:34px;border-radius:9px;background:#F0F4FB;display:flex;align-items:center;justify-content:center;margin-top:1px}
@@ -50,6 +59,8 @@
   .hied-meta{font-size:.76rem;color:#5A6472;margin-top:2px}
   .hied-empty{font-size:.82rem;color:#5A6472;background:#F8F6F0;border:1px dashed #E2E0D8;border-radius:9px;padding:.8rem .9rem;line-height:1.45}
 </style>
+<!-- Loaded here (after the stylesheet / fonts.css) so it can read --vw-font-* at load. -->
+<script src="va-works-theme.js"></script>
 </head>
 <body>
 <!-- ================================================================
@@ -65,9 +76,9 @@
 
   <!-- DEMO CHROME START — simulated "Virginia Works" site chrome (gov utility bar + VW
        logo/nav header). Intentional on the review / Vercel build: it's what the client
-       reviews the profile inside of. The release packaging script strips everything
-       between DEMO CHROME START and DEMO CHROME END so the standalone deliverable ships
-       without it (the client's own site supplies the real header there). -->
+       reviews the profile inside of. scripts/build-release.sh removes everything up to
+       the closing marker below so the standalone deliverable ships without it (the
+       client's own site supplies the real header there). -->
   <!-- gov utility bar -->
   <div style="background:#1A1A1A;color:#cfd3da;font-size:.74rem;padding:.5rem 1.5rem;display:flex;align-items:center;gap:.6rem">
     <b style="color:#fff;font-weight:600">Virginia Works</b>
@@ -78,9 +89,9 @@
   <!-- site header -->
   <div style="display:flex;align-items:center;padding:1.05rem 1.5rem;gap:1rem;border-bottom:1px solid #E2E0D8;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:.85rem">
-      <div style="width:46px;height:46px;flex:none;border-radius:8px;background:linear-gradient(135deg,#0A2463,#2E6BD6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.5rem">VW</div>
+      <div style="width:46px;height:46px;flex:none;border-radius:8px;background:linear-gradient(135deg,#0A2463,#2E6BD6);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--vw-font-display);font-weight:800;font-size:1.5rem">VW</div>
       <div>
-        <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.5rem;line-height:.95;color:#0A2463;text-transform:uppercase">Virginia<br>Works</div>
+        <div style="font-family:var(--vw-font-display);font-weight:800;font-size:1.5rem;line-height:.95;color:#0A2463;text-transform:uppercase">Virginia<br>Works</div>
       </div>
       <div style="font-size:.62rem;font-weight:600;letter-spacing:.08em;color:#5A6472;text-transform:uppercase;border-left:2px solid #E2E0D8;padding-left:.7rem;line-height:1.25">Department of<br>Workforce<br>Development</div>
     </div>
@@ -106,7 +117,7 @@
     <div style="position:relative;z-index:3;max-width:1240px;margin:0 auto;padding:26px 1.5rem 16px;min-height:492px;display:flex;flex-direction:column;pointer-events:none">
       <div style="max-width:52ch">
         <div style="font-size:.82rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.7rem">Labor Market Information</div>
-        <h1 style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:clamp(2.6rem,5.2vw,4.4rem);font-weight:800;line-height:.9;letter-spacing:.005em;margin-bottom:.55rem;white-space:nowrap">Community Profile</h1>
+        <h1 style="font-family:var(--vw-font-display);font-size:clamp(2.6rem,5.2vw,4.4rem);font-weight:800;line-height:.9;letter-spacing:.005em;margin-bottom:.55rem;white-space:nowrap">Community Profile</h1>
         <div id="crumb" style="font-size:.78rem;color:#B9CDEE;display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.6rem"><span style="opacity:.85">Home</span><span style="opacity:.5">›</span><span style="opacity:.85">LMI</span><span style="opacity:.5">›</span><span style="opacity:.85">Community Profiles</span><span style="opacity:.5">›</span><span id="crumb-region" style="color:#fff;font-weight:600">—</span></div>
 
         <div style="font-size:1.04rem;color:#D7E3F6;max-width:46ch;margin-bottom:1.2rem">Choose a geography from the map or the selector. Every chart below re-frames to the place you pick: a county or city, a metro area, a workforce region, or the whole Commonwealth.</div>
@@ -119,7 +130,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">
           <div id="levelbar" style="display:contents"></div>
           <div id="geoSearchWrap" style="position:relative;flex:1 1 180px;min-width:168px">
-            <input id="geoSearch" type="text" autocomplete="off" placeholder="Search a place…" style="width:100%;box-sizing:border-box;font-family:'Barlow',sans-serif;font-size:.92rem;font-weight:600;line-height:1.15;color:#0A2463;background:#fff;border:1.5px solid rgba(255,255,255,.65);border-radius:8px;padding:.46rem 1.9rem .46rem .8rem;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.3)">
+            <input id="geoSearch" type="text" autocomplete="off" placeholder="Search a place…" style="width:100%;box-sizing:border-box;font-family:var(--vw-font-body);font-size:.92rem;font-weight:600;line-height:1.15;color:#0A2463;background:#fff;border:1.5px solid rgba(255,255,255,.65);border-radius:8px;padding:.46rem 1.9rem .46rem .8rem;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.3)">
             <span id="geoCaret" style="position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:#5A6472;font-size:.7rem;pointer-events:none;transition:transform .18s">▾</span>
             <div id="geoResults" style="display:none;position:fixed;z-index:200;background:#fff;border:1px solid #E2E0D8;border-radius:10px;box-shadow:0 18px 44px rgba(10,36,99,.3);max-height:320px;overflow-y:auto;color:#1A1A1A"></div>
           </div>
@@ -130,7 +141,7 @@
     <!-- Overview moved into the hero banner — sits on the blue background just below the geography buttons. The map above stays locked at 435px, so only the banner grows taller to accommodate this. -->
     <div style="position:relative;z-index:3;max-width:1240px;margin:0 auto;padding:1rem 1.5rem 26px">
       <div id="overview-top" data-screen-label="Overview" style="scroll-margin-top:96px;padding-top:1.1rem">
-        <h2 id="reportTitle" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:clamp(1.7rem,3vw,2.4rem);font-weight:800;color:#fff;line-height:1;margin-bottom:.9rem">—</h2>
+        <h2 id="reportTitle" style="font-family:var(--vw-font-display);font-size:clamp(1.7rem,3vw,2.4rem);font-weight:800;color:#fff;line-height:1;margin-bottom:.9rem">—</h2>
         <div id="overview" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:1rem;align-items:stretch"></div>
       </div>
     </div>
@@ -141,12 +152,12 @@
     <div style="max-width:1240px;margin:0 auto;padding:.3rem 1.5rem;display:flex;align-items:center;gap:1rem">
       <div id="minimap" style="width:160px;height:74px;flex:none"></div>
       <div style="min-width:0">
-        <div id="stickyName" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.15rem;color:#0A2463;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+        <div id="stickyName" style="font-family:var(--vw-font-display);font-weight:700;font-size:1.15rem;color:#0A2463;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
         <div id="stickyType" style="font-size:.66rem;color:#5A6472;font-weight:600;letter-spacing:.06em;text-transform:uppercase"></div>
       </div>
       <div style="margin-left:auto;display:flex;align-items:center;gap:1.4rem">
         <div style="display:none;gap:1.4rem" id="stickyKpis"></div>
-        <button id="stickyPick" type="button" style="background:#0A2463;color:#fff;border:none;border-radius:8px;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.01em;padding:.5rem 1rem;cursor:pointer;white-space:nowrap" style-hover="background:#1B4DB1">Change Geography</button>
+        <button id="stickyPick" type="button" style="background:#0A2463;color:#fff;border:none;border-radius:8px;font-family:var(--vw-font-display);font-weight:700;font-size:.95rem;letter-spacing:.01em;padding:.5rem 1rem;cursor:pointer;white-space:nowrap" style-hover="background:#1B4DB1">Change Geography</button>
       </div>
     </div>
   </div>
@@ -168,11 +179,11 @@
   <div id="picker" style="display:none;position:fixed;z-index:91;left:50%;top:84px;transform:translateX(-50%);width:min(560px,92vw);max-height:78vh;background:#fff;border-radius:14px;box-shadow:0 28px 80px rgba(10,36,99,.4);overflow:hidden;flex-direction:column;color:#1A1A1A">
     <div style="padding:1.1rem 1.25rem .9rem;border-bottom:1px solid #E2E0D8">
       <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.85rem">
-        <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.3rem;color:#0A2463">Choose a geography</div>
+        <div style="font-family:var(--vw-font-display);font-weight:800;font-size:1.3rem;color:#0A2463">Choose a geography</div>
         <button id="pickerClose" type="button" style="margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid #E2E0D8;background:#fff;cursor:pointer;color:#5A6472;font-size:1rem">✕</button>
       </div>
       <div id="pickTabs" style="display:flex;gap:.4rem;flex-wrap:wrap"></div>
-      <input id="pickSearch" type="text" placeholder="Search…" style="margin-top:.7rem;width:100%;border:1px solid #E2E0D8;border-radius:8px;padding:.55rem .75rem;font-family:'Barlow',sans-serif;font-size:.92rem;color:#1A1A1A;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.14)">
+      <input id="pickSearch" type="text" placeholder="Search…" style="margin-top:.7rem;width:100%;border:1px solid #E2E0D8;border-radius:8px;padding:.55rem .75rem;font-family:var(--vw-font-body);font-size:.92rem;color:#1A1A1A;outline:none" style-focus="border-color:#2E6BD6;box-shadow:0 0 0 3px rgba(46,107,214,.14)">
     </div>
     <div id="pickList" style="overflow-y:auto;padding:.5rem"></div>
   </div>
@@ -181,7 +192,7 @@
   <div id="helpBack" style="display:none;position:fixed;inset:0;z-index:92;background:rgba(10,16,32,.45);backdrop-filter:blur(2px)"></div>
   <div id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle" style="display:none;position:fixed;z-index:93;left:50%;top:7vh;transform:translateX(-50%);width:min(620px,92vw);max-height:86vh;background:#fff;border-radius:14px;box-shadow:0 28px 80px rgba(10,36,99,.4);overflow:hidden;flex-direction:column;color:#1A1A1A">
     <div style="padding:1.1rem 1.35rem .85rem;border-bottom:1px solid #E2E0D8;display:flex;align-items:center;gap:.8rem">
-      <div id="helpTitle" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.35rem;color:#0A2463;line-height:1.1"></div>
+      <div id="helpTitle" style="font-family:var(--vw-font-display);font-weight:800;font-size:1.35rem;color:#0A2463;line-height:1.1"></div>
       <button id="helpClose" type="button" aria-label="Close" style="margin-left:auto;flex:none;width:30px;height:30px;border-radius:8px;border:1px solid #E2E0D8;background:#fff;cursor:pointer;color:#5A6472;font-size:1rem">✕</button>
     </div>
     <div id="helpBody" style="overflow-y:auto;padding:1.25rem 1.35rem 1.5rem;font-size:.95rem;line-height:1.6;color:#3A3F4A"></div>
@@ -217,7 +228,16 @@ class Component {
     // state/Virginia stays blue. green/greenDark are kept only for good/bad delta arrows.
     this.C = { cobalt:'#002A76', blue:'#003595', blueBright:'#3D7CC9', green:'#2A7050', greenDark:'#1F5A3E', gold:'#c89b3c', goldDark:'#8a6a24', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
     this.PALETTE = ['#1B4DB1','#2A7050','#5BA3D0','#E8A33D','#9B6FB5','#9F2842','#7A8794'];
-    this.FONT = "'Barlow', sans-serif";
+    // Fonts: chart text and dynamically-built markup need a resolved string (canvas
+    // can't read CSS vars), so read the two --vw-font-* tokens from :root ONCE here at
+    // init and cache them. this.FONT = body (aliased as F in render methods);
+    // this.FONT_DISPLAY = headings/KPI numerals (used where GCF/GCW were). Falls back to
+    // a system stack if a client supplies a malformed value.
+    (function (self) {
+      var cs = getComputedStyle(document.documentElement);
+      self.FONT         = cs.getPropertyValue('--vw-font-body').trim()    || "'Public Sans', system-ui, sans-serif";
+      self.FONT_DISPLAY = cs.getPropertyValue('--vw-font-display').trim() || "'Public Sans', system-ui, sans-serif";
+    })(this);
     this.charts = {};
     this.popCache = {};   // cache for MOCK per-county populations (see "MOCK DATA" seam below)
     this.activeTab = 'Metro Area (MSA)';
@@ -233,7 +253,7 @@ class Component {
     if(!this.ec){ document.getElementById('mapLoad').innerHTML='<div style="color:#cfe0fb;font-size:.85rem">Map library unavailable.</div>'; return; }
     let topo;
     try{
-      topo = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/counties-10m.json').then(r=>r.json());
+      topo = await fetch('data/counties-10m.json').then(r=>r.json());  // bundled locally (us-atlas@3.0.1); no CDN call
     }catch(e){ document.getElementById('mapLoad').innerHTML='<div style="color:#cfe0fb;font-size:.85rem">Could not load geography.</div>'; return; }
 
     this.topo = topo;
@@ -504,7 +524,7 @@ class Component {
         const meta = r.sub ? r.sub : (r.type!=='County / City'&&r.type!=='State' ? r.fips.length+' localities' : '');
         const on = r.id===selId;
         return `<button data-rid="${r.id}" type="button" style="display:flex;width:100%;align-items:center;gap:.6rem;text-align:left;background:${on?'#EAF3E4':'#fff'};border:none;border-bottom:1px solid #F2F0EA;padding:.5rem .7rem;cursor:pointer;font-family:${this.FONT}" style-hover="background:#F5F1E8">
-          <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.02rem;color:#0A2463;line-height:1.05">${r.name}</span>${meta?`<span style="font-size:.72rem;color:#5A6472">${meta}</span>`:''}</span>
+          <span style="min-width:0;flex:1"><span style="display:block;font-family:var(--vw-font-display);font-weight:700;font-size:1.02rem;color:#0A2463;line-height:1.05">${r.name}</span>${meta?`<span style="font-size:.72rem;color:#5A6472">${meta}</span>`:''}</span>
           ${on?`<span style="flex:none;color:#c89b3c;font-weight:700">✓</span>`:''}
         </button>`;
       }).join('') + (list.length>shown.length?`<div style="padding:.5rem .7rem;color:#9DB4D6;font-size:.74rem">Showing first ${shown.length} — type to narrow…</div>`:'') : `<div style="padding:.8rem;color:#5A6472;font-size:.86rem">No matches</div>`;
@@ -525,7 +545,7 @@ class Component {
   buildLevelToolbar(){
     const el=document.getElementById('levelbar'); if(!el) return;
     el.innerHTML=this.LEVELS().map(L=>
-      `<button data-level="${L.type}" type="button" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.02em;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.10);color:#EaF1FB;border-radius:8px;padding:.42rem .85rem;cursor:pointer;transition:.16s;white-space:nowrap" style-hover="background:rgba(255,255,255,.22)">${L.label}</button>`
+      `<button data-level="${L.type}" type="button" style="font-family:var(--vw-font-display);font-weight:700;font-size:.95rem;letter-spacing:.02em;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.10);color:#EaF1FB;border-radius:8px;padding:.42rem .85rem;cursor:pointer;transition:.16s;white-space:nowrap" style-hover="background:rgba(255,255,255,.22)">${L.label}</button>`
     ).join('');
     el.querySelectorAll('button').forEach(b=>b.onclick=()=>this.setLevel(b.dataset.level));
   }
@@ -588,7 +608,7 @@ class Component {
   }
   helpContent(){
     const bar=(lbl,w,col,txt)=>`<div style="display:flex;align-items:center;gap:.8rem">
-      <div style="flex:none;width:42px;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.2rem;color:#0A2463;text-align:right">${lbl}</div>
+      <div style="flex:none;width:42px;font-family:var(--vw-font-display);font-weight:800;font-size:1.2rem;color:#0A2463;text-align:right">${lbl}</div>
       <div style="flex:none;width:150px;position:relative;height:22px;background:#F0EEE7;border-radius:5px">
         <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${col};border-radius:5px"></div>
         <div style="position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:#1A1A1A"></div>
@@ -632,7 +652,7 @@ class Component {
     const lbl={'Metro Area (MSA)':'Metro (MSA)','GO Virginia Region':'GO Virginia','Local Workforce Area (LWDA)':'Workforce (LWDA)','County / City':'County / City','State':'Statewide'};
     const el=document.getElementById('pickTabs');
     el.innerHTML=types.map(t=>{ const on=t===this.activeTab;
-      return `<button data-tab="${t}" style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.9rem;letter-spacing:.02em;text-transform:uppercase;border:1px solid ${on?'#0A2463':'#E2E0D8'};background:${on?'#0A2463':'#fff'};color:${on?'#fff':'#5A6472'};border-radius:7px;padding:.4rem .7rem;cursor:pointer">${lbl[t]}</button>`;
+      return `<button data-tab="${t}" style="font-family:var(--vw-font-display);font-weight:700;font-size:.9rem;letter-spacing:.02em;text-transform:uppercase;border:1px solid ${on?'#0A2463':'#E2E0D8'};background:${on?'#0A2463':'#fff'};color:${on?'#fff':'#5A6472'};border-radius:7px;padding:.4rem .7rem;cursor:pointer">${lbl[t]}</button>`;
     }).join('');
     el.querySelectorAll('button').forEach(b=>b.onclick=()=>{ this.activeTab=b.dataset.tab; this.renderTabs(); this.renderList(); });
   }
@@ -643,7 +663,7 @@ class Component {
     el.innerHTML=list.map(r=>{
       const sub = r.type==='County / City' ? '' : r.fips.length+' localities';
       return `<button data-rid="${r.id}" style="display:flex;width:100%;align-items:center;gap:.7rem;text-align:left;background:#fff;border:none;border-radius:8px;padding:.6rem .7rem;cursor:pointer;font-family:${this.FONT}" style-hover="background:#F5F1E8">
-        <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.12rem;color:#0A2463;line-height:1.05">${r.name}</span>${sub?`<span style="font-size:.72rem;color:#5A6472">${sub}</span>`:''}</span>
+        <span style="min-width:0;flex:1"><span style="display:block;font-family:var(--vw-font-display);font-weight:700;font-size:1.12rem;color:#0A2463;line-height:1.05">${r.name}</span>${sub?`<span style="font-size:.72rem;color:#5A6472">${sub}</span>`:''}</span>
         <span style="flex:none;color:#9DB4D6;font-weight:700">›</span>
       </button>`;
     }).join('') || `<div style="padding:1.4rem;text-align:center;color:#5A6472;font-size:.9rem">No matches.</div>`;
@@ -721,7 +741,7 @@ class Component {
     const rf=this.realFields||new Set();
     const chip=fields=>fields.every(f=>rf.has(f))?'':`<span style="background:#E8A33D;color:#3a2400;font-size:.56rem;font-weight:700;letter-spacing:.05em;padding:.1rem .4rem;border-radius:4px;margin-left:.5rem;vertical-align:1px">Illustrative</span>`;
     const eb=(t,fields)=>`<div style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DC0F2;margin-bottom:.55rem">${t}${fields?chip(fields):''}</div>`;
-    const big='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:800;font-size:3rem;line-height:.85';
+    const big='font-family:var(--vw-font-display);font-weight:800;font-size:3rem;line-height:.85';
     const foot='font-size:.72rem;color:#B9CDEE;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem';
     const html=`
       <div style="${card}">
@@ -745,8 +765,8 @@ class Component {
         ${eb('Top 3 Industries',['industryEmployment'])}
         <div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.05rem">
           ${top3.map((t,i)=>`<div style="display:flex;align-items:center;gap:.65rem">
-            <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?'#fff':'rgba(255,255,255,.16)'};color:${i===0?C.cobalt:'#D7E3F6'};display:flex;align-items:center;justify-content:center;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.82rem">${i+1}</span>
-            <span style="min-width:0;flex:1"><span style="display:block;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.04rem;color:#fff;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</span><span style="font-size:.72rem;color:#B9CDEE">${fmt(t.value)} jobs · ${(t.value/totJobs*100).toFixed(0)}% of employment</span></span>
+            <span style="flex:none;width:24px;height:24px;border-radius:50%;background:${i===0?'#fff':'rgba(255,255,255,.16)'};color:${i===0?C.cobalt:'#D7E3F6'};display:flex;align-items:center;justify-content:center;font-family:var(--vw-font-display);font-weight:700;font-size:.82rem">${i+1}</span>
+            <span style="min-width:0;flex:1"><span style="display:block;font-family:var(--vw-font-display);font-weight:700;font-size:1.04rem;color:#fff;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</span><span style="font-size:.72rem;color:#B9CDEE">${fmt(t.value)} jobs · ${(t.value/totJobs*100).toFixed(0)}% of employment</span></span>
           </div>`).join('')}
         </div>
       </div>`;
@@ -1198,7 +1218,7 @@ class Component {
     // Own vs Rent — one 10×10 waffle (each cell = 1%): green cells are owners, blue are renters.
     // It lives in its own card, so the grid is large with room to breathe; percentages sit
     // beside it in their series colors, no raw counts.
-    { const GCW="'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif";
+    { const GCW=this.FONT_DISPLAY;
       // Fill bottom-up: rent (grey) takes the top rows, own (green) forms the base at the bottom.
       let sq=''; for(let i=0;i<100;i++) sq+=`<span style="width:13px;height:13px;border-radius:3px;background:${i<A.rentPct?'#7A8794':'#2A7050'}"></span>`;
       const pctBox=(pct,color,label)=>`<div style="font-family:${GCW};font-weight:800;font-size:1.9rem;color:${color};line-height:1">${pct}<span style="font-size:1rem">%</span><div style="font-size:.64rem;color:#5A6472;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem">${label}</div></div>`;
@@ -1231,7 +1251,7 @@ class Component {
     // Diverging "gap to VA" bars. Bar length = (region − VA)/VA, so 0 is the Virginia benchmark
     // (dashed blue line) and the bar reaches left (below VA) or right (above VA). The big number
     // stack lives beside each bar in the markup; here we fill it and draw the bar.
-    const GCF="'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif";
+    const GCF=this.FONT_DISPLAY;
     setTxt('k-medinc-val','$'+fmt(A.medianIncome)); setTxt('k-medinc-vs','vs VA $'+fmt(A.vaMedianIncome));
     setTxt('k-disc-val','$'+fmt(A.discretionary)); setTxt('k-disc-vs','vs VA $'+fmt(A.vaDiscretionary));
     // Shared symmetric axis so both rows' benchmark lines align and stay comparable. The max
@@ -1279,7 +1299,7 @@ class Component {
       const arrow=v=>`<span style="color:${v>=0?'#2A7050':'#9F2842'};font-weight:800">${v>=0?'▲':'▼'} ${Math.abs(v).toFixed(0)}%</span>`;
       const hEl=document.getElementById('biz-headline');
       if(hEl) hEl.innerHTML=`<div style="display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap">
-        <span style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:2.4rem;line-height:.9;color:#0A2463">${fmt(last)}</span>
+        <span style="font-family:var(--vw-font-display);font-weight:800;font-size:2.4rem;line-height:.9;color:#0A2463">${fmt(last)}</span>
         <span style="font-size:.9rem;color:#5A6472">new businesses in ${b.lastYear}</span>
         <span style="font-size:.86rem;color:#5A6472">${arrow(yoy)} vs ${b.years[b.years.length-2]||''}</span>
         <span style="font-size:.86rem;color:#5A6472">${arrow(dec)} since ${b.years[0]}</span></div>`;
@@ -1333,7 +1353,7 @@ class Component {
           tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> apprentices · ${p.percent}%`},
           legend:{bottom:2,left:'center',icon:'circle',itemWidth:9,itemHeight:9,itemGap:12,textStyle:{fontFamily:F,fontSize:11,color:C.slate},data:ord.map(r=>r.name)},
           title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'37%',textAlign:'center',itemGap:4,
-            textStyle:{fontFamily:"'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif",fontSize:27,fontWeight:800,color:C.cobalt},
+            textStyle:{fontFamily:"var(--vw-font-display)",fontSize:27,fontWeight:800,color:C.cobalt},
             subtextStyle:{fontFamily:F,fontSize:11,fontWeight:600,color:C.slate}},
           series:[{type:'pie',radius:['50%','66%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
             itemStyle:{borderColor:C.line,borderWidth:2},
@@ -1383,7 +1403,7 @@ class Component {
     const el=document.getElementById('rail'); let n=0;
     // jump-to-top link → back to the Overview "At a glance" banner (nav utility, not a section)
     let html='<div class="ov-top" data-overview-top style="color:'+this.C.blue+';background:'+this.rgba(this.C.blue,.07)+';border-color:'+this.rgba(this.C.blue,.32)+'"><span class="ov-arrow">↑</span><span class="ov-text">Overview · At a glance</span></div>';
-    html+='<div style="font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
+    html+='<div style="font-family:var(--vw-font-display);font-weight:700;font-size:1.05rem;color:#0A2463;margin-bottom:.9rem;letter-spacing:.04em;padding-bottom:.7rem;border-bottom:1px solid #E2E0D8">In this profile</div>';
     // spine container — one continuous vertical line with nodes
     html+='<div style="position:relative">';
     html+='<div style="position:absolute;left:.78rem;top:.7rem;bottom:.7rem;width:2px;background:#E2E0D8"></div>';
@@ -1392,7 +1412,7 @@ class Component {
       html+=`<div data-theme-node="${th.id}">
         <div data-theme-head="${th.id}" data-target="${first}" style="position:relative;display:flex;align-items:center;gap:.45rem;cursor:pointer;padding:.5rem .5rem .5rem 1.85rem;border-radius:7px;transition:.16s" style-hover="background:#F5F1E8">
           <span data-theme-node-dot style="position:absolute;left:.78rem;top:50%;transform:translate(-50%,-50%);width:.92rem;height:.92rem;border-radius:50%;background:#0A2463;border:2px solid #F5F1E8;box-shadow:0 0 0 2px #0A2463;transition:.16s"></span>
-          <span data-theme-label style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.02em;color:#0A2463;line-height:1">${th.name}</span>
+          <span data-theme-label style="font-family:var(--vw-font-display);font-weight:700;font-size:1.05rem;letter-spacing:.02em;color:#0A2463;line-height:1">${th.name}</span>
           <span data-chev style="margin-left:auto;flex:none;width:1rem;color:#9DB4D6;font-size:.66rem;transition:transform .2s;display:inline-flex;justify-content:center">▼</span>
         </div>
         <ol data-theme-list="${th.id}" style="list-style:none;overflow:hidden;transition:max-height .26s ease;margin:0 0 .25rem">`;
@@ -1447,7 +1467,7 @@ class Component {
       html+=`<div id="theme-${th.id}" data-theme-anchor="${th.id}" style="padding:${ti===0?'0':'1.6rem'} 0 .6rem;scroll-margin-top:96px">
         <div style="font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9DB4D6;margin-bottom:.15rem">Section ${tnum} of ${tot}</div>
         <div style="display:flex;align-items:center;gap:1rem">
-          <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.9rem;color:#0A2463;line-height:1;white-space:nowrap">${th.name}</div>
+          <div style="font-family:var(--vw-font-display);font-weight:800;font-size:1.9rem;color:#0A2463;line-height:1;white-space:nowrap">${th.name}</div>
           <div style="flex:1;height:2px;background:linear-gradient(90deg,#1B4DB1,rgba(27,77,177,0))"></div>
         </div>${th.blurb?`<p style="font-size:1.02rem;color:#5A6472;max-width:74ch;margin-top:.7rem;text-wrap:pretty">${th.blurb}</p>`:''}
       </div>`;
@@ -1464,7 +1484,7 @@ class Component {
           : `<div class="demo-card" style="margin-top:.2rem">${s.chartTitle?`${s.chartEyebrow?`<div class="demo-ct">${s.chartEyebrow}</div>`:''}<div class="demo-ch">${s.chartTitle}</div>${s.chartSub?`<p class="demo-cs">${s.chartSub}</p>`:''}`:''}<div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
         html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7050;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
-          <h3 style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem">${s.title}</h3>
+          <h3 style="font-family:var(--vw-font-display);font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem">${s.title}</h3>
           <p style="font-size:1.02rem;color:#5A6472;max-width:62ch;margin-bottom:1rem;text-wrap:pretty">${s.lede}</p>
           ${body}
         </section>`;
@@ -1477,10 +1497,10 @@ class Component {
   /* ---- Affordability & Housing (section 03) custom bodies ---- */
   housingBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
+    const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
-    const big="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;line-height:.9;color:#0A2463";
+    const big="font-family:var(--vw-font-display);font-weight:800;line-height:.9;color:#0A2463";
     const vs='font-size:.7rem;font-weight:600;color:#5A6472;margin-top:.4rem';
     const sub='font-size:.64rem;color:#5A6472;font-weight:600';
     return `
@@ -1516,11 +1536,11 @@ class Component {
   }
   incomeBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
+    const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
     const lbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-bottom:.15rem';
-    const bigval="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:2.4rem;color:#0A2463;line-height:1";
+    const bigval="font-family:var(--vw-font-display);font-weight:800;font-size:2.4rem;color:#0A2463;line-height:1";
     const vslbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-top:.25rem';
     const row=(name,valId,vsId,chartId)=>`
       <div style="display:grid;grid-template-columns:minmax(0,0.82fr) minmax(0,1.18fr);gap:1.4rem;align-items:center">
@@ -1710,7 +1730,7 @@ class Component {
   industryBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
     const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
-    const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
+    const ch='font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
     return `
       <div style="${card};margin-top:.2rem">
@@ -1725,7 +1745,7 @@ class Component {
             <div style="${ct}">Chart 2 · Industry specialization</div>
             <div style="${ch}">What this region concentrates in vs. Virginia</div>
           </div>
-          <button type="button" data-help="lq" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:'Barlow',sans-serif;font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>How to read this</button>
+          <button type="button" data-help="lq" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:var(--vw-font-body);font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>How to read this</button>
         </div>
         <p style="${cs}">How concentrated each industry is in the local job mix compared with Virginia as a whole. A reading of <b>2.0×</b> means the industry is twice as common here as it is statewide, a local specialty; <b>1.0×</b> (the dashed line) is an even match with the Commonwealth; below 1.0× means it’s less common here than across Virginia. <span style="color:#9DB4D6">(Economists call this the industry’s Location Quotient.)</span></p>
         <div id="c-industry-lq" style="width:100%;height:540px"></div>
@@ -1741,7 +1761,7 @@ class Component {
   businessBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
     const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
-    const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
+    const ch='font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
     return `
       <div style="${card};margin-top:.2rem">
@@ -1750,7 +1770,7 @@ class Component {
             <div style="${ct}">Chart 1 · Formation trend</div>
             <div style="${ch}">How many new businesses are opening</div>
           </div>
-          <button type="button" data-help="newbiz" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:'Barlow',sans-serif;font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>What counts as a new business?</button>
+          <button type="button" data-help="newbiz" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:var(--vw-font-body);font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>What counts as a new business?</button>
         </div>
         <div id="biz-headline" style="margin:.35rem 0 .9rem"></div>
         <p style="${cs}">Each year's bar counts employer businesses that show up in the state's official jobs records for the first time — an early signal of local investment.</p>
@@ -1769,10 +1789,10 @@ class Component {
      Representative data now; shapes swappable to RAPIDS. */
   apprenticeshipsBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem 1.25rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
+    const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
-    const big="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;line-height:.9;color:#0A2463";
+    const big="font-family:var(--vw-font-display);font-weight:800;line-height:.9;color:#0A2463";
     const sub='font-size:.7rem;font-weight:600;color:#5A6472;margin-top:.45rem';
     return `
       <!-- MANIFEST — Apprenticeships (representative data now; shapes swappable to RAPIDS).
@@ -1808,10 +1828,10 @@ class Component {
         </div>
         <div style="border-top:1px solid #EDE9DF;margin-top:.7rem;padding-top:1.1rem;display:flex;align-items:center;justify-content:space-between;gap:1.4rem;flex-wrap:wrap">
           <div style="flex:1 1 340px;min-width:260px">
-            <div style="font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:800;font-size:1.05rem;color:#0A2463;margin-bottom:.3rem">Looking for a specific sponsor?</div>
+            <div style="font-family:var(--vw-font-display);font-weight:800;font-size:1.05rem;color:#0A2463;margin-bottom:.3rem">Looking for a specific sponsor?</div>
             <p style="font-size:.86rem;color:#5A6472;line-height:1.5;margin:0;max-width:62ch">This region has <b id="appr-cta-spon" style="color:#0A2463">—</b> apprenticeship sponsors across <b id="appr-cta-occ" style="color:#0A2463">—</b> occupations. Search every registered sponsor in Virginia by city and occupation on the state apprenticeship directory.</p>
           </div>
-          <a href="https://virginiaworks.gov/explore-registered-apprenticeship/apprenticeship-search/" target="_blank" rel="noopener" style="flex:none;display:inline-flex;align-items:center;gap:.5rem;background:#0A2463;color:#fff;text-decoration:none;font-family:'Greycliff CF','Greycliff','Public Sans',system-ui,sans-serif;font-weight:700;font-size:.92rem;padding:.62rem 1.1rem;border-radius:9px;white-space:nowrap">Search the directory <span style="font-size:.9rem">&#8599;</span></a>
+          <a href="https://virginiaworks.gov/explore-registered-apprenticeship/apprenticeship-search/" target="_blank" rel="noopener" style="flex:none;display:inline-flex;align-items:center;gap:.5rem;background:#0A2463;color:#fff;text-decoration:none;font-family:var(--vw-font-display);font-weight:700;font-size:.92rem;padding:.62rem 1.1rem;border-radius:9px;white-space:nowrap">Search the directory <span style="font-size:.9rem">&#8599;</span></a>
         </div>
       </div>`;
   }
@@ -1822,7 +1842,7 @@ class Component {
   employersBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem';
     const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
-    const ch='font-family:\'Greycliff CF\',\'Greycliff\',\'Public Sans\',system-ui,sans-serif;font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
+    const ch='font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
     // Scope chip — makes statewide-vs-local unmistakable on each element
     const chip=(txt,sw)=>`<span style="display:inline-block;align-self:flex-start;background:${sw?'#EAF1FB':'#F4E8C6'};border:1px solid ${sw?'#C4D6F0':'#E7D3A0'};color:${sw?'#1B4DB1':'#8a6a24'};font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:20px">${txt}</span>`;
@@ -1887,7 +1907,7 @@ class Component {
             <div style="${ct}">${listEyebrow}</div>
             <div style="${ch}">${listHeading}</div>
           </div>
-          <button type="button" id="emp-csv" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.45rem;border:1px solid #0A2463;background:#0A2463;color:#fff;font-family:'Barlow',sans-serif;font-weight:700;font-size:.8rem;padding:.5rem .85rem;border-radius:8px;cursor:pointer;white-space:nowrap">
+          <button type="button" id="emp-csv" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.45rem;border:1px solid #0A2463;background:#0A2463;color:#fff;font-family:var(--vw-font-body);font-weight:700;font-size:.8rem;padding:.5rem .85rem;border-radius:8px;cursor:pointer;white-space:nowrap">
             <span style="font-size:.9rem">&#8595;</span> Download CSV (all 50)
           </button>
         </div>

@@ -14,12 +14,15 @@
  * canonical copy first, then re-sync the per-app copies.
  *
  * Load AFTER the echarts CDN <script>, then pass 'vaWorks' to echarts.init().
- * Font stacks request the licensed brand faces (Greycliff CF for titles, Avenir
- * for body) and fall back to a blocky sans where those files are not bundled.
+ * Chart text renders to <canvas> and can't read CSS variables, so the two font
+ * tokens are resolved from :root ONCE here (this file runs after the <style> in
+ * <head>) and reused. The page's --vw-font-display / --vw-font-body drive them, so
+ * whatever font the client sets flows into the charts. Falls back to a system stack.
  */
 (function () {
-  var TITLE_FONT = "'Greycliff CF','Greycliff','Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif";
-  var BODY_FONT  = "'Avenir Next','Avenir','Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif";
+  var _cs = getComputedStyle(document.documentElement);
+  var TITLE_FONT = _cs.getPropertyValue('--vw-font-display').trim() || "'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif";
+  var BODY_FONT  = _cs.getPropertyValue('--vw-font-body').trim()    || "'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif";
 
   var INK      = '#1C2A3A'; // text, median ticks
   var MUTED    = '#5A6572'; // axis labels, captions (AA-passing; replaces #6B7785)
