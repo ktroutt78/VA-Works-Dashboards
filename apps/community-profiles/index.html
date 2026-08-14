@@ -1182,7 +1182,15 @@ class Component {
                  {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}},
                  {name:'United States',type:'line',data:u.us,smooth:true,symbol:'none',lineStyle:{width:2,color:'#8A94A3'},itemStyle:{color:'#8A94A3'}} ] }); }
     // education
-    c=this.mk('c-edu'); if(c){ const e=d.educationCompare; const S=[[this.current.name,e.msa,'#c89b3c'],['Virginia',e.va,C.blue]];
+    c=this.mk('c-edu'); if(c){ const e=d.educationCompare;
+      // Gold = the SELECTED LOCALITY, blue = the Virginia benchmark. At the statewide
+      // landing there is no locality selected, so the "region" IS Virginia — show it
+      // once (blue) instead of a gold "Commonwealth of Virginia" bar that both violates
+      // the gold=locality convention and duplicates the benchmark.
+      const isStatewide = this.current && this.current.type === 'State';
+      const S = isStatewide
+        ? [['Virginia',e.va,C.blue]]
+        : [[this.current.name,e.msa,'#c89b3c'],['Virginia',e.va,C.blue]];
       // horizontal category labels wrapped to ~2 balanced lines (break on space
       // and after '/') so we avoid angled text — e.g. "Graduate/\nProfessional"
       const wrapLbl=s=>{ const toks=String(s).replace(/\//g,'/ ').split(/\s+/).filter(Boolean); const lines=[]; let cur='';
@@ -1192,7 +1200,14 @@ class Component {
         legend:{bottom:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
         xAxis:{type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:0,fontSize:10,lineHeight:12,formatter:wrapLbl}},
         yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
-        series:S.map(([n,arr,col])=>({name:n,type:'bar',data:arr,itemStyle:{color:col,borderRadius:[3,3,0,0]},barMaxWidth:24})) }); }
+        series:S.map(([n,arr,col])=>({name:n,type:'bar',data:arr,itemStyle:{color:col,borderRadius:[3,3,0,0]},barMaxWidth:24})) });
+      // Keep the card header honest at the statewide landing (no locality to compare).
+      const eduCard=document.getElementById('s-edu');
+      if(eduCard){ const ch=eduCard.querySelector('.demo-ch'), cs=eduCard.querySelector('.demo-cs');
+        if(ch) ch.textContent = isStatewide ? 'Attainment by level, statewide' : 'Attainment by level vs Virginia';
+        if(cs) cs.textContent = isStatewide
+          ? 'The share of adults at each education level across the Commonwealth. Pick a locality to compare it against Virginia.'
+          : 'The share of adults at each education level, this locality against the Commonwealth. Local bars taller than Virginia’s point to a deeper local talent pool at that level.'; } }
     // UI payments
     c=this.mk('c-ui'); if(c){ const peak=Math.max(...d.uiPayments.amount), pi=d.uiPayments.amount.indexOf(peak);
       c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>'$'+fmt(v)},
@@ -1372,7 +1387,7 @@ class Component {
        lede:'The size and shape of the working-age population — the people who make up the local labor supply — shown alongside Virginia for comparison.'},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
        lede:'Educational attainment compared with the Commonwealth — a read on the skills supply employers can draw from.',
-       chartEyebrow:'Educational attainment', chartTitle:'Attainment by level — vs Virginia',
+       chartEyebrow:'Educational attainment', chartTitle:'Attainment by level vs Virginia',
        chartSub:'The share of adults at each education level, this locality against the Commonwealth. Local bars taller than Virginia’s point to a deeper local talent pool at that level.'},
       {id:'s-highered', eyebrow:'Institutions', title:'Higher Education', custom:'highered', fields:['higherEd'],
        lede:'The colleges and universities that feed the region’s degree and credential pipeline — four-year institutions located in the locality, and the community college whose service region covers it.'} ]},
