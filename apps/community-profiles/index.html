@@ -38,6 +38,11 @@
   .demo-ban-cmp .delta{font-weight:700;font-variant-numeric:tabular-nums}
   .demo-ban-cmp .up{color:#2A7050}
   .demo-ban-cmp .down{color:#9F2842}
+  .demo-ban-spark{height:34px;margin-top:10px}
+  .demo-ban-sparkrow{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .demo-ban-sparkrow .demo-ban-spark{flex:1;margin-top:0}
+  .demo-ban-sparkend{font-size:.74rem;font-weight:700;color:#0A2463;font-variant-numeric:tabular-nums;flex:none;line-height:1}
+  .demo-ban-sparklbl{font-size:.64rem;color:#9DB4D6;font-weight:600;letter-spacing:.03em;margin-top:5px;font-variant-numeric:tabular-nums}
   .demo-card{background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.2rem 1.35rem;margin-top:1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)}
   .demo-ct{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6}
   .demo-ch{font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05}
@@ -607,22 +612,24 @@ class Component {
     document.getElementById('help').style.display='flex';
   }
   helpContent(){
-    const bar=(lbl,w,col,txt)=>`<div style="display:flex;align-items:center;gap:.8rem">
+    // Diverging mini-bar: spreads out from the 1.0× center (dashed) — right for >1, left for <1.
+    const bar=(lbl,lq,col,txt)=>{ const d=Math.max(-1,Math.min(1,lq-1))*50, left=d>=0?50:50+d, width=Math.abs(d);
+      return `<div style="display:flex;align-items:center;gap:.8rem">
       <div style="flex:none;width:42px;font-family:var(--vw-font-display);font-weight:800;font-size:1.2rem;color:#0A2463;text-align:right">${lbl}</div>
       <div style="flex:none;width:150px;position:relative;height:22px;background:#F0EEE7;border-radius:5px">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${col};border-radius:5px"></div>
-        <div style="position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:#1A1A1A"></div>
+        <div style="position:absolute;left:${left}%;top:0;bottom:0;width:${width}%;background:${col};border-radius:3px"></div>
+        <div style="position:absolute;left:50%;top:-4px;bottom:-4px;border-left:2px dashed #1A1A1A"></div>
       </div>
-      <div style="flex:1;font-size:.9rem">${txt}</div></div>`;
+      <div style="flex:1;font-size:.9rem">${txt}</div></div>`; };
     return {
       lq:{ title:'How to read this chart',
         body:`
           <p style="margin:0 0 1rem;font-size:1.05rem;color:#1A1A1A"><b>In one line:</b> it shows what your region has <b>more of</b>, and <b>less of</b>, than Virginia as a whole.</p>
-          <p style="margin:0 0 1.1rem">Each industry gets one number comparing its share of <b>local</b> jobs to its share of jobs <b>across all of Virginia</b>. It's a simple multiplier against the statewide average. The black line is the Virginia average (1.0×):</p>
+          <p style="margin:0 0 1.1rem">Each industry gets one number comparing its share of <b>local</b> jobs to its share of jobs <b>across all of Virginia</b>. It's a simple multiplier against the statewide average. Bars spread out from the dashed Virginia average (1.0×), right for more, left for less:</p>
           <div style="display:flex;flex-direction:column;gap:.75rem;margin:0 0 1.25rem">
-            ${bar('2.0×',100,'#c89b3c','<b>Double.</b> Twice as concentrated here as statewide. A strong local specialty.')}
-            ${bar('1.0×',50,'#c89b3c','<b>Even.</b> Exactly the same as Virginia, no more and no less.')}
-            ${bar('0.5×',25,'rgba(200,155,60,.4)','<b>Half.</b> Only half as common here as statewide. Underrepresented.')}
+            ${bar('2.0×',2.0,'#c89b3c','<b>Double.</b> Twice as concentrated here as statewide. A strong local specialty (gold, to the right).')}
+            ${bar('1.0×',1.0,'#c89b3c','<b>Even.</b> Exactly the same as Virginia, sitting right on the line.')}
+            ${bar('0.5×',0.5,'#9DB4D6','<b>Half.</b> Only half as common here as statewide. Under-represented (grey, to the left).')}
           </div>
           <div style="background:#F5F8FD;border:1px solid #DCE4F0;border-radius:10px;padding:.9rem 1rem;margin:0 0 1.15rem">
             <div style="font-weight:700;color:#0A2463;margin-bottom:.35rem;font-size:.88rem">A concrete example</div>
@@ -633,7 +640,7 @@ class Component {
               <li><b>0.5×</b> → it's about <b>4%</b> of local jobs (half)</li>
             </ul>
           </div>
-          <p style="margin:0"><b>On the chart:</b> bars to the <b style="color:#c89b3c">right of the dashed line</b> are your region's specialties (more than Virginia); bars to the <b>left</b> are industries the region has less of than the rest of the state.</p>` },
+          <p style="margin:0"><b>On the chart:</b> <b style="color:#c89b3c">gold bars to the right</b> of the dashed line are your region's specialties (more concentrated than Virginia); <b style="color:#7C8DA6">grey bars to the left</b> are sectors the region has less of. Only the five most and five least concentrated sectors are shown.</p>` },
       newbiz:{ title:'What counts as a new business?',
         body:`
           <p style="margin:0 0 1.1rem;font-size:1.05rem;color:#1A1A1A">A new business is an employer that appears in the state's official payroll records (QCEW) for the very first time. When a business hires its first employees and registers with the state, it gets counted here — so each year's bar is that year's brand-new arrivals.</p>
@@ -771,7 +778,7 @@ class Component {
         </div>
       </div>`;
     const el=document.getElementById('overview'); if(el) el.innerHTML=html;
-    const spark=(id,arr,color)=>{ const c=this.mk(id); if(!c) return; c.setOption({ grid:{left:2,right:2,top:6,bottom:4}, xAxis:{type:'category',show:false,boundaryGap:false,data:arr.map((_,i)=>i)}, yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false}, series:[{type:'line',data:arr,smooth:true,symbol:'none',lineStyle:{width:2.5,color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(color,.26)},{offset:1,color:this.rgba(color,0)}])}}] }); };
+    const spark=(id,arr,color)=>{ const c=this.mk(id); if(!c) return; c.setOption({ grid:{left:2,right:2,top:6,bottom:4}, xAxis:{type:'category',show:false,boundaryGap:false,data:arr.map((_,i)=>i)}, yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false}, series:[{type:'line',data:arr,smooth:false,symbol:'none',lineStyle:{width:2.5,color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(color,.26)},{offset:1,color:this.rgba(color,0)}])}}] }); };
     // both KPI sparklines share one line color — the metric differs, the encoding shouldn't.
     // light blue so the line reads on the hero's blue background (cards are now transparent).
     spark('ov-gdp-spark', d.gdpTrend, '#9DC0F2');
@@ -867,8 +874,26 @@ class Component {
     const costf=0.82+rnd()*0.4; const weeklyWage=wageBase.map(([n,v])=>({name:n, value:Math.round(v*costf*j(0.05))})); const wageAll=weeklyWage.find(w=>w.name.includes('Total')).value;
     // unemployment
     const uy=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
-    const u0=3.4+rnd()*1.8; const mk=(off,spike)=>uy.map((y,i)=>{ let v; if(y==='2020') v=spike; else { v=u0+off+ (i<5? (5-i)*0.25 : -(i-5)*0.15) + (rnd()-0.5)*0.4; } return +Math.max(2,v).toFixed(1); });
-    const unemployment={years:uy, msa:mk(0,8.5+rnd()*4), va:mk(0.2,9.8), us:mk(0.6,11.1)};
+    // Illustrative unemployment: a smooth gentle decline across the period. No 2020 COVID spike
+    // by design (clients kept fixating on the illustrative bump); real County/City LAUS is untouched.
+    const u0=3.4+rnd()*1.8; const mk=off=>uy.map((y,i)=>{ const v=u0+off+ (i<5? (5-i)*0.25 : -(i-5)*0.15) + (rnd()-0.5)*0.4; return +Math.max(2,v).toFixed(1); });
+    const unemployment={years:uy, msa:mk(0), va:mk(0.2), us:mk(0.6)};
+    // Labor force participation rate (ACS S2301) illustrative: gently varying near ~62%, Virginia
+    // a touch higher than the locality. County-available via ACS S2301 (annual) when wired.
+    const lf0=61.5+rnd()*2.5; const lfMk=off=>uy.map((y,i)=>{ const v=lf0+off+ (i<5? (5-i)*0.1 : -(i-5)*0.08) + (rnd()-0.5)*0.5; return +Math.min(70,Math.max(56,v)).toFixed(1); });
+    const lfpr={years:uy, msa:lfMk(0), va:lfMk(1.4)};
+    /* Commuting patterns (Census LEHD LODES). GEOGRAPHY-AGNOSTIC CONTRACT: the selected geography may
+       be one county OR a set of counties (MSA / GO Virginia / LWDA / statewide). The pipeline
+       aggregates LODES origin→destination flows over the member county FIPS (this.current.fips),
+       collapses ALL intra-area flows into a single {self:true} row (live and work within the area),
+       and lists the top external destinations (to) / origins (from) as {area, workers}. Ranked
+       descending, top 10. Rendering labels the self row from this.current (the locality name, or
+       "Within <name>" for aggregates) so no name is baked into the data here. */
+    const commutePool=['Fairfax County, VA','Virginia Beach city, VA','Norfolk city, VA','Henrico County, VA','Chesterfield County, VA','Richmond city, VA','Loudoun County, VA','Prince William County, VA','Chesapeake city, VA','Newport News city, VA','Arlington County, VA','Alexandria city, VA','Hampton city, VA','Roanoke city, VA','Prince George’s County, MD','Montgomery County, MD','Washington, DC','Wicomico County, MD','Worcester County, MD'];
+    const commuteList=()=>{ const pool=[...commutePool], out=[{self:true, workers:900+Math.round(rnd()*700)}]; let base=out[0].workers*(0.5+rnd()*0.22);
+      for(let i=0;i<9;i++){ const a=pool.splice(Math.floor(rnd()*pool.length),1)[0]||('Locality '+(i+1)); out.push({area:a, workers:Math.round(base)}); base*=(0.72+rnd()*0.15); }
+      return out.sort((a,b)=>b.workers-a.workers); };
+    const commutePlaces={ to:commuteList(), from:commuteList() };
     // UI payments
     const uiBase=jobs*55; const uiPayments={years:uy, amount:uy.map(y=> y==='2020'?Math.round(uiBase*9*j(0.1)): Math.round(uiBase*j(0.18)) )};
     // education compare (%) \u2014 grounded on Census ACS S1501 "Educational
@@ -891,7 +916,11 @@ class Component {
     const empGov=100-empPriv;
     const _fw=0.3+rnd()*0.35,_sw=0.3+rnd()*0.35,_lw=0.3+rnd()*0.35,_ws2=_fw+_sw+_lw;
     const empFed=Math.round(empGov*_fw/_ws2), empStateO=Math.round(empGov*_sw/_ws2), empLocal=empGov-empFed-empStateO;
-    const employers={ list:this.empTop50(), ownership:{ privatePct:empPriv, govPct:empGov, federalPct:empFed, statePct:empStateO, localPct:empLocal } };
+    // Establishment counts bucketed into small/med/large for the size donut (small dominates, as
+    // in real QCEW SizeDesc distributions). Illustrative until the size-band counts are wired.
+    const estTotal=Math.max(400,Math.round(jobs/14)), estS=Math.round(estTotal*0.86), estM=Math.round(estTotal*0.11);
+    const sizeDist=[ {name:'Small (0–49)', value:estS}, {name:'Medium (50–249)', value:estM}, {name:'Large (250+)', value:estTotal-estS-estM} ];
+    const employers={ list:this.empTop50(), ownership:{ privatePct:empPriv, govPct:empGov, federalPct:empFed, statePct:empStateO, localPct:empLocal }, sizeDist };
     const medianIncome=Math.round((58000+rnd()*42000)/500)*500;
     // overview: GDP + population sparkline series + latest unemployment
     const ovYears=['2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
@@ -937,7 +966,9 @@ class Component {
     // heavy sectors lead). Aligned to indNames; totals last year's formations.
     const bizProp=[0.2,8,12,14,11,3,15,9,4,2,6,4,10,3,6,3,1,2,0.3,0.3].map(w=>w*j(0.3));
     const bpS=bizProp.reduce((a,b)=>a+b,0), lastForm=bizForm[bizForm.length-1];
-    const bizByIndustry=indNames.map((n,i)=>({name:n, value:Math.round(lastForm*bizProp[i]/bpS)}));
+    // value = count of new businesses last year; growth = illustrative YoY % change in formations
+    // for that sector (used by the "top 5 by growth" chart until QCEW formation data is wired).
+    const bizByIndustry=indNames.map((n,i)=>({name:n, value:Math.round(lastForm*bizProp[i]/bpS), growth:+(-6+rnd()*34).toFixed(1)}));
     const business={ years:byrs, formations:bizForm, byIndustry:bizByIndustry, lastYear:byrs[byrs.length-1] };
     // Apprenticeships (RAPIDS, wired later) — representative breakdowns for the
     // selected geography: active apprentices by occupation / industry / sponsor.
@@ -960,13 +991,13 @@ class Component {
     const homeNow=housing.medianHomeValue, homeYoY=+(4+rnd()*2.5).toFixed(1);
     const homeTrend=[]; for(let i=0;i<8;i++) homeTrend.push(i===7?homeNow:Math.round(homeNow/Math.pow(1+homeYoY/100,7-i)*j(0.012)));
     const burdenRegion=[ +(28+rnd()*8).toFixed(1), +(20+rnd()*5).toFixed(1), +(9+rnd()*4).toFixed(1) ];
-    const vaMedianIncome=83200, discretionary=Math.round((medianIncome*0.33+(rnd()-0.5)*4000)/100)*100, vaDiscretionary=26100;
+    const vaMedianIncome=83200;
     const afford={ totalUnits, occupied, occupancyRate, occVsVa:+(occupancyRate-vaOccupancy).toFixed(1), vaOccupancy,
       avgHHSize, vaHHSize, ownPct, rentPct, ownCount, rentCount,
       rentNow, rentYoY, rentTrend, homeNow, homeYoY, homeTrend,
       burdenCats:['Renting','Owning (mortgage)','Owning (no mortgage)'], burdenRegion, burdenVa:[29.1,21.5,10.4],
-      medianIncome, vaMedianIncome, discretionary, vaDiscretionary };
-    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct}, medianIncome, topEmployers, employers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
+      medianIncome, vaMedianIncome };
+    return { population, ageCohorts, populationChange, projectedFrom:'2024', race, industryEmployment, weeklyWage, wageAll, unemployment, lfpr, commutePlaces, uiPayments, educationCompare:{categories:eduCats, msa:msaPct, va:vaPct}, medianIncome, topEmployers, employers, ovYears, popTrend, gdp, gdpTrend, unempLatest, unempLatestYear,
       householdIncome, housing, costOfLiving, laborForce, occupations, commute, business, apprenticeships, afford };
   }
   /* ===================== END MOCK DATA ===================== */
@@ -1070,33 +1101,79 @@ class Component {
     const setTxt=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
     // locality spans (present only in whichever mode renders them; setTxt is null-safe)
     ['emp-locality','emp-locality2','emp-locality3','emp-locality4','emp-locality5'].forEach(id=>setTxt(id,locName));
-    // Quick-read BANs (compliant): list size + local private-sector share.
-    // NOTE: the count is of ROWS in the list, never an employment total.
-    setTxt('emp-ban-count', this.fmt(d.employers.list.length));
-    setTxt('emp-ban-private', d.employers.ownership.privatePct+'%');
-    // Named list table — top 25 visible; full 50 via CSV. Size column is the
-    // SizeDesc band label only (no counts). Data-driven from empColumns().
-    const tbl=document.getElementById('emp-table');
-    if(tbl){ const rows=d.employers.list.slice(0,25);
-      const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;padding:.5rem .7rem;border-bottom:2px solid #E2E0D8';
-      const head='<thead><tr>'+cols.map(c=>`<th style="text-align:${c.align};${th}">${c.label}</th>`).join('')+'</tr></thead>';
-      const body='<tbody>'+rows.map((r,i)=>`<tr style="background:${i%2?'#fff':'#F8FAFD'}">`+
-        cols.map(c=>`<td style="text-align:${c.align};padding:.5rem .7rem;font-size:.9rem;color:#1A1A1A;border-bottom:1px solid #EDEEF1;${c.label==='Employer'?'font-weight:600;':''}${c.label==='Size'?'color:#5A6472;font-variant-numeric:tabular-nums;':''}">${c.td?c.td(r):c.cell(r)}</td>`).join('')+'</tr>').join('')+'</tbody>';
-      tbl.innerHTML=head+body; }
+    // Named list table — sortable columns + Industry/Ownership/Size filters and name search.
+    // Compliance: display fields only (SizeDesc band, never a count). Rendered by renderEmpTable().
+    this._empSort=this._empSort||{col:'Rank',dir:1};
+    this._empFilter=this._empFilter||{search:'',industry:'',ownership:'',size:''};
+    { const uniq=a=>[...new Set(a)].sort(), L=d.employers.list;
+      const fill=(id,vals,all)=>{ const s=document.getElementById(id); if(!s) return; const cur=s.value; s.innerHTML=`<option value="">${all}</option>`+vals.map(v=>`<option value="${v}">${v}</option>`).join(''); s.value=cur; };
+      fill('emp-f-industry', uniq(L.map(r=>r.industry)), 'All industries');
+      fill('emp-f-ownership', uniq(L.map(r=>r.ownership)), 'All ownership');
+      fill('emp-f-size', uniq(L.map(r=>r.size)), 'All sizes');
+      const g=id=>{ const e=document.getElementById(id); return e?e.value:''; };
+      const readFilters=()=>{ this._empFilter={search:g('emp-search'),industry:g('emp-f-industry'),ownership:g('emp-f-ownership'),size:g('emp-f-size')}; this.renderEmpTable(); };
+      ['emp-search','emp-f-industry','emp-f-ownership','emp-f-size'].forEach(id=>{ const e=document.getElementById(id); if(e){ e.oninput=readFilters; e.onchange=readFilters; } });
+      const clr=document.getElementById('emp-clear'); if(clr) clr.onclick=()=>{ ['emp-search','emp-f-industry','emp-f-ownership','emp-f-size'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';}); this._empFilter={search:'',industry:'',ownership:'',size:''}; this.renderEmpTable(); };
+      const tbl=document.getElementById('emp-table');
+      if(tbl && !tbl._sortWired){ tbl._sortWired=true; tbl.addEventListener('click', e=>{ const th=e.target.closest('th[data-col]'); if(!th) return; const col=th.dataset.col; if(this._empSort.col===col) this._empSort.dir*=-1; else this._empSort={col,dir:1}; this.renderEmpTable(); }); }
+      this.renderEmpTable();
+    }
     // CSV export
     const btn=document.getElementById('emp-csv'); if(btn) btn.onclick=()=>this.downloadEmployersCsv();
-    // Locality ownership split — 100% stacked horizontal bar (private + gov tiers)
+    // Distribution of jobs by employer type — treemap: Private vs Government, with Government
+    // broken into Federal / State / Local. Rectangle area = share of jobs.
     const o=d.employers.ownership, c=this.mk('c-emp-ownership');
-    if(c){ const seg=(name,val,color)=>({name,type:'bar',stack:'own',barWidth:46,data:[val],itemStyle:{color},
-        label:{show:val>=6,position:'inside',formatter:`${val}%`,color:'#fff',fontFamily:F,fontWeight:700,fontSize:12}});
-      c.setOption({ grid:{left:6,right:6,top:8,bottom:8,containLabel:true},
-        tooltip:{trigger:'item',formatter:p=>`${p.seriesName}<br/><b>${p.value}%</b> of jobs`},
-        legend:{bottom:0,itemWidth:12,itemHeight:12,itemGap:16,textStyle:{fontFamily:F,color:C.slate,fontSize:12}},
-        xAxis:{type:'value',max:100,show:false}, yAxis:{type:'category',data:[''],show:false},
-        series:[ seg('Private',o.privatePct,'#2A7050'), seg('Federal',o.federalPct,'#1B4DB1'), seg('State',o.statePct,'#5BA3D0'), seg('Local',o.localPct,'#E8A33D') ] }); }
+    if(c){ c.setOption({
+        tooltip:{formatter:p=>`${p.name}<br/><b>${p.value}%</b> of jobs`},
+        series:[{ type:'treemap', roam:false, nodeClick:false, breadcrumb:{show:false}, top:2, left:2, right:2, bottom:2,
+          label:{show:true,formatter:p=>`${p.name}\n${p.value}%`,fontFamily:F,fontWeight:700,fontSize:13,color:'#fff',lineHeight:16},
+          itemStyle:{borderColor:'#fff',borderWidth:2,gapWidth:2},
+          levels:[{itemStyle:{borderWidth:0,gapWidth:3}},{itemStyle:{gapWidth:2}}],
+          data:[
+            {name:'Private', value:o.privatePct, itemStyle:{color:'#2A7050'}},
+            {name:'Government', value:o.govPct, itemStyle:{color:'#0A2463'}, children:[
+              {name:'Federal', value:o.federalPct, itemStyle:{color:'#1B4DB1'}},
+              {name:'State', value:o.statePct, itemStyle:{color:'#5BA3D0'}},
+              {name:'Local', value:o.localPct, itemStyle:{color:'#E8A33D'}} ]}
+          ] }] }); }
     // one-line fact
     const fEl=document.getElementById('f-emp-ownership');
     if(fEl) fEl.innerHTML=`<b style="color:#0A2463">In ${locName}, ${o.privatePct}% of jobs are private sector</b> and ${o.govPct}% are government (Federal ${o.federalPct}%, State ${o.statePct}%, Local ${o.localPct}%).`;
+    // Employers by size — donut bucketed into small / medium / large (center = total employers).
+    const cSize=this.mk('c-emp-size');
+    if(cSize){ const sd=d.employers.sizeDist, tot=sd.reduce((a,r)=>a+r.value,0), COL=['#9DC0F2','#2E6BD6','#0A2463'];
+      cSize.setOption({
+        title:{text:this.fmt(tot),subtext:'employers',left:'50%',top:'35%',textAlign:'center',itemGap:3,
+          textStyle:{fontFamily:this.FONT_DISPLAY,fontWeight:800,fontSize:22,color:'#0A2463'},subtextStyle:{fontFamily:F,fontSize:11,color:C.slate}},
+        tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${this.fmt(p.value)}</b> employers · ${p.percent}%`},
+        legend:{bottom:0,itemWidth:12,itemHeight:12,textStyle:{fontFamily:F,color:C.slate,fontSize:12}},
+        series:[{type:'pie',radius:['54%','78%'],center:['50%','44%'],avoidLabelOverlap:true,itemStyle:{borderColor:'#fff',borderWidth:2},
+          label:{show:true,position:'outside',formatter:p=>`${p.percent}%`,fontFamily:F,fontWeight:700,fontSize:11,color:C.slate},labelLine:{length:8,length2:8},
+          data:sd.map((r,i)=>({name:r.name,value:r.value,itemStyle:{color:COL[i]}})) }] }); }
+  }
+  /* Applies the active filters + sort to the employer list and re-renders the table. Called on
+     first render and on every filter/sort change. Sort key is per-column (Size uses band rank). */
+  renderEmpTable(){
+    const d=this.data; if(!d||!d.employers) return;
+    const tbl=document.getElementById('emp-table'); if(!tbl) return;
+    const cols=this.empColumns(), f=this._empFilter||{}, s=this._empSort||{col:'Rank',dir:1};
+    const sizeRank={'1,000+':2,'500-999':1};
+    let rows=d.employers.list.filter(r=>
+      (!f.search || r.name.toLowerCase().includes(f.search.toLowerCase())) &&
+      (!f.industry || r.industry===f.industry) &&
+      (!f.ownership || r.ownership===f.ownership) &&
+      (!f.size || r.size===f.size));
+    const val=(r,k)=> k==='Size'?(sizeRank[r.size]||0) : k==='Employer'?r.name.toLowerCase() : k==='Industry'?r.industry.toLowerCase() : k==='Ownership'?r.ownership.toLowerCase() : r.rank;
+    rows=rows.slice().sort((a,b)=>{ const av=val(a,s.col), bv=val(b,s.col); return av<bv?-s.dir : av>bv?s.dir : 0; });
+    const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;padding:.5rem .7rem;border-bottom:2px solid #E2E0D8';
+    const arr=c=> s.col===c ? `<span style="color:#0A2463"> ${s.dir>0?'▲':'▼'}</span>` : '<span style="color:#C4CEDB"> ⇅</span>';
+    const head='<thead><tr>'+cols.map(c=>`<th data-col="${c.label}" title="Sort by ${c.label}" style="cursor:pointer;user-select:none;white-space:nowrap;text-align:${c.align};${th}">${c.label}${arr(c.label)}</th>`).join('')+'</tr></thead>';
+    const body='<tbody>'+(rows.length?rows.map((r,i)=>`<tr style="background:${i%2?'#fff':'#F8FAFD'}">`+
+      cols.map(c=>`<td style="text-align:${c.align};padding:.5rem .7rem;font-size:.9rem;color:#1A1A1A;border-bottom:1px solid #EDEEF1;${c.label==='Employer'?'font-weight:600;':''}${c.label==='Size'?'color:#5A6472;font-variant-numeric:tabular-nums;':''}">${c.td?c.td(r):c.cell(r)}</td>`).join('')+'</tr>').join('')
+      :`<tr><td colspan="${cols.length}" style="padding:1.1rem .7rem;color:#9DB4D6;font-size:.88rem">No employers match these filters.</td></tr>`)+'</tbody>';
+    tbl.innerHTML=head+body;
+    const cnt=document.getElementById('emp-count'), active=f.search||f.industry||f.ownership||f.size;
+    if(cnt) cnt.innerHTML=`Showing <b>${rows.length}</b> of ${d.employers.list.length}${active?' (filtered)':''}. Click a column to sort. Size is the employer’s size band, not a headcount.`;
   }
   downloadEmployersCsv(){
     if(!this.data||!this.data.employers) return;
@@ -1119,6 +1196,7 @@ class Component {
   renderCharts(d){
     const C=this.C, F=this.FONT, fmt=n=>this.fmt(n), ax=this.axis(), grid={left:8,right:24,top:28,bottom:8,containLabel:true};
     this.renderDemographics(d);   // Population & Age (s-pop) — arch-driven illustrative section
+    this.renderCommuting(d);      // Commuting Patterns (s-commute) — LODES top-10 to/from tables
     this.renderHigherEd();        // Higher Education (s-highered) — arch-driven illustrative directory
     // pyramid
     let c=this.mk('c-pyramid'); if(c) c.setOption({
@@ -1136,8 +1214,8 @@ class Component {
         legend:{data:['Recorded','Projected'],top:0,textStyle:{fontFamily:F,color:C.slate}},
         xAxis:{type:'category',data:d.populationChange.map(r=>r.year),...ax,boundaryGap:false},
         yAxis:{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>(v/1000).toFixed(0)+'k'}},
-        series:[ {name:'Recorded',type:'line',data:actual,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.22)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
-                 {name:'Projected',type:'line',data:proj,smooth:true,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.gold,type:'dashed'},itemStyle:{color:C.gold},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(200,155,60,.18)'},{offset:1,color:'rgba(200,155,60,0)'}])}} ] }); }
+        series:[ {name:'Recorded',type:'line',data:actual,smooth:false,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.blue},itemStyle:{color:C.blue},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(27,77,177,.22)'},{offset:1,color:'rgba(27,77,177,0)'}])}},
+                 {name:'Projected',type:'line',data:proj,smooth:false,symbol:'circle',symbolSize:8,lineStyle:{width:3.5,color:C.gold,type:'dashed'},itemStyle:{color:C.gold},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(200,155,60,.18)'},{offset:1,color:'rgba(200,155,60,0)'}])}} ] }); }
     // race
     c=this.mk('c-race'); if(c) c.setOption({ tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> (${p.percent}%)`},
       legend:{type:'scroll',bottom:0,textStyle:{fontFamily:F,color:C.slate,fontSize:11}},
@@ -1149,23 +1227,36 @@ class Component {
     { const hash=s=>{let h=2166136261;for(let i=0;i<String(s).length;i++){h^=String(s).charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
       d.industryEmployment.forEach(r=>{ if(r.growth==null) r.growth=+(((hash(r.name)%200)/10)-8).toFixed(1);
         if(r.lq==null) r.lq=+(0.45+(hash('lq'+r.name)%195)/100).toFixed(2); }); }
-    // industry — Card 1: employment by sector + 5-yr trend arrow
+    // industry, Card 1: employment by sector as a lollipop (thick stem + dot). Sector names wrap
+    // to two lines; the x-axis carries the jobs scale; the 5-yr growth lives in the tooltip.
     c=this.mk('c-industry'); if(c){ const rows=[...d.industryEmployment].sort((a,b)=>a.value-b.value);
-      c.setOption({ grid:{...grid,left:8,right:110}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],g=r.data.growth;return `${r.name}<br/><b>${fmt(r.value)}</b> jobs<br/>${g>=0?'▲':'▼'} ${Math.abs(g)}% over 5 yrs`;}},
-        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
-        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,growth:r.growth,itemStyle:{color:C.blue,borderRadius:[0,4,4,0]}})),
-          label:{show:true,position:'right',formatter:p=>`{v|${fmt(p.value)}}  {${p.data.growth>=0?'up':'dn'}|${p.data.growth>=0?'▲':'▼'}${Math.abs(p.data.growth)}%}`,rich:{v:{color:C.slate,fontFamily:F,fontSize:10},up:{color:C.green,fontFamily:F,fontSize:10,fontWeight:700},dn:{color:'#9F2842',fontFamily:F,fontSize:10,fontWeight:700}}}}] }); }
-    // industry — Card 2: Location Quotient, framed for lay readers as a
-    // "× vs Virginia" multiplier (same math, self-describing label)
-    c=this.mk('c-industry-lq'); if(c){ const rows=[...d.industryEmployment].filter(r=>r.value>0).sort((a,b)=>a.lq-b.lq);
-      c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],v=r.data.value;return `${r.name}<br/><b>${v.toFixed(1)}×</b> as concentrated as Virginia<br/><span style="opacity:.65">Location Quotient ${v.toFixed(2)}</span>`;}},
-        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // per-bar × labels + the 1.0× line carry the scale
-        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-        series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.lq,itemStyle:{color:r.lq>=1?C.gold:this.rgba(C.gold,.4),borderRadius:[0,4,4,0]}})),
-          label:{show:true,position:'right',formatter:p=>p.data.value.toFixed(1)+'×',color:C.slate,fontFamily:F,fontSize:10},
-          markLine:{symbol:'none',silent:true,lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5},data:[{xAxis:1}],
-            label:{show:true,position:'end',rotate:0,formatter:'Virginia avg',color:'#1A1A1A',fontFamily:F,fontWeight:700,fontSize:10,backgroundColor:'rgba(255,255,255,.92)',padding:[3,5],borderRadius:3}}}] }); }
+      // wrap long sector names onto two balanced lines (split at the word boundary nearest the middle).
+      const wrap2=s=>{ s=String(s); if(s.length<=16) return s; const w=s.split(' '); if(w.length<2) return s;
+        let run=0,best=0,bd=1e9; for(let i=0;i<w.length-1;i++){ run+=w[i].length+1; const dd=Math.abs(run-s.length/2); if(dd<bd){bd=dd;best=i;} }
+        return w.slice(0,best+1).join(' ')+'\n'+w.slice(best+1).join(' '); };
+      c.setOption({ grid:{...grid,left:8,right:24},
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const s=p.find(x=>x.seriesIndex===1)||p[0]; const val=Array.isArray(s.value)?s.value[0]:s.value; const g=s.data&&s.data.growth; return `${s.axisValue}<br/><b>${fmt(val)}</b> jobs${g!=null?`<br/><span style="color:${g>=0?'#2A7050':'#9F2842'};font-weight:700">${g>=0?'▲':'▼'} ${Math.abs(g)}%</span> over 5 yrs`:''}`;}},
+        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,formatter:v=>v>=1000?(v/1000).toFixed(0)+'k':v},splitLine:{show:true,lineStyle:{color:'#F0EEE7'}}},
+        yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLine:{show:false},axisLabel:{...ax.axisLabel,fontSize:13,lineHeight:16,formatter:wrap2}},
+        series:[
+          {type:'bar',barWidth:6,z:1,silent:true,data:rows.map(r=>r.value),itemStyle:{color:this.rgba(C.blue,.4),borderRadius:3}},
+          {type:'scatter',z:2,symbolSize:16,data:rows.map(r=>({value:[r.value,r.name],growth:r.growth,itemStyle:{color:C.blue}}))}
+        ] }); }
+    // industry, Card 2: Regional Industry Concentration as a DIVERGING chart around the 1.0×
+    // Virginia baseline (x=0). Only the top 5 (most concentrated) and bottom 5 (least) show;
+    // bars right = local specialties (LQ>1, gold), left = under-represented (LQ<1, grey).
+    c=this.mk('c-industry-lq'); if(c){
+      const all=[...d.industryEmployment].filter(r=>r.value>0).sort((a,b)=>a.lq-b.lq);
+      const sel=[...all.slice(0,5), ...all.slice(-5)];   // ascending LQ: lowest at bottom, highest at top
+      c.setOption({ grid:{...grid,left:8,right:56},
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0],lq=r.data.lq;return `${r.axisValue}<br/><b>${lq.toFixed(1)}×</b> as concentrated as Virginia<br/><span style="opacity:.65">Location Quotient ${lq.toFixed(2)}</span>`;}},
+        xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:10,formatter:v=>(v+1).toFixed(1)+'×'},splitLine:{show:true,lineStyle:{color:'#F0EEE7'}}},
+        yAxis:{type:'category',data:sel.map(r=>r.name),...ax,axisTick:{show:false},axisLine:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:170,overflow:'truncate'}},
+        series:[{type:'bar',barMaxWidth:16,data:sel.map(r=>{const div=+(r.lq-1).toFixed(2), spec=r.lq>=1;
+          return {value:div, lq:r.lq, itemStyle:{color:spec?C.gold:'#9DB4D6',borderRadius:2},
+            label:{show:true,position:spec?'right':'left',formatter:r.lq.toFixed(1)+'×',color:C.slate,fontFamily:F,fontSize:10,fontWeight:700}};}),
+          markLine:{symbol:'none',silent:true,lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5},data:[{xAxis:0}],
+            label:{show:true,position:'end',formatter:'Virginia avg (1.0×)',color:'#1A1A1A',fontFamily:F,fontWeight:700,fontSize:10,backgroundColor:'rgba(255,255,255,.92)',padding:[3,5],borderRadius:3}}}] }); }
     // wages
     c=this.mk('c-wages'); if(c){ const rows=[...d.weeklyWage].sort((a,b)=>a.value-b.value); const avg=d.wageAll;
       c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>'$'+fmt(v)+'/wk'},
@@ -1178,9 +1269,9 @@ class Component {
       c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>v+'%'},
         legend:{data:[this.current.name,'Virginia','United States'],top:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:18,itemHeight:3},
         xAxis:{type:'category',data:u.years,...ax,boundaryGap:false}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
-        series:[ {name:this.current.name,type:'line',data:u.msa,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:'#c89b3c'},itemStyle:{color:'#c89b3c'}},
-                 {name:'Virginia',type:'line',data:u.va,smooth:true,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}},
-                 {name:'United States',type:'line',data:u.us,smooth:true,symbol:'none',lineStyle:{width:2,color:'#8A94A3'},itemStyle:{color:'#8A94A3'}} ] }); }
+        series:[ {name:this.current.name,type:'line',data:u.msa,smooth:false,symbol:'circle',symbolSize:6,lineStyle:{width:3.5,color:'#c89b3c'},itemStyle:{color:'#c89b3c'}},
+                 {name:'Virginia',type:'line',data:u.va,smooth:false,symbol:'none',lineStyle:{width:2,color:C.blue},itemStyle:{color:C.blue}},
+                 {name:'United States',type:'line',data:u.us,smooth:false,symbol:'none',lineStyle:{width:2,color:'#8A94A3'},itemStyle:{color:'#8A94A3'}} ] }); }
     // education
     c=this.mk('c-edu'); if(c){ const e=d.educationCompare;
       // Gold = the SELECTED LOCALITY, blue = the Virginia benchmark. At the statewide
@@ -1188,23 +1279,36 @@ class Component {
       // once (blue) instead of a gold "Commonwealth of Virginia" bar that both violates
       // the gold=locality convention and duplicates the benchmark.
       const isStatewide = this.current && this.current.type === 'State';
-      const S = isStatewide
-        ? [['Virginia',e.va,C.blue]]
-        : [[this.current.name,e.msa,'#c89b3c'],['Virginia',e.va,C.blue]];
+      // Comparison view = OVERLAPPING bars (Target-vs-Actual style): the locality bar
+      // sits narrow in front of the wider Virginia benchmark, sharing one baseline, so
+      // over/under-performance vs the Commonwealth reads at a glance. Statewide landing
+      // has no locality to compare, so it shows Virginia alone at full width.
+      const eduSeries = isStatewide
+        ? [{name:'Virginia',type:'bar',data:e.va,itemStyle:{color:C.blue,borderRadius:[3,3,0,0]},barWidth:'42%'}]
+        : [ {name:'Virginia',type:'bar',xAxisIndex:0,data:e.va,itemStyle:{color:C.blue,borderRadius:[3,3,0,0]},barWidth:'62%',z:1},
+            {name:this.current.name,type:'bar',xAxisIndex:1,data:e.msa,itemStyle:{color:C.gold,borderRadius:[3,3,0,0]},barWidth:'30%',z:2} ];
       // horizontal category labels wrapped to ~2 balanced lines (break on space
       // and after '/') so we avoid angled text — e.g. "Graduate/\nProfessional"
       const wrapLbl=s=>{ const toks=String(s).replace(/\//g,'/ ').split(/\s+/).filter(Boolean); const lines=[]; let cur='';
         toks.forEach(w=>{ const sep=cur&&!cur.endsWith('/')?' ':''; const cand=cur+sep+w; if(cur&&cand.length>11){ lines.push(cur); cur=w; } else cur=cand; });
         if(cur) lines.push(cur); return lines.join('\n'); };
-      c.setOption({ grid:{...grid,top:12,bottom:40}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'},
+      const xMain={type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:0,fontSize:10,lineHeight:12,formatter:wrapLbl}};
+      // Nested overlapping bars put each series on its own category axis so the widths can
+      // differ while both center on the same tick; axis 1 is a hidden mirror of axis 0.
+      const xEdu = isStatewide ? xMain : [xMain, {type:'category',data:e.categories,show:false}];
+      const eduTip = isStatewide
+        ? {trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'%'}
+        : {trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const i=p[0].dataIndex;
+            return `<b>${e.categories[i]}</b><br/>${this.current.name}: ${e.msa[i]}%<br/>Virginia: ${e.va[i]}%`;}};
+      c.setOption({ grid:{...grid,top:12,bottom:40}, tooltip:eduTip,
         legend:{bottom:0,textStyle:{fontFamily:F,color:C.slate},itemWidth:13,itemHeight:13},
-        xAxis:{type:'category',data:e.categories,...ax,axisLabel:{...ax.axisLabel,interval:0,rotate:0,fontSize:10,lineHeight:12,formatter:wrapLbl}},
+        xAxis:xEdu,
         yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
-        series:S.map(([n,arr,col])=>({name:n,type:'bar',data:arr,itemStyle:{color:col,borderRadius:[3,3,0,0]},barMaxWidth:24})) });
+        series:eduSeries });
       // Keep the card header honest at the statewide landing (no locality to compare).
       const eduCard=document.getElementById('s-edu');
       if(eduCard){ const ch=eduCard.querySelector('.demo-ch'), cs=eduCard.querySelector('.demo-cs');
-        if(ch) ch.textContent = isStatewide ? 'Attainment by level, statewide' : 'Attainment by level vs Virginia';
+        if(ch) ch.textContent = isStatewide ? 'Educational Attainment, statewide' : 'Educational Attainment Comparison';
         if(cs) cs.textContent = isStatewide
           ? 'The share of adults at each education level across the Commonwealth. Pick a locality to compare it against Virginia.'
           : 'The share of adults at each education level, this locality against the Commonwealth. Local bars taller than Virginia’s point to a deeper local talent pool at that level.'; } }
@@ -1212,7 +1316,7 @@ class Component {
     c=this.mk('c-ui'); if(c){ const peak=Math.max(...d.uiPayments.amount), pi=d.uiPayments.amount.indexOf(peak);
       c.setOption({ grid, tooltip:{trigger:'axis',valueFormatter:v=>'$'+fmt(v)},
         xAxis:{type:'category',data:d.uiPayments.years,...ax}, yAxis:{type:'value',...ax,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v/1e6).toFixed(0)+'M'}},
-        series:[{type:'line',data:d.uiPayments.amount,smooth:true,symbol:'circle',symbolSize:7,lineStyle:{width:3.5,color:'#7A2E8E'},itemStyle:{color:'#7A2E8E'},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(122,46,142,.3)'},{offset:1,color:'rgba(122,46,142,0)'}])},
+        series:[{type:'line',data:d.uiPayments.amount,smooth:false,symbol:'circle',symbolSize:7,lineStyle:{width:3.5,color:'#7A2E8E'},itemStyle:{color:'#7A2E8E'},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(122,46,142,.3)'},{offset:1,color:'rgba(122,46,142,0)'}])},
           markPoint:{symbol:'pin',symbolSize:52,data:[{coord:[pi,peak],value:'$'+(peak/1e6).toFixed(0)+'M',itemStyle:{color:'#9F2842'}}],label:{color:'#fff',fontFamily:F,fontWeight:700,fontSize:11}}}] }); }
     // ===== Affordability & Housing (section 03) =====
     const A=d.afford;
@@ -1234,77 +1338,71 @@ class Component {
     // It lives in its own card, so the grid is large with room to breathe; percentages sit
     // beside it in their series colors, no raw counts.
     { const GCW=this.FONT_DISPLAY;
-      // Fill bottom-up: rent (grey) takes the top rows, own (green) forms the base at the bottom.
-      let sq=''; for(let i=0;i<100;i++) sq+=`<span style="width:13px;height:13px;border-radius:3px;background:${i<A.rentPct?'#7A8794':'#2A7050'}"></span>`;
-      const pctBox=(pct,color,label)=>`<div style="font-family:${GCW};font-weight:800;font-size:1.9rem;color:${color};line-height:1">${pct}<span style="font-size:1rem">%</span><div style="font-size:.64rem;color:#5A6472;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem">${label}</div></div>`;
-      setHtml('ownrent-waffle', `<div style="display:flex;align-items:center;gap:1.1rem">
-        <div style="display:grid;grid-template-columns:repeat(10,13px);grid-auto-rows:13px;gap:3px">${sq}</div>
-        <div style="display:flex;flex-direction:column;gap:1rem">${pctBox(A.rentPct,'#7A8794','Rent')}${pctBox(A.ownPct,'#2A7050','Own')}</div>
+      // 10×10 waffle sized to match the rent-trend chart height, with light gaps between cells.
+      // Fill bottom-up: rent (grey) takes the top rows, own (green) forms the base. The own share
+      // is overlaid inside the green region in a light Own-green tint; rent gets no label.
+      let sq=''; for(let i=0;i<100;i++) sq+=`<span style="border-radius:2px;background:${i<A.rentPct?'#7A8794':'#2A7050'}"></span>`;
+      setHtml('ownrent-waffle', `<div style="position:relative;width:200px;height:200px">
+        <div style="display:grid;grid-template-columns:repeat(10,1fr);grid-auto-rows:1fr;gap:1px;width:200px;height:200px">${sq}</div>
+        <div style="position:absolute;left:0;right:0;top:${A.rentPct}%;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+          <div style="display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.82);padding:.5rem 1.15rem;border-radius:10px">
+            <div style="font-family:var(--vw-font-display);font-weight:800;font-size:2.5rem;color:#2A7050;line-height:1">${A.ownPct}<span style="font-size:1.2rem">%</span></div>
+            <div style="font-size:.68rem;color:#2A7050;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-top:.15rem">Own</div>
+          </div>
+        </div>
       </div>`);
     }
-    setHtml('k-rent-hdr', '<b style="color:#0A2463">$'+fmt(A.rentNow)+'</b>/mo · <span style="color:#2A7050;font-weight:700">▲'+A.rentYoY+'%/yr</span>');
-    setHtml('k-home-hdr', '<b style="color:#0A2463">$'+(A.homeNow/1000).toFixed(0)+'k</b> · <span style="color:#2A7050;font-weight:700">▲'+A.homeYoY+'%/yr</span>');
-    // Group B — rent & home-price trend lines
+    // Median Home Value is a big-number card now (not a trend line): value + YoY ticker.
+    setHtml('k-home-val', '$'+(A.homeNow/1000).toFixed(0)+'k');
+    setHtml('k-home-yoy', '<span style="color:#2A7050">&#9650; '+A.homeYoY+'%/yr</span>');
+    // Median Rent stays a trend line (grey, matching the waffle). The current value + YoY ticker
+    // sit as plain text directly above the last point (no bubble), with y-axis headroom so it clears.
     const ayrs=['2018','2019','2020','2021','2022','2023','2024','2025'];
-    const trendLine=(id,arr,color,vfmt)=>{ const cc=this.mk(id); if(!cc) return;
-      cc.setOption({ grid:{left:6,right:12,top:14,bottom:6,containLabel:true}, tooltip:{trigger:'axis',valueFormatter:vfmt},
-        xAxis:{type:'category',data:ayrs,boundaryGap:false,...ax}, yAxis:{type:'value',scale:true,axisLabel:{...ax.axisLabel,formatter:vfmt},splitLine:ax.splitLine},
-        series:[{type:'line',data:arr,smooth:true,symbol:'circle',symbolSize:5,lineStyle:{width:3,color},itemStyle:{color},areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:color+'66'},{offset:1,color:color+'0D'}])}}] }); };
-    // Match the waffle: renting is grey, ownership (home price) is green.
-    trendLine('c-rent', A.rentTrend, '#7A8794', v=>'$'+fmt(v));
-    trendLine('c-home', A.homeTrend, '#2A7050', v=>'$'+(v/1000).toFixed(0)+'k');
+    { const cc=this.mk('c-rent');
+      // Even $200 gridlines on a rounded min/max, plus one step of headroom so the value label
+      // sits directly ABOVE the last point (plain text, no bubble). Extra right margin keeps the
+      // centered label from clipping the plot edge.
+      const rMin=Math.floor(Math.min(...A.rentTrend)/200)*200, rMax=Math.ceil(Math.max(...A.rentTrend)/200)*200+200;
+      const rentLbl={show:true,position:'top',distance:8,align:'center',
+        formatter:()=>`$${fmt(A.rentNow)}/mo  {up|▲${A.rentYoY}%}`,
+        color:C.cobalt,fontFamily:this.FONT_DISPLAY,fontWeight:800,fontSize:13,rich:{up:{color:'#2A7050',fontSize:11,fontWeight:700}}};
+      if(cc) cc.setOption({ grid:{left:6,right:58,top:16,bottom:10,containLabel:true}, tooltip:{trigger:'axis',valueFormatter:v=>'$'+fmt(v)},
+        xAxis:{type:'category',data:ayrs,boundaryGap:false,...ax}, yAxis:{type:'value',min:rMin,max:rMax,interval:200,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v/1000).toFixed(1)+'k'},splitLine:ax.splitLine},
+        series:[{type:'line',data:A.rentTrend.map((v,i)=> i===A.rentTrend.length-1 ? {value:v,symbolSize:8,label:rentLbl} : v),
+          smooth:false,symbol:'circle',symbolSize:5,lineStyle:{width:3,color:'#7A8794'},itemStyle:{color:'#7A8794'},
+          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#7A879466'},{offset:1,color:'#7A87940D'}])}}] }); }
     // Group B — housing cost burden vs Virginia (grouped bar + 30% threshold)
     c=this.mk('c-burden'); if(c) c.setOption({
       legend:{data:['This region','Virginia'],bottom:0,left:'center',textStyle:{fontFamily:F,color:C.slate},itemWidth:16,itemHeight:8},
-      grid:{left:6,right:18,top:14,bottom:32,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'% of income'},
+      grid:{left:6,right:18,top:14,bottom:32,containLabel:true}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>v+'% of income (median)'},
       xAxis:{type:'category',data:A.burdenCats,...ax,axisLabel:{...ax.axisLabel,fontSize:11,fontWeight:600}},
       yAxis:{type:'value',max:40,axisLabel:{...ax.axisLabel,formatter:'{value}%'},splitLine:ax.splitLine},
       series:[ {name:'This region',type:'bar',data:A.burdenRegion,barMaxWidth:38,itemStyle:{color:'#c89b3c',borderRadius:[4,4,0,0]},
           markLine:{symbol:'none',silent:true,data:[{yAxis:30,label:{formatter:'30% cost-burden threshold',color:'#1C2A3A',fontSize:12,position:'insideEndTop'},lineStyle:{color:'#1A1A1A',type:'dashed',width:1.5}}]}},
         {name:'Virginia',type:'bar',data:A.burdenVa,barMaxWidth:38,itemStyle:{color:C.blue,borderRadius:[4,4,0,0]}} ] });
-    // Household Income — horizontal compare bars (region vs VA)
-    // Diverging "gap to VA" bars. Bar length = (region − VA)/VA, so 0 is the Virginia benchmark
-    // (dashed blue line) and the bar reaches left (below VA) or right (above VA). The big number
-    // stack lives beside each bar in the markup; here we fill it and draw the bar.
+    // Median household income: a single vertical bar for the selected locality with its value
+    // inside the bar and a solid horizontal Virginia reference line.
     const GCF=this.FONT_DISPLAY;
-    setTxt('k-medinc-val','$'+fmt(A.medianIncome)); setTxt('k-medinc-vs','vs VA $'+fmt(A.vaMedianIncome));
-    setTxt('k-disc-val','$'+fmt(A.discretionary)); setTxt('k-disc-vs','vs VA $'+fmt(A.vaDiscretionary));
-    // Shared symmetric axis so both rows' benchmark lines align and stay comparable. The max
-    // carries ~40% headroom past the longest bar (÷0.6) so the dollar-gap label never runs off
-    // the edge, whichever side the bar points.
-    const gapPctOf=(r,v)=>v? (r-v)/v*100 : 0;
-    const gaps=[gapPctOf(A.medianIncome,A.vaMedianIncome), gapPctOf(A.discretionary,A.vaDiscretionary)];
-    const axisMax=Math.max(10, Math.ceil(Math.max(...gaps.map(Math.abs))/0.6/5)*5);
-    const gapBar=(id,region,va,axisMax,showAxis,showVaLabel,title)=>{ const cc=this.mk(id); if(!cc) return;
-      const gapPct=gapPctOf(region,va), dGap=region-va;
-      const gapLbl=(dGap<0?'−$':'+$')+fmt(Math.abs(dGap));
-      const pctTxt=(dGap<0?'−':'+')+Math.abs(gapPct).toFixed(1)+'%';
-      cc.setOption({
-        // Hover anywhere in the (thin) row to read the underlying numbers; appendToBody
-        // so the panel isn't clipped by the short chart container.
-        tooltip:{trigger:'axis',axisPointer:{type:'none'},confine:true,appendToBody:true,
-          backgroundColor:'#fff',borderColor:C.line,borderWidth:1,padding:[8,11],
-          extraCssText:'box-shadow:0 4px 14px rgba(10,36,99,.12);border-radius:8px',
-          textStyle:{color:C.ink,fontFamily:F,fontSize:12},
-          formatter:()=>`<div style="font-family:${GCF};font-weight:700;color:${C.cobalt};margin-bottom:4px">${title||''}</div>`
-            +`<div style="display:flex;justify-content:space-between;gap:20px"><span style="color:${C.slate}">Region</span><b>$${fmt(region)}</b></div>`
-            +`<div style="display:flex;justify-content:space-between;gap:20px"><span style="color:${C.slate}">Virginia</span><b>$${fmt(va)}</b></div>`
-            +`<div style="display:flex;justify-content:space-between;gap:20px;margin-top:4px;padding-top:4px;border-top:1px solid ${C.line}"><span style="color:${C.slate}">Gap to VA</span><b style="color:${dGap<0?C.goldDark:C.green}">${gapLbl} · ${pctTxt}</b></div>`},
-        grid:{left:10,right:16,top:showVaLabel?24:8,bottom:showAxis?22:8,containLabel:false},
-        // Baseline drawn so the −/+% labels sit on an axis (not floating) and the dashed
-        // VA line visibly meets it at 0%. Shown on both rows so each bar reads as anchored.
-        xAxis:{type:'value',min:-axisMax,max:axisMax,interval:axisMax,
-          axisLine:{show:true,lineStyle:{color:C.slate,width:1}},axisTick:{show:false},splitLine:{show:false},
-          axisLabel:showAxis?{color:C.slate,fontFamily:F,fontSize:11,fontWeight:600,formatter:v=>v===0?'':(v>0?'+':'−')+Math.abs(v)+'%'}:{show:false}},
-        yAxis:{type:'category',data:[''],axisLine:{show:false},axisTick:{show:false},axisLabel:{show:false}},
-        series:[{ type:'bar',data:[+gapPct.toFixed(2)],barWidth:26,itemStyle:{color:C.gold,borderRadius:3},
-          label:{show:true,position:gapPct<0?'left':'right',formatter:()=>gapLbl,color:C.slate,fontFamily:GCF,fontWeight:700,fontSize:12},
-          markLine:{silent:true,symbol:'none',lineStyle:{color:C.blue,width:2,type:'dashed'},data:[{xAxis:0}],
-            label:showVaLabel?{show:true,position:'end',formatter:()=>'VA benchmark',color:C.blue,fontFamily:F,fontWeight:700,fontSize:11}:{show:false}} }]
-      });
-    };
-    gapBar('c-medinc', A.medianIncome, A.vaMedianIncome, axisMax, false, true,  'Median HH income');
-    gapBar('c-disc',   A.discretionary, A.vaDiscretionary, axisMax, true,  false, 'Discretionary income');
+    { const cc=this.mk('c-medinc');
+      if(cc){ const region=A.medianIncome, va=A.vaMedianIncome, top=Math.max(region,va)*1.2;
+        const here=this.current && this.current.type!=='State' ? this.current.name : 'This region';
+        const above=region>=va;
+        cc.setOption({
+          grid:{left:8,right:16,top:30,bottom:8,containLabel:true},
+          tooltip:{trigger:'axis',axisPointer:{type:'shadow'},
+            formatter:()=>`<b>${here}</b>: $${fmt(region)}<br/>Virginia: $${fmt(va)}<br/><span style="color:${above?C.green:C.goldDark}">${above?'+':'−'}$${fmt(Math.abs(region-va))} vs VA</span>`},
+          xAxis:{type:'value',min:0,max:top,axisLine:{show:false},axisTick:{show:false},
+            axisLabel:{show:false},splitLine:{show:false}},
+          yAxis:{type:'category',data:[here],axisTick:{show:false},axisLine:{show:false},
+            axisLabel:{color:C.slate,fontFamily:F,fontSize:12,fontWeight:600}},
+          series:[{ type:'bar',data:[region],barWidth:46,itemStyle:{color:C.gold,borderRadius:[0,4,4,0]},
+            label:{show:true,position:'insideLeft',distance:12,formatter:'$'+fmt(region),color:'#fff',fontFamily:GCF,fontWeight:800,fontSize:16},
+            markLine:{silent:true,symbol:'none',lineStyle:{color:C.blue,width:2.5,type:'solid'},
+              label:{show:true,position:'end',formatter:'Virginia\n$'+fmt(va),color:C.blue,fontFamily:F,fontWeight:700,fontSize:11,align:'center'},
+              data:[{xAxis:va},{xAxis:0,lineStyle:{color:'#C4CEDB',width:1.5},label:{show:false}}]} }]
+        });
+      }
+    }
     // Unemployment Rate (s-unemp) — single LAUS trend, selected geography vs Virginia
     this.renderUnemployment(d);
     // new business formations
@@ -1318,16 +1416,19 @@ class Component {
         <span style="font-size:.9rem;color:#5A6472">new businesses in ${b.lastYear}</span>
         <span style="font-size:.86rem;color:#5A6472">${arrow(yoy)} vs ${b.years[b.years.length-2]||''}</span>
         <span style="font-size:.86rem;color:#5A6472">${arrow(dec)} since ${b.years[0]}</span></div>`;
-      // Card 1 chart — formation trend (latest bar highlighted)
+      // Card 1 chart: formation trend as a single-color line (straight connectors).
       c=this.mk('c-business'); if(c) c.setOption({ grid:{...grid,top:34}, tooltip:{trigger:'axis',valueFormatter:v=>fmt(v)+' new businesses'},
-        xAxis:{type:'category',data:b.years,...ax}, yAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // per-bar top labels carry the values; axis scale is redundant
-        series:[{type:'bar',barMaxWidth:26,data:f.map((v,i)=>({value:v,itemStyle:{color:i===f.length-1?C.blue:C.blueBright,borderRadius:[3,3,0,0]}})),label:{show:true,position:'top',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] });
-      // Card 2 chart — new businesses by industry (most recent year)
-      c=this.mk('c-business-industry'); if(c){ const rows=[...b.byIndustry].filter(r=>r.value>0).sort((a2,b2)=>a2.value-b2.value);
-        c.setOption({ grid:{...grid,left:8,right:64}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:v=>fmt(v)+' new businesses'},
-          xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // bar-end labels carry the values; axis scale is redundant
-          yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.value,itemStyle:{color:C.blue,borderRadius:[0,4,4,0]}})),label:{show:true,position:'right',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] }); } }
+        xAxis:{type:'category',data:b.years,...ax,boundaryGap:false}, yAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},   // point labels carry the values; axis scale is redundant
+        series:[{type:'line',data:f,smooth:false,symbol:'circle',symbolSize:6,lineStyle:{width:3,color:C.blue},itemStyle:{color:C.blue},
+          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(C.blue,.2)},{offset:1,color:this.rgba(C.blue,0)}])},
+          label:{show:true,position:'top',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] });
+      // Card 2 chart: top 5 industries by % growth in new-business formations (not raw counts).
+      c=this.mk('c-business-industry'); if(c){ const rows=[...b.byIndustry].filter(r=>r.value>0).sort((a2,b2)=>a2.growth-b2.growth).slice(-5);
+        c.setOption({ grid:{...grid,left:8,right:56}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0];return `${r.axisValue}<br/><b>${r.data.value>=0?'+':''}${r.data.value}%</b> growth in new businesses<br/><span style="opacity:.65">${fmt(r.data.count)} new in ${b.lastYear}</span>`;}},
+          xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:10,formatter:v=>v+'%'},splitLine:{show:true,lineStyle:{color:'#F0EEE7'}}},
+          yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLine:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
+          series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.growth,count:r.value,itemStyle:{color:r.growth>=0?C.green:'#9F2842',borderRadius:[0,4,4,0]}})),
+            label:{show:true,position:'right',formatter:p=>(p.value>=0?'+':'')+p.value+'%',color:C.slate,fontFamily:F,fontSize:10,fontWeight:700}}] }); } }
     // apprenticeships (RAPIDS) — RAPIDS BAN strip + top-occupations bars + industry
     // donut (center BAN = total active) + sponsor-directory callout. All counts are
     // apprentices, so the byIndustry total reconciles to the donut center.
@@ -1383,33 +1484,26 @@ class Component {
   /* ---------- themes / scenes / rail ---------- */
   themes(){ return [
     { id:'th-demo', name:'Demographic Profile', blurb:'Who lives in this geography. These measures describe the size, age, and educational makeup of the population — the foundation for understanding the available workforce and the community it supports.', scenes:[
-      {id:'s-pop', eyebrow:'Population', title:'Population & Age', custom:'demographics', fields:['ageCohorts'],
-       lede:'The size and shape of the working-age population — the people who make up the local labor supply — shown alongside Virginia for comparison.'},
+      {id:'s-pop', eyebrow:'Population', title:'Population & Age', custom:'demographics', fields:['ageCohorts']},
+      {id:'s-commute', eyebrow:'Commuting', title:'Commuting Patterns', custom:'commuting', fields:['commute']},
       {id:'s-edu', eyebrow:'Education', title:'Education', chart:'c-edu', fields:['educationCompare'],
-       lede:'Educational attainment compared with the Commonwealth — a read on the skills supply employers can draw from.',
-       chartEyebrow:'Educational attainment', chartTitle:'Attainment by level vs Virginia',
+       chartEyebrow:'Census · DP02', chartTitle:'Educational Attainment Comparison',
        chartSub:'The share of adults at each education level, this locality against the Commonwealth. Local bars taller than Virginia’s point to a deeper local talent pool at that level.'},
-      {id:'s-highered', eyebrow:'Institutions', title:'Higher Education', custom:'highered', fields:['higherEd'],
-       lede:'The colleges and universities that feed the region’s degree and credential pipeline — four-year institutions located in the locality, and the community college whose service region covers it.'} ]},
+      {id:'s-highered', eyebrow:'Institutions', title:'Higher Education', custom:'highered', fields:['higherEd']} ]},
     { id:'th-afford', name:'Affordability & Housing', blurb:'What it costs to live here — households and tenure, what renting and owning consume of local income, and how earnings stack up against the Commonwealth.', scenes:[
-      {id:'s-housing', eyebrow:'Census', title:'Housing Profile', custom:'housing', fields:['afford'],
-       lede:'Households and occupancy, the own-versus-rent split, what each costs over time, and how much of income housing actually consumes.'},
-      {id:'s-income', eyebrow:'Earnings', title:'Household Income', custom:'income', fields:['afford'],
-       lede:'Median household income and the discretionary income left after typical costs — both benchmarked against Virginia.'},
+      {id:'s-housing', eyebrow:'Census', title:'Household Details', custom:'household', fields:['afford']},
+      {id:'s-income', eyebrow:'Census', title:'Housing Costs', custom:'housingcosts', fields:['afford']},
       {id:'s-col', eyebrow:'Affordability', title:'Cost of Living', hold:true,
        lede:'Held for a later release.'} ]},
     { id:'th-labor', name:'Labor Force & Unemployment', blurb:'How fully the community is working — the share of the labor force that is unemployed, for the selected geography and the Commonwealth.', scenes:[
-      {id:'s-unemp', eyebrow:'LAUS', title:'Unemployment Rate', custom:'unemployment', fields:['unemployment'],
-       lede:'The unemployment rate over time for the selected geography, benchmarked against Virginia.'} ]},
+      {id:'s-unemp', eyebrow:'LAUS', title:'Unemployment Rate', custom:'unemployment', fields:['unemployment']} ]},
     { id:'th-employ', name:'Employers & Industry', blurb:'Where the jobs come from. The industry base, new business formation, apprenticeship pipelines, and largest employers reveal the engines of the local economy and where it may be heading.', scenes:[
       {id:'s-industry', eyebrow:'Industry', title:'Industry Trends', custom:'industry', fields:['industryEmployment'],
        lede:'Where the jobs are, which sectors are growing or shrinking, and what this region specializes in compared with the Commonwealth.'},
       {id:'s-business', eyebrow:'Formation', title:'New Business Growth', custom:'business', fields:['business'],
        lede:'How many new businesses are opening, whether that pace is rising, and which industries new businesses are choosing. An early read on where the local economy is investing.'},
-      {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', custom:'apprenticeships', fields:['apprenticeships'],
-       lede:'Registered apprenticeships are the region’s earn-while-you-learn pipeline: paid, on-the-job training that leads to skilled, credentialed careers without the debt of a traditional path. These charts show what people are training for and the industries putting them to work.'},
-      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', custom:'employers', fields:['topEmployers'],
-       lede:'Two views of the biggest employers: the public-versus-private split of jobs in the selected locality, and a statewide list of Virginia’s largest employers, the same for every geography.'} ]}
+      {id:'s-appr', eyebrow:'Talent pipeline', title:'Apprenticeships', custom:'apprenticeships', fields:['apprenticeships']},
+      {id:'s-emp', eyebrow:'Anchors', title:'Largest Employers', custom:'employers', fields:['topEmployers']} ]}
   ]; }
 
   jumpTo(id){ const t=document.getElementById(id); if(!t) return; const y=t.getBoundingClientRect().top+window.pageYOffset-92; window.scrollTo({top:y,behavior:'smooth'}); }
@@ -1488,19 +1582,20 @@ class Component {
       </div>`;
       th.scenes.forEach((s,si)=>{ if(s.hold) return; n++;
         const body = s.custom==='employers' ? this.employersBody()
-          : s.custom==='housing' ? this.housingBody()
-          : s.custom==='income' ? this.incomeBody()
+          : s.custom==='household' ? this.householdBody()
+          : s.custom==='housingcosts' ? this.housingCostsBody()
           : s.custom==='demographics' ? this.demographicsBody()
+          : s.custom==='commuting' ? this.commutingBody()
           : s.custom==='highered' ? this.higherEdBody()
           : s.custom==='industry' ? this.industryBody()
           : s.custom==='unemployment' ? this.unemploymentBody()
           : s.custom==='business' ? this.businessBody()
           : s.custom==='apprenticeships' ? this.apprenticeshipsBody()
           : `<div class="demo-card" style="margin-top:.2rem">${s.chartTitle?`${s.chartEyebrow?`<div class="demo-ct">${s.chartEyebrow}</div>`:''}<div class="demo-ch">${s.chartTitle}</div>${s.chartSub?`<p class="demo-cs">${s.chartSub}</p>`:''}`:''}<div id="${s.chart}" style="width:100%;height:${s.chart==='c-pyramid'||s.chart==='c-industry'||s.chart==='c-occ'?'460px':'360px'}"></div></div>`;
-        html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease">
+        html+=`<section id="${s.id}" data-scene data-theme="${th.id}" data-screen-label="${s.title}" style="padding:.7rem 0 1.8rem;scroll-margin-top:96px;opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease">
           <div style="font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2A7050;margin-bottom:.25rem">${s.eyebrow}<span data-scene-badge data-fields="${(s.fields||[]).join(',')}" style="display:none;background:#E8A33D;color:#3a2400;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.12rem .45rem;border-radius:4px;margin-left:.6rem;vertical-align:1px">Illustrative data</span></div>
           <h3 style="font-family:var(--vw-font-display);font-size:1.85rem;font-weight:800;color:#0A2463;line-height:1.02;margin-bottom:.5rem">${s.title}</h3>
-          <p style="font-size:1.02rem;color:#5A6472;max-width:62ch;margin-bottom:1rem;text-wrap:pretty">${s.lede}</p>
+          ${s.lede?`<p style="font-size:1.02rem;color:#5A6472;max-width:62ch;margin-bottom:1rem;text-wrap:pretty">${s.lede}</p>`:''}
           ${body}
         </section>`;
       });
@@ -1510,50 +1605,15 @@ class Component {
   }
 
   /* ---- Affordability & Housing (section 03) custom bodies ---- */
-  housingBody(){
+  /* Household Details (s-housing): occupancy/size stats plus the median household income
+     bar (with a Virginia reference line), filled in renderCharts. */
+  householdBody(){
     const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
     const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
     const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
     const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
     const big="font-family:var(--vw-font-display);font-weight:800;line-height:.9;color:#0A2463";
     const vs='font-size:.7rem;font-weight:600;color:#5A6472;margin-top:.4rem';
-    const sub='font-size:.64rem;color:#5A6472;font-weight:600';
-    return `
-      <div style="${card};margin-top:.2rem">
-        <div style="${grp}">Households · Census${ln}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
-          <div><div style="${eb}">Total Households</div><div id="k-hh-total" style="${big};font-size:2.3rem">—</div><div id="k-hh-occupied" style="${vs}">—</div></div>
-          <div><div style="${eb}">Occupancy Rate</div><div id="k-occ-rate" style="${big};font-size:2.3rem">—</div><div id="k-occ-vsva" style="${vs}">—</div></div>
-          <div><div style="${eb}">Avg Household Size</div><div id="k-hhsize" style="${big};font-size:2.3rem">—</div><div id="k-hhsize-va" style="${vs}">—</div></div>
-        </div>
-      </div>
-      <div style="${card};margin-top:.7rem">
-        <div style="${grp}">Rent vs Own · Census${ln}</div>
-        <div style="display:grid;grid-template-columns:0.95fr 1fr 1fr;gap:1.2rem;margin-bottom:1rem;align-items:start">
-          <div>
-            <div style="${eb}">Own vs Rent</div>
-            <div id="ownrent-waffle" style="margin-top:.5rem"></div>
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="${eb};margin-bottom:0">Avg Rent · trend</div><div id="k-rent-hdr" style="font-size:.74rem;color:#5A6472">—</div></div>
-            <div id="c-rent" style="width:100%;height:190px"></div>
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="${eb};margin-bottom:0">Avg Home Price · trend</div><div id="k-home-hdr" style="font-size:.74rem;color:#5A6472">—</div></div>
-            <div id="c-home" style="width:100%;height:190px"></div>
-          </div>
-        </div>
-        <div style="border-top:1px solid #EDE9DF;padding-top:.9rem">
-          <div style="${grp}">Housing costs as % of income — vs Virginia${ln}</div>
-          <div id="c-burden" style="width:100%;height:300px"></div>
-        </div>
-      </div>`;
-  }
-  incomeBody(){
-    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
-    const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
-    const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
-    const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
     const lbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-bottom:.15rem';
     const bigval="font-family:var(--vw-font-display);font-weight:800;font-size:2.4rem;color:#0A2463;line-height:1";
     const vslbl='font-size:.82rem;color:#5A6472;font-weight:600;margin-top:.25rem';
@@ -1568,23 +1628,114 @@ class Component {
       </div>`;
     return `
       <div style="${card};margin-top:.2rem">
-        <div style="${grp}">Household Income${ln}</div>
-        ${row('Median HH income','k-medinc-val','k-medinc-vs','c-medinc')}
-        <div style="height:1px;background:#EDE9DF;margin:1rem 0"></div>
-        ${row('Discretionary income','k-disc-val','k-disc-vs','c-disc')}
-        <div style="font-size:.76rem;color:#9DB4D6;font-weight:600;margin-top:.9rem">Bar length is the gap to Virginia as a share of the benchmark.</div>
+        <div style="${grp}">Household Details · Census${ln}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+          <div><div style="${eb}">Occupancy Rate</div><div id="k-occ-rate" style="${big};font-size:2.3rem">—</div><div id="k-occ-vsva" style="${vs}">—</div></div>
+          <div><div style="${eb}">Total Households</div><div id="k-hh-total" style="${big};font-size:2.3rem">—</div><div id="k-hh-occupied" style="${vs}">—</div></div>
+          <div><div style="${eb}">Avg Household Size</div><div id="k-hhsize" style="${big};font-size:2.3rem">—</div><div id="k-hhsize-va" style="${vs}">—</div></div>
+        </div>
+        <div style="height:1px;background:#EDE9DF;margin:1.1rem 0"></div>
+        <div style="${lbl}">Median household income</div>
+        <div id="c-medinc" style="width:100%;height:140px"></div>
+        <div style="font-size:.76rem;color:#9DB4D6;font-weight:600;margin-top:.9rem">Inflation-adjusted dollars. The line marks the Virginia benchmark.</div>
+      </div>`;
+  }
+  /* Housing Costs (s-income): tenure split, rent & home-value trends, and cost burden. */
+  housingCostsBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
+    const grp="font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.8rem;display:flex;align-items:center;gap:.7rem";
+    const ln='<span style="flex:1;height:1px;background:#EDE9DF"></span>';
+    const eb='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6472;margin-bottom:.45rem';
+    // Prominent metric header — two different metrics sit side by side, so each gets a clear title.
+    const ebh='font-family:var(--vw-font-display);font-size:1.05rem;font-weight:800;letter-spacing:.01em;color:#0A2463;margin-bottom:.55rem';
+    return `
+      <div style="${card};margin-top:.2rem">
+        <div style="${grp}">Rent vs Own · Census${ln}</div>
+        <div style="display:grid;grid-template-columns:0.9fr 1.35fr 0.75fr;gap:1.4rem;margin-bottom:1rem;align-items:start">
+          <div>
+            <div style="${ebh}">Own vs Rent</div>
+            <div id="ownrent-waffle" style="margin-top:.5rem"></div>
+          </div>
+          <div>
+            <div style="${ebh}">Median Rent</div>
+            <div id="c-rent" style="width:100%;height:200px"></div>
+          </div>
+          <div>
+            <div style="${ebh}">Median Home Value</div>
+            <div style="min-height:200px;display:flex;flex-direction:column;justify-content:center">
+              <div id="k-home-val" style="font-family:var(--vw-font-display);font-weight:800;font-size:2.8rem;line-height:.95;color:#0A2463">—</div>
+              <div id="k-home-yoy" style="font-size:.86rem;font-weight:700;margin-top:.55rem">—</div>
+              <div style="font-size:.68rem;color:#9DB4D6;font-weight:600;margin-top:.35rem">latest year · ACS DP04</div>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid #EDE9DF;padding-top:.9rem">
+          <div style="${grp}">Median housing costs as % of income, vs Virginia${ln}</div>
+          <div id="c-burden" style="width:100%;height:300px"></div>
+          <div style="font-size:.68rem;color:#9DB4D6;font-weight:600;margin-top:.5rem">Median share of household income spent on housing. Renters: gross rent as % of income (GRAPI, ACS B25071). Owners: selected monthly owner costs as % of income (SMOCAPI, ACS B25092).</div>
+        </div>
       </div>`;
   }
 
   /* ---- Demographics & Age (section 01, scene s-pop) ---- */
+  /* Commuting Patterns (s-commute): two "Top 10" tables from Census LEHD LODES — where residents
+     commute TO (their workplaces) and where workers commute FROM (their homes). Filled by
+     renderCommuting; illustrative until LODES is wired. */
+  commutingBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.15rem 1.35rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
+    const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
+    const ch='font-family:var(--vw-font-display);font-size:1.15rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
+    const cs='font-size:.84rem;color:#5A6472;margin:0 0 12px;line-height:1.45';
+    return `
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.4rem;margin-top:.2rem">
+        <div style="${card}">
+          <div style="${ct}">LEHD LODES · Outbound</div>
+          <div style="${ch}">Top 10 places residents commute to</div>
+          <p style="${cs}">Where people who live here go to work.</p>
+          <div style="overflow-x:auto"><table id="commute-to" style="width:100%;border-collapse:collapse"></table></div>
+        </div>
+        <div style="${card}">
+          <div style="${ct}">LEHD LODES · Inbound</div>
+          <div style="${ch}">Top 10 places workers commute from</div>
+          <p style="${cs}">Where people who work here live.</p>
+          <div style="overflow-x:auto"><table id="commute-from" style="width:100%;border-collapse:collapse"></table></div>
+        </div>
+      </div>
+      <p style="font-size:.76rem;color:#9DB4D6;font-weight:600;margin:.7rem 0 0;grid-column:1/-1">The highlighted <b style="color:#2A7050">Within area</b> row is people who both live and work in the selected geography; for a region it combines all its counties. Source: Census LEHD LODES.</p>`;
+  }
+  renderCommuting(d){
+    const cp=d&&d.commutePlaces; if(!cp) return;
+    // The {self:true} row is the rolled-up intra-area flow. Label it from the selected geography:
+    // the locality name for a single county, or "Within <name>" for an aggregate (MSA/GO VA/LWDA/state).
+    const cur=this.current, agg=cur && cur.type!=='County / City';
+    const selfLabel = cur ? (agg ? 'Within '+cur.name : cur.name) : 'Within this area';
+    const build=(id,rows)=>{ const t=document.getElementById(id); if(!t||!rows) return;
+      const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#0A2463;padding:.5rem .7rem';
+      const head=`<thead><tr><th style="text-align:left;${th}">Area</th><th style="text-align:right;${th}">Workers</th></tr></thead>`;
+      const body='<tbody>'+rows.map(r=>{ const area=r.self?selfLabel:r.area, hl=r.self;
+        return `<tr style="background:${hl?'#EAF3EE':'#fff'}">`+
+        `<td style="text-align:left;padding:.45rem .7rem;font-size:.9rem;color:${hl?'#1F5A3E':'#1A1A1A'};font-weight:${hl?'700':'400'};border-bottom:1px solid #EDEEF1">${area}${hl?' <span style="font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#2A7050;background:#DDEEE3;padding:.06rem .35rem;border-radius:20px;vertical-align:1px">Within area</span>':''}</td>`+
+        `<td style="text-align:right;padding:.45rem .7rem;font-size:.9rem;color:#0A2463;font-weight:700;font-variant-numeric:tabular-nums;border-bottom:1px solid #EDEEF1">${this.fmt(r.workers)}</td></tr>`; }).join('')+'</tbody>';
+      t.innerHTML=head+body; };
+    build('commute-to', cp.to);
+    build('commute-from', cp.from);
+  }
   demographicsBody(){
     return `
-      <div class="demo-bans" id="demo-bans"></div>
-      <div class="demo-card">
-        <div class="demo-ct">Population trend</div>
-        <div class="demo-ch">Total population over time</div>
-        <p class="demo-cs">How many people live here, and whether that total is growing or declining. The slope of the line is the story; age make-up is summarized in the numbers above.</p>
-        <div id="c-demo-poptrend" style="width:100%;height:320px"></div>
+      <div class="demo-bans" id="demo-bans" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+      <div class="demo-card" style="margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.4rem">
+          <div>
+            <div class="demo-ct">Age composition</div>
+            <div class="demo-ch">Population growth by age group</div>
+            <p class="demo-cs">Each band is an age group, stacked youngest to oldest. Percentages mark each group&rsquo;s share of the population at the start and end of the period.</p>
+          </div>
+          <div style="text-align:right;flex:none">
+            <div id="agebins-totlbl" style="font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9DB4D6;white-space:nowrap">Total population</div>
+            <div id="agebins-tot" style="font-family:var(--vw-font-display);font-weight:800;font-size:1.65rem;line-height:1;color:#0A2463;margin-top:.25rem">—</div>
+          </div>
+        </div>
+        <div id="c-demo-agebins" style="width:100%;height:380px"></div>
       </div>`;
   }
 
@@ -1666,19 +1817,28 @@ class Component {
     setc('hied-count', rows.length);
   }
 
-  /* Unemployment Rate (s-unemp). Single LAUS trend line: the selected geography
-     vs Virginia (dashed benchmark), with a BAN pair of headline rates above it.
+  /* Unemployment Rate (s-unemp). Two solid LAUS trend lines: the selected geography
+     vs Virginia (differing colors), with a BAN pair of headline rates above it.
      Design reused from the front-page "Unemployment Rate Trending" card, with the
      comparison changed from VA-vs-US to locality-vs-VA. */
   unemploymentBody(){
+    const card='background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06)';
     return `
       <div class="demo-bans" id="unemp-bans" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:.2rem"></div>
-      <div style="background:#fff;border:1px solid #E2E0D8;border-radius:12px;padding:1.1rem;box-shadow:0 2px 20px rgba(10,36,99,.06);margin-top:.9rem">
-        <div class="demo-ct">Labor force · LAUS</div>
-        <div class="demo-ch">Unemployment rate over time</div>
-        <p class="demo-cs">The monthly unemployment rate for the selected geography, with Virginia shown as a dashed benchmark.</p>
-        <div id="unemp-rollup" style="display:none;font-size:.78rem;color:#5A6472;margin-bottom:.7rem;padding:.5rem .7rem;background:#F8F6F0;border:1px solid #E2E0D8;border-radius:8px"></div>
-        <div id="c-unemp-trend" style="width:100%;height:360px"></div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:.9rem">
+        <div style="${card}">
+          <div class="demo-ct">Labor force · LAUS</div>
+          <div class="demo-ch">Unemployment rate over time</div>
+          <p class="demo-cs">The unemployment rate for the selected geography, compared with Virginia.</p>
+          <div id="unemp-rollup" style="display:none;font-size:.78rem;color:#5A6472;margin-bottom:.7rem;padding:.5rem .7rem;background:#F8F6F0;border:1px solid #E2E0D8;border-radius:8px"></div>
+          <div id="c-unemp-trend" style="width:100%;height:320px"></div>
+        </div>
+        <div style="${card}">
+          <div class="demo-ct">Labor force · ACS S2301</div>
+          <div class="demo-ch">Labor force participation over time</div>
+          <p class="demo-cs">The share of the working-age population that is in the labor force, compared with Virginia.</p>
+          <div id="c-lfpr-trend" style="width:100%;height:320px"></div>
+        </div>
       </div>`;
   }
 
@@ -1715,23 +1875,39 @@ class Component {
       .map(b=>`<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
     // Rollup note reserved for the locality→LWDA→state fallback (not in scope yet).
     const note=document.getElementById('unemp-rollup'); if(note) note.style.display='none';
-    const c=this.mk('c-unemp-trend'); if(!c) return;
+    // Unemployment trend (min:0 anchors the low rates); LFPR trend beside it (auto-scaled so the
+    // ~62% band and the region-vs-Virginia gap read). Both are two solid lines with shared styling.
+    this.trendPair('c-unemp-trend', cats, region, va, regionName, monthly, true);
+    if(d.lfpr) this.trendPair('c-lfpr-trend', d.lfpr.years, d.lfpr.msa, d.lfpr.va, regionName, false, false);
+  }
+
+  /* Shared region-vs-Virginia trend chart (two solid lines, differing colors). yBaseZero=true
+     pins the y-axis at 0 (unemployment); false auto-scales (LFPR). Virginia's end label shows
+     only when clearly separated from the locality's; the locality always keeps its label, and
+     Virginia's value is always in the tooltip. */
+  trendPair(id, cats, region, va, regionName, monthly, yBaseZero){
+    const C=this.C, F=this.FONT, ax=this.axis();
+    const c=this.mk(id); if(!c) return;
+    const lastVal=a=>{ for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return +a[i]; return null; };
+    const lr=lastVal(region), lv=lastVal(va);
+    const vaEndShow=(lr!=null&&lv!=null)?Math.abs(lr-lv)>=0.6:true;
+    // Auto-scaled axis (LFPR): whole-number percent gridlines only (no .5 lines).
+    const allV=region.concat(va).filter(v=>v!=null).map(Number);
+    const yMin=allV.length?Math.floor(Math.min(...allV)):0, yMax=allV.length?Math.ceil(Math.max(...allV)):1;
     c.setOption({
       textStyle:{fontFamily:F},
       grid:{left:8,right:52,top:14,bottom:34,containLabel:true},
       legend:{data:[regionName,'Virginia'],bottom:0,left:'center',itemWidth:20,itemHeight:8,textStyle:{color:C.slate,fontFamily:F,fontSize:12}},
       tooltip:{trigger:'axis',axisPointer:{type:'line',lineStyle:{color:this.rgba(C.blue,.18)}},valueFormatter:v=>v==null?'—':(+v).toFixed(1)+'%'},
       xAxis:{type:'category',data:cats,...ax,boundaryGap:false,axisLabel:{...ax.axisLabel,interval:monthly?5:0}},
-      yAxis:{type:'value',...ax,min:0,axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
+      yAxis:{type:'value',...ax,...(yBaseZero?{min:0}:{min:yMin,max:yMax,interval:1}),axisLabel:{...ax.axisLabel,formatter:v=>v+'%'}},
       series:[
-        // primary line — the selected geography
-        {name:regionName,type:'line',data:region,smooth:true,connectNulls:true,symbol:monthly?'none':'circle',symbolSize:6,z:3,
+        {name:regionName,type:'line',data:region,smooth:false,connectNulls:true,symbol:monthly?'none':'circle',symbolSize:6,z:3,
          lineStyle:{width:3,color:C.gold},itemStyle:{color:C.gold},
          endLabel:{show:true,formatter:p=>p.value==null?'':(+p.value).toFixed(1)+'%',color:C.gold,fontFamily:F,fontWeight:700,fontSize:12,offset:[4,0]}},
-        // dashed benchmark — Virginia
-        {name:'Virginia',type:'line',data:va,smooth:true,connectNulls:true,symbol:'none',z:2,
-         lineStyle:{width:2,color:C.blue,type:'dashed'},itemStyle:{color:C.blue},
-         endLabel:{show:true,formatter:p=>p.value==null?'':(+p.value).toFixed(1)+'%',color:C.blue,fontFamily:F,fontWeight:700,fontSize:12,offset:[4,0]}}
+        {name:'Virginia',type:'line',data:va,smooth:false,connectNulls:true,symbol:'none',z:2,
+         lineStyle:{width:2.5,color:C.blue},itemStyle:{color:C.blue},
+         endLabel:{show:vaEndShow,formatter:p=>p.value==null?'':(+p.value).toFixed(1)+'%',color:C.blue,fontFamily:F,fontWeight:700,fontSize:12,offset:[4,0]}}
       ]
     });
   }
@@ -1750,20 +1926,20 @@ class Component {
     return `
       <div style="${card};margin-top:.2rem">
         <div style="${ct}">Chart 1 · Employment by industry</div>
-        <div style="${ch}">Where people work — and which sectors are growing</div>
-        <p style="${cs}">Every major industry sector by the number of jobs it supports locally. The arrow after each bar shows the change in that sector’s jobs over the past five years: <span style="color:#2A7050;font-weight:700">green up</span> for growing, <span style="color:#9F2842;font-weight:700">red down</span> for shrinking.</p>
-        <div id="c-industry" style="width:100%;height:540px"></div>
+        <div style="${ch}">Where people work, and which sectors are growing</div>
+        <p style="${cs}">Every major industry sector by the number of jobs it supports locally. Hover a sector to see its change in jobs over the past five years: <span style="color:#2A7050;font-weight:700">green up</span> for growing, <span style="color:#9F2842;font-weight:700">red down</span> for shrinking.</p>
+        <div id="c-industry" style="width:100%;height:820px"></div>
       </div>
       <div style="${card}">
         <div style="display:flex;align-items:flex-start;gap:1rem">
           <div>
             <div style="${ct}">Chart 2 · Industry specialization</div>
-            <div style="${ch}">What this region concentrates in vs. Virginia</div>
+            <div style="${ch}">Regional Industry Concentration</div>
           </div>
           <button type="button" data-help="lq" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:var(--vw-font-body);font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>How to read this</button>
         </div>
-        <p style="${cs}">How concentrated each industry is in the local job mix compared with Virginia as a whole. A reading of <b>2.0×</b> means the industry is twice as common here as it is statewide, a local specialty; <b>1.0×</b> (the dashed line) is an even match with the Commonwealth; below 1.0× means it’s less common here than across Virginia. <span style="color:#9DB4D6">(Economists call this the industry’s Location Quotient.)</span></p>
-        <div id="c-industry-lq" style="width:100%;height:540px"></div>
+        <p style="${cs}">How concentrated each industry is in the local job mix compared with Virginia as a whole. A reading of <b>2.0×</b> means the industry is twice as common here as it is statewide, a local specialty; <b>1.0×</b> (the dashed line) is an even match with the Commonwealth; below 1.0× means it’s less common here than across Virginia. The five most and least concentrated sectors are shown. <span style="color:#9DB4D6">(Economists call this the industry’s Location Quotient.)</span></p>
+        <div id="c-industry-lq" style="width:100%;height:360px"></div>
       </div>`;
   }
 
@@ -1788,14 +1964,14 @@ class Component {
           <button type="button" data-help="newbiz" style="margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #C4CEDB;background:#F5F8FD;color:#0A2463;font-family:var(--vw-font-body);font-weight:700;font-size:.76rem;padding:.42rem .72rem;border-radius:8px;cursor:pointer;white-space:nowrap"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0A2463;color:#fff;font-size:.66rem;font-weight:700">?</span>What counts as a new business?</button>
         </div>
         <div id="biz-headline" style="margin:.35rem 0 .9rem"></div>
-        <p style="${cs}">Each year's bar counts employer businesses that show up in the state's official jobs records for the first time — an early signal of local investment.</p>
+        <p style="${cs}">Each year counts the employer businesses that show up in the state's official jobs records for the first time, an early signal of local investment.</p>
         <div id="c-business" style="width:100%;height:330px"></div>
       </div>
       <div style="${card}">
-        <div style="${ct}">Chart 2 · Where new businesses are forming</div>
-        <div style="${ch}">New businesses by industry, most recent year</div>
-        <p style="${cs}">Which industries new businesses chose in the latest year. The tallest bars are where local investment is concentrating: small-business heavy sectors like construction, professional services, and food service usually lead.</p>
-        <div id="c-business-industry" style="width:100%;height:520px"></div>
+        <div style="${ct}">Chart 2 · Fastest-growing sectors</div>
+        <div style="${ch}">Top 5 Industries by New Business Growth</div>
+        <p style="${cs}">The five industries where new-business formation grew the most, by percentage change rather than raw count. This surfaces fast-rising sectors even when their totals are still small.</p>
+        <div id="c-business-industry" style="width:100%;height:300px"></div>
       </div>`;
   }
 
@@ -1859,6 +2035,8 @@ class Component {
     const ct='font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9DB4D6';
     const ch='font-family:var(--vw-font-display);font-size:1.25rem;font-weight:800;margin:3px 0 4px;color:#0A2463;letter-spacing:.01em;line-height:1.05';
     const cs='font-size:.86rem;color:#5A6472;margin:0 0 12px;max-width:72ch;line-height:1.5';
+    const ctrl='font-family:var(--vw-font-body);font-size:.82rem;color:#1A1A1A;background:#fff;border:1px solid #C4CEDB;border-radius:8px;padding:.42rem .6rem;cursor:pointer';
+    const ctrlBtn='font-family:var(--vw-font-body);font-size:.8rem;font-weight:700;color:#0A2463;background:#F5F8FD;border:1px solid #C4CEDB;border-radius:8px;padding:.44rem .8rem;cursor:pointer';
     // Scope chip — makes statewide-vs-local unmistakable on each element
     const chip=(txt,sw)=>`<span style="display:inline-block;align-self:flex-start;background:${sw?'#EAF1FB':'#F4E8C6'};border:1px solid ${sw?'#C4D6F0':'#E7D3A0'};color:${sw?'#1B4DB1':'#8a6a24'};font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:20px">${txt}</span>`;
     const banLbl='margin:.5rem 0 0;color:#5A6472;text-transform:none;letter-spacing:0;font-size:.8rem;font-weight:600;line-height:1.35';
@@ -1883,36 +2061,21 @@ class Component {
            GEOGRAPHY UNKNOWN: whether the view is per-locality or statewide is pending query access — controlled solely by empListScope() ('statewide' | 'locality').
            Ownership split (confirmed, locality-specific): dbo.industry / WID Industry, StFips='51', IndCode='10' (all industries), Ownership code (50=Private; 10=Federal, 20=State, 30=Local, or 80=All Government) for the selected Area. AreaType '04'=county/city (137 areas); roll up to LWDA/state per fallback. -->
 
-      <!-- QUICK-READ STATS (compliant): list size + local private share. -->
-      <div class="demo-bans" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:.2rem">
-        <div class="demo-ban" style="display:flex;flex-direction:column">
-          ${countChip}
-          <div class="demo-ban-val" id="emp-ban-count" style="margin-top:.5rem">—</div>
-          <div class="demo-ban-lbl" style="${banLbl}">${countLabel}</div>
-        </div>
-        <div class="demo-ban" style="display:flex;flex-direction:column">
-          ${chip('Local',false)}
-          <div class="demo-ban-val" id="emp-ban-private" style="margin-top:.5rem;color:#2A7050">—</div>
-          <div class="demo-ban-lbl" style="${banLbl}">Private-sector jobs in <span id="emp-locality3">this locality</span></div>
-        </div>
-      </div>
-
-      <!-- LOCALITY OWNERSHIP SPLIT (confirmed, local) -->
-      <div style="${card}">
+      <!-- DISTRIBUTION OF JOBS BY EMPLOYER TYPE (confirmed, local): treemap, Private vs Government (Fed/State/Local). -->
+      <div style="${card};margin-top:.2rem">
         <div style="${ct}">This locality</div>
-        <div style="${ch}">Public and private jobs in <span id="emp-locality2">this locality</span></div>
-        <p style="${cs}">This split <b>is</b> specific to the selected geography: the share of jobs in private businesses versus government (federal, state, and local).</p>
-        <div id="c-emp-ownership" style="width:100%;height:150px"></div>
+        <div style="${ch}">Distribution of Jobs by Employer Type</div>
+        <p style="${cs}">The share of jobs in private businesses versus government, with government broken into federal, state, and local. Specific to the selected geography.</p>
+        <div id="c-emp-ownership" style="width:100%;height:300px"></div>
         <p style="font-size:.9rem;color:#5A6472;margin:.4rem 0 0;line-height:1.5" id="f-emp-ownership"></p>
       </div>
 
-      <!-- DEFERRED: size-distribution chart. Counts employers per SizeDesc band.
-           Pending confirmation that aggregate size-band counts are disclosure-compliant.
-           Do not populate until confirmed. -->
-      <div style="${card};border-style:dashed;background:#FAFBFC">
-        <div style="${ct}">${sw?'Statewide':'This locality'} · deferred</div>
-        <div style="${ch};color:#9DB4D6">Employers by size</div>
-        <p style="${cs};margin-bottom:0;color:#9DB4D6">A count of employers in each size band will appear here once we confirm that aggregate size-band counts are cleared for public display. Not shown yet.</p>
+      <!-- EMPLOYERS BY SIZE (donut: small / medium / large) -->
+      <div style="${card}">
+        <div style="${ct}">This locality</div>
+        <div style="${ch}">Employers by size</div>
+        <p style="${cs}">Every employer in the locality bucketed by workforce size. Most are small; a handful of large anchors employ a big share of the workforce.</p>
+        <div id="c-emp-size" style="width:100%;height:300px"></div>
       </div>
 
       <!-- NAMED LIST + CSV (long — placed last). Banner + labels per empListScope(). -->
@@ -1927,10 +2090,17 @@ class Component {
           </button>
         </div>
         ${banner}
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table id="emp-table" style="width:100%;border-collapse:collapse;min-width:520px${sw?'':';margin-top:.5rem'}"></table>
+        <div id="emp-filters" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.2rem 0 .7rem">
+          <input id="emp-search" type="text" placeholder="Search employer…" style="${ctrl};min-width:170px;flex:1 1 170px">
+          <select id="emp-f-industry" style="${ctrl}"></select>
+          <select id="emp-f-ownership" style="${ctrl}"></select>
+          <select id="emp-f-size" style="${ctrl}"></select>
+          <button type="button" id="emp-clear" style="${ctrlBtn}">Clear</button>
         </div>
-        <p style="font-size:.78rem;color:#9DB4D6;margin:.7rem 0 0">Showing the top 25 of 50. Download the CSV for the full list. Size is the employer’s size band, not a headcount.</p>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table id="emp-table" style="width:100%;border-collapse:collapse;min-width:520px"></table>
+        </div>
+        <p id="emp-count" style="font-size:.78rem;color:#9DB4D6;margin:.7rem 0 0">Click a column to sort; use the filters to narrow the list. Size is the employer’s size band, not a headcount.</p>
       </div>`;
   }
 
@@ -1940,18 +2110,24 @@ class Component {
     return {
       A:{ geo:'Fairfax County',
         pop:{ years:['2010','2014','2018','2021','2024'], totals:[1083100,1104800,1126500,1137300,1150300] },
+        // Population by age bin over time (youngest→oldest), aligned to pop.years.
+        // Wire from ACS DP05: <=24=[Under5..20-24], 25-54=[25-34,35-44,45-54], 55-64=[55-59,60-64], 65+=[65-74,75-84,85+].
+        ageBins:{ labels:['Up to 24','25–54','55–64','65+'],
+          series:[ [335761,336964,337950,335504,333587], [487395,486112,490028,489039,483126],
+                   [129972,135890,140813,145574,149539], [129972,145834,157710,167183,184048] ] },
         bans:[
           {lbl:'Total population', val:'1,150,300', cmp:'<span class="delta up">&#9650; 6.2%</span> since 2010'},
-          {lbl:'Median age',       val:'37.3',      cmp:'<span class="delta">&minus;1.1</span> vs <span class="varef">Virginia 38.4</span>'},
-          {lbl:'Working age 18&ndash;64',val:'64%',  cmp:'<span class="delta">+3 pts</span> vs <span class="varef">VA 61%</span>'},
-          {lbl:'Within 10 yrs of 65', val:'11%',    cmp:'age 55&ndash;64 &middot; <span class="delta">&minus;1 pt</span> vs <span class="varef">VA 12%</span>'} ] },
+          {lbl:'Median age',       val:'37.3',      cmp:'<span class="delta">&minus;1.1</span> vs <span class="varef">Virginia 38.4</span>',
+           spark:{id:'sp-medage', data:[36.1,36.5,36.9,37.1,37.3]}} ] },
       B:{ geo:'Buchanan County',
         pop:{ years:['2010','2014','2018','2021','2024'], totals:[40040,39650,39220,38700,38400] },
+        ageBins:{ labels:['Up to 24','25–54','55–64','65+'],
+          series:[ [10410,9913,9413,8901,8448], [16016,15464,14904,14319,13824],
+                   [6006,6066,6118,6115,6144], [7608,8208,8785,9365,9984] ] },
         bans:[
           {lbl:'Total population', val:'38,400', cmp:'<span class="delta down">&#9660; 4.1%</span> since 2010'},
-          {lbl:'Median age',       val:'46.8',   cmp:'<span class="delta">+8.4</span> vs <span class="varef">Virginia 38.4</span>'},
-          {lbl:'Working age 18&ndash;64',val:'56%', cmp:'<span class="delta">&minus;5 pts</span> vs <span class="varef">VA 61%</span>'},
-          {lbl:'Within 10 yrs of 65', val:'17%', cmp:'age 55&ndash;64 &middot; <span class="delta">+5 pts</span> vs <span class="varef">VA 12%</span>'} ] }
+          {lbl:'Median age',       val:'46.8',   cmp:'<span class="delta">+8.4</span> vs <span class="varef">Virginia 38.4</span>',
+           spark:{id:'sp-medage', data:[42.0,43.4,44.9,45.9,46.8]}} ] }
     };
   }
 
@@ -1966,30 +2142,60 @@ class Component {
     const ARCH=(new URLSearchParams(location.search).get('arch')||'A').toUpperCase()==='B'?'B':'A';
     const dd=this.demoData()[ARCH];
 
-    // BAN row — total population, median age, working-age share; age as numbers.
+    // BAN row — two cards: total population and median age (with an over-time sparkline).
     const banEl=document.getElementById('demo-bans');
+    // Caption the sparkline with the period it spans (derived, so it self-updates with real data).
+    const spanLbl=`${dd.pop.years[0]}–${dd.pop.years[dd.pop.years.length-1]}`;
     if(banEl){ banEl.innerHTML=dd.bans.map(b=>
-      `<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div><div class="demo-ban-cmp">${b.cmp}</div></div>`).join(''); }
+      `<div class="demo-ban"><div class="demo-ban-lbl">${b.lbl}</div><div class="demo-ban-val">${b.val}</div>${b.spark?`<div class="demo-ban-sparkrow"><span class="demo-ban-sparkend">${b.spark.data[0].toFixed(1)}</span><div id="${b.spark.id}" class="demo-ban-spark"></div><span class="demo-ban-sparkend">${b.spark.data[b.spark.data.length-1].toFixed(1)}</span></div><div class="demo-ban-sparklbl">Median age &middot; ${spanLbl}</div>`:''}<div class="demo-ban-cmp">${b.cmp}</div></div>`).join('');
+      // Median-age card sparkline: median age over time (illustrative series until real ACS data).
+      dd.bans.forEach(b=>{ if(!b.spark) return; const sc=this.mk(b.spark.id); if(!sc) return;
+        sc.setOption({ grid:{left:2,right:2,top:4,bottom:2}, xAxis:{type:'category',show:false,boundaryGap:false,data:b.spark.data.map((_,i)=>i)},
+          yAxis:{type:'value',show:false,scale:true}, tooltip:{show:false},
+          series:[{type:'line',data:b.spark.data,smooth:false,symbol:'none',lineStyle:{width:2.5,color:C.blue},
+            areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(C.blue,.22)},{offset:1,color:this.rgba(C.blue,0)}])}}] }); });
+    }
     const setFact=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
 
-    /* POPULATION TREND — one line, total population over time. Slope is the
-       story (growing vs declining). No benchmark, no age/sex dimension. Swap
-       dd.pop = {years:[], totals:[]} for a real population time series later. */
-    const c=this.mk('c-demo-poptrend');
-    if(c){ const P=dd.pop, LINE=C.blue;
-      c.setOption({
+    /* POPULATION GROWTH BY AGE GROUP: stacked area, youngest (bottom) to oldest
+       (top). Each band's share of the population is labeled only at the first and
+       last period, so the shift in age mix reads at a glance. Wire dd.ageBins
+       from ACS DP05 (bracket sums per the 4 bins). */
+    const cb=this.mk('c-demo-agebins'), AB=dd.ageBins;
+    if(cb && AB){
+      const COL=[C.blueBright,C.green,C.gold,C.cobalt];   // one VA Works brand color per bin (young→old)
+      const LBL=['#fff','#fff','#1A1A1A','#fff'];          // label text: dark on the light gold band, white elsewhere
+      const yrs=AB.years||dd.pop.years, lastIdx=yrs.length-1;
+      const yearTot=yrs.map((_,yi)=>AB.series.reduce((s,arr)=>s+arr[yi],0));
+      // Latest total population is shown as a BAN in the card header (off-chart). Even gridlines
+      // on a nice round step with just a little headroom.
+      const peak=yearTot[lastIdx];
+      const niceStep=v=>{ const m=Math.pow(10,Math.floor(Math.log10(v))), n=v/m; return (n<=1?1:n<=2?2:n<=3?3:n<=5?5:10)*m; };
+      const yStep=niceStep(peak/6), yMax=Math.ceil((peak*1.001)/yStep)*yStep;
+      const tl=document.getElementById('agebins-totlbl'); if(tl) tl.textContent='Total population · '+yrs[lastIdx];
+      const tv=document.getElementById('agebins-tot'); if(tv) tv.textContent=fmt(peak);
+      const series=AB.series.map((arr,si)=>({
+        name:AB.labels[si], type:'line', stack:'age', symbol:'none', smooth:false,
+        lineStyle:{width:1,color:'#fff'}, itemStyle:{color:COL[si]}, areaStyle:{opacity:.92}, emphasis:{focus:'series'},
+        data:arr
+      }));
+      // % share labels: invisible scatter overlay so each label sits centered in its
+      // band at only the first and last period (line-series labels don't render with symbol:none).
+      const labelPts=[];
+      [0,lastIdx].forEach(j=>{ let cum=0; AB.series.forEach((arr,si)=>{ const v=arr[j], mid=cum+v/2; cum+=v;
+        labelPts.push({ value:[yrs[j],mid], symbolSize:0,
+          label:{show:true, formatter:Math.round(v/yearTot[j]*100)+'%', color:LBL[si],
+            fontFamily:F, fontWeight:700, fontSize:11, position:j===0?'right':'left', distance:7} }); }); });
+      series.push({ type:'scatter', data:labelPts, z:5, silent:true, tooltip:{show:false}, legendHoverLink:false });
+      cb.setOption({
         textStyle:{fontFamily:F},
-        grid:{left:8,right:24,top:24,bottom:8,containLabel:true},
+        grid:{left:8,right:16,top:16,bottom:40,containLabel:true},
+        legend:{data:AB.labels,bottom:0,textStyle:{fontFamily:F,color:C.slate},icon:'roundRect',itemWidth:12,itemHeight:12},
         tooltip:{trigger:'axis',axisPointer:{type:'line'},valueFormatter:fmt},
-        xAxis:{type:'category',data:P.years,...ax,boundaryGap:false},
-        yAxis:{type:'value',...ax,scale:true,axisLabel:{...ax.axisLabel,formatter:v=>v>=1e6?+(v/1e6).toFixed(2)+'M':(v/1000).toFixed(0)+'k'}},
-        series:[{name:'Total population',type:'line',data:P.totals,smooth:true,symbol:'circle',symbolSize:7,
-          lineStyle:{width:3.5,color:LINE},itemStyle:{color:LINE},
-          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(LINE,.26)},{offset:1,color:this.rgba(LINE,0)}])}}]
+        xAxis:{type:'category',data:yrs,boundaryGap:false,...ax},
+        yAxis:{type:'value',...ax,min:0,max:yMax,interval:yStep,axisLabel:{...ax.axisLabel,formatter:v=>v>=1e6?+(v/1e6).toFixed(2)+'M':(v/1000).toFixed(0)+'k'}},
+        series
       });
-      const first=P.totals[0], last=P.totals[P.totals.length-1], y0=P.years[0], y1=P.years[P.years.length-1];
-      const pct=+(((last-first)/first)*100).toFixed(1), dir=pct>0?'grown':pct<0?'declined':'held steady';
-      setFact('f-demo-poptrend', `Between ${y0} and ${y1}, ${dd.geo}&rsquo;s population has ${dir} from <b>${fmt(first)}</b> to <b>${fmt(last)}</b>, a change of ${(pct>0?'+':'')+pct}% overall.`);
     }
   }
 
