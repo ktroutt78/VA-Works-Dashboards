@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Placeholder figures on a public URL: keep this page out of search results so
+     invented Virginia labour statistics cannot surface in a search for real ones. -->
+<meta name="robots" content="noindex,nofollow">
+<title>LMI App wireframe — Virginia labor market scorecard</title>
+
+<!--
+  ===========================================================================
+  ALL NUMBERS ON THIS PAGE ARE PLACEHOLDERS. NONE ARE REAL.
+  ===========================================================================
+  Static wireframe for client layout sign-off. No query, no data pipeline, no
+  build step. Every figure was invented to be plausible and to exercise the
+  layout: the rates, the 36-month series, the job change, the earnings, the
+  projections, the claims, the QCEW counts, the wage percentiles, and every
+  period and as-of date. Do not cite or circulate any figure here as a
+  Virginia statistic. Real values come from the WID once Step 0 verification
+  and the metric queries in LMI_APP_BRIEF.md sections 2 and 5 are complete.
+
+  Drill links are inert by design.
+
+  ---------------------------------------------------------------------------
+  TYPOGRAPHY IS INTERIM, PENDING THE GRAPHIC DESIGNER'S DIRECTION.
+  ---------------------------------------------------------------------------
+  Every type and surface value below is lifted from the shipped front-page app
+  (apps/dashboard-front-page-echarts/index.html, live at
+  dashboard-front-page-echarts.vercel.app) so this page sits in the same family
+  as the rest of the suite rather than introducing a fifth visual language.
+  Matching the existing app is the interim baseline, not a final decision. When
+  the designer's direction lands, the token block in :root is the only place
+  that should need to change.
+
+  Values taken verbatim from that app:
+    --bg-page #f5f4ef · --bg-card #ffffff · --border #e9e7e0
+    --ink-1..4 · --brand-1 #003595 · --brand-2 #1f5fa8 · --brand-3 #cfe0f3
+    --radius-card 14px · --shadow-card (three-layer)
+    Fonts: --vw-font-display / --vw-font-body, Public Sans + system stack.
+      No webfont link and no monospace anywhere — the front page uses neither.
+    Numerals: 700 weight, letter-spacing -0.025em, tabular figures, with the
+      unit (%, $) as a smaller 600-weight span in --ink-2 (its .kpi-value .unit)
+    Stat labels: 10.5px / 600 / 0.08em / uppercase / --ink-3 (its .kpi-label,
+      the VIRGINIA and U.S. AVERAGE treatment)
+    Muted labels: 11px / 500 / --ink-3, no tracking (its .card-sub)
+    Dividers: 1px dashed var(--border), as on its .kpi-row and .bar-foot
+    Series: Virginia #003595 solid · U.S. #8A94A3 dashed · negative bars
+      #9FB4D8 (its jobs chart uses exactly this, not a valence colour)
+
+  ONE DELIBERATE DIVERGENCE: the front page colours its KPI deltas green for up
+  and coral for down (.kpi-delta / .kpi-delta.down). This page does not, per the
+  standing "no valence colouring on a government site" rule. Direction is
+  carried by the arrow glyph and the named basis instead. Flagged so it can be
+  reversed in one rule if the client prefers the front page's behaviour.
+  ===========================================================================
+-->
+
+<style>
+:root {
+  /* ── Verbatim from apps/dashboard-front-page-echarts/index.html ─────────── */
+  --bg-page: #f5f4ef;
+  --bg-card: #ffffff;
+  --border: #e9e7e0;
+  --border-strong: #d8d5cc;
+  --ink-1: #1a1d1f;
+  --ink-2: #4a4d51;
+  --ink-3: #8a8c8f;
+  --ink-4: #b8b9bc;
+
+  --brand-1: #003595;
+  --brand-2: #1f5fa8;
+  --brand-3: #cfe0f3;
+  --brand-tint: #eaf1f9;
+  --accent: #c89b3c;
+  --coral: #b75049;
+  --success: #2f7a4a;
+
+  --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Percentile-band palette, lifted from apps/wage-tool/wage-tool.html.
+     Solid fills, not tints: the outer band clears 4.4:1 on white and the inner
+     band is dark enough that the ink median tick reads on top of it. */
+  --band-outer: #8aa0c4;
+  --band-inner: #3a5a8a;
+  --band-tick:  #1a1f2c;
+  --band-dot:   #b03a2e;
+
+  --shadow-card: 0 0.5px 0 rgba(20,30,50,0.04), 0 1px 2px rgba(20,30,50,0.04), 0 8px 24px rgba(20,30,50,0.04);
+  --radius-card: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--vw-font-body);
+  background: var(--bg-page);
+  color: var(--ink-1);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Narrower than the front page's 1360px three-card grid: this is a single
+   reading column, so it holds a comfortable measure instead. */
+.page { max-width: 1100px; margin: 0 auto; padding: 32px 28px 64px; }
+
+/* ── Masthead ────────────────────────────────────────────────────────────── */
+.dash-head { margin-bottom: 22px; }
+.dash-head h1 {
+  font-family: var(--vw-font-display);
+  margin: 0; font-size: 24px; font-weight: 700;
+  letter-spacing: -0.015em; color: var(--ink-1);
+}
+.dash-head .sub { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); max-width: 640px; }
+/* Placeholder marker. Delete this one element if it is not wanted. */
+.stamp {
+  display: inline-block; margin-top: 12px;
+  font-size: 11px; font-weight: 500; color: var(--ink-3);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 11px;
+}
+
+/* ── One container language, matching the front page's .card ─────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px 14px;
+}
+.stack { display: flex; flex-direction: column; gap: 18px; }
+
+/* ── Shared type ─────────────────────────────────────────────────────────── */
+.card-title {
+  font-family: var(--vw-font-display);
+  margin: 0; font-size: 15px; font-weight: 600;
+  letter-spacing: -0.005em; color: var(--ink-1);
+}
+/* .card-sub — small muted sans, no tracking. Period labels and context values. */
+.card-sub { font-size: 11px; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* .kpi-label — the VIRGINIA / U.S. AVERAGE treatment. */
+.stat-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3); line-height: 1.3;
+}
+/* .kpi-value — heavy, tight, tabular, with the unit as a smaller trailing span. */
+.val {
+  font-family: var(--vw-font-display);
+  font-weight: 700; letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums; color: var(--ink-1); line-height: 1.05;
+}
+.val .unit { font-weight: 600; color: var(--ink-2); }
+/* No valence: direction is the arrow, not the colour. See the header note. */
+.delta {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.delta .arrow { font-size: 9px; line-height: 1; color: var(--ink-2); }
+.drill { font-size: 12px; font-weight: 600; color: var(--brand-1); text-decoration: none; white-space: nowrap; }
+.drill:hover { text-decoration: underline; }
+
+.block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.block-foot {
+  display: flex; justify-content: flex-end;
+  margin-top: 8px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+/* ── 1. Hero ─────────────────────────────────────────────────────────────── */
+.hero { display: grid; grid-template-columns: minmax(230px, 290px) 1fr; gap: 28px; align-items: start; }
+.hero .val { font-size: 52px; margin: 8px 0 6px; }
+.hero .val .unit { font-size: 30px; }
+.hero-cmp { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.hero-cmp .val { font-size: 22px; margin-top: 2px; }
+.hero-cmp .val .unit { font-size: 14px; }
+.hero-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
+  font-size: 11px; color: var(--ink-3);
+}
+.hero-foot strong { color: var(--ink-1); font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; margin-left: 4px; }
+.legend { display: flex; gap: 14px; margin: 0 0 6px; font-size: 11.5px; color: var(--ink-2); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: currentColor; }
+.legend-item.dashed .legend-dot { border-radius: 0; width: 14px; height: 0; border-top: 2px dashed currentColor; background: transparent; }
+
+/* ── 2. Tile row ─────────────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.tile { display: flex; flex-direction: column; }
+.tile .val { font-size: 34px; margin: 8px 0 4px; }
+.tile .val .unit { font-size: 20px; }
+.tile-spark { margin: 12px 0 2px; }
+.ctx {
+  display: flex; gap: 20px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.ctx div { display: flex; flex-direction: column; gap: 2px; }
+.ctx b { font-weight: 700; color: var(--ink-1); font-variant-numeric: tabular-nums; font-size: 13px; }
+.tile .block-foot { margin-top: auto; }
+
+/* ── 3 & 4. Rails ────────────────────────────────────────────────────────── */
+.rail-row { display: grid; grid-template-columns: 1fr auto 132px; align-items: center; gap: 20px; padding: 12px 0; }
+.rail-row + .rail-row { border-top: 1px dashed var(--border); }
+.rail-row:first-of-type { padding-top: 2px; }
+.rail-lbl { font-size: 13px; font-weight: 500; color: var(--ink-1); }
+.rail-fig { justify-self: end; text-align: right; }
+.rail-fig .val { font-size: 24px; margin-bottom: 3px; }
+.rail-spark { justify-self: end; line-height: 0; }
+
+/* Two rails side by side. Each holds only two short rows, so at full width
+   most of the card is the gap between label and value. Pairing them also stops
+   two structurally identical blocks running consecutively, which is the
+   rhythm rule in brief §3. */
+.rails { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.rails > .card { display: flex; flex-direction: column; }
+.rails .block-foot { margin-top: auto; }
+/* Sparkline gives up a little width at half scale; the value keeps its size. */
+.rails .rail-row { grid-template-columns: minmax(0, 1fr) auto 104px; gap: 14px; }
+.rails .rail-lbl { font-size: 12.5px; }
+
+/* ── 5. Wage card ────────────────────────────────────────────────────────── */
+.wage-pair { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: stretch; gap: 14px; max-width: 460px; }
+.wage-cell { display: flex; flex-direction: column; gap: 2px; }
+.wage-divider { background: var(--border); }
+.wage-cell .val { font-size: 34px; margin: 2px 0; }
+.wage-cell .val .unit { font-size: 20px; }
+.wage-note { font-size: 11px; color: var(--ink-3); margin: 12px 0 0; max-width: 70ch; }
+.dist { margin-top: 16px; }
+/* Geometry copied from the wage-tool bullet chart: outer band 28px, inner band
+   inset 3px top and bottom, median tick spanning the full 40px and squared off,
+   marker dot r=7 with a 2px white ring. */
+.d-track { position: relative; height: 40px; }
+.d-outer { position: absolute; left: 0; right: 0; top: 6px; height: 28px; border-radius: 3px; background: var(--band-outer); }
+.d-inner { position: absolute; top: 9px; height: 22px; border-radius: 2px; background: var(--band-inner); }
+.d-med   { position: absolute; top: 0; height: 40px; width: 3px; background: var(--band-tick); transform: translateX(-1.5px); }
+.d-mean  { position: absolute; top: 6px; width: 14px; height: 14px; margin-top: 7px; border-radius: 50%;
+           background: var(--band-dot); box-shadow: 0 0 0 2px #fff; transform: translateX(-7px); }
+.d-outer, .d-inner, .d-med, .d-mean { cursor: default; }
+.dist-scale { position: relative; height: 28px; margin-top: 6px; font-size: 10.5px; color: var(--ink-3); }
+.dist-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
+.dist-key { display: flex; gap: 16px; font-size: 11px; color: var(--ink-2); margin-top: 6px; flex-wrap: wrap; }
+.dist-key span { display: inline-flex; align-items: center; gap: 6px; }
+.dist-key i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; flex: none; }
+
+/* ── Tooltip — the shipped front page's .dh-tip structure ─────────────────── */
+#tip {
+  position: absolute; z-index: 60; pointer-events: none;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow-card);
+  padding: 9px 11px; min-width: 152px;
+  font: 500 12px/1.4 var(--vw-font-body); color: var(--ink-1);
+}
+#tip[hidden] { display: none; }
+#tip .t-name { font-weight: 700; font-size: 12.5px; color: var(--ink-1); margin-bottom: 4px; }
+#tip .t-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; font-variant-numeric: tabular-nums; padding: 1px 0; }
+#tip .t-row .lbl { color: var(--ink-2); display: inline-flex; align-items: center; }
+#tip .t-row .val { color: var(--ink-1); font-weight: 600; }
+#tip .t-foot { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); color: var(--ink-3); font-size: 11px; }
+#tip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex: none; }
+.hit { fill: transparent; cursor: default; }
+
+/* ── Cadence footnote ─────────────────────────────────────────────────────
+   Provenance metadata, so it sits after the content rather than before it. No
+   card chrome: it reads as a footnote, not a sixth panel. Per-tile period
+   labels already carry freshness in place. */
+.cadence { margin-top: 4px; padding: 16px 20px 0; border-top: 1px dashed var(--border-strong); }
+.cadence-lbl { font-size: 11px; font-weight: 500; color: var(--ink-3); margin-bottom: 12px; }
+.cadence-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 14px; }
+.cad .p { font-size: 12px; font-weight: 700; color: var(--ink-2); line-height: 1.25; }
+.cad .f { font-size: 11px; font-weight: 500; color: var(--ink-4); margin-top: 2px; }
+.cad .d { font-size: 11px; font-weight: 500; color: var(--ink-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+svg text { font-variant-numeric: tabular-nums; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .page { padding: 24px 18px 56px; }
+  /* Below this the two-up rails crowd the value column, so they stack. Each
+     still keeps its own two-row structure. */
+  .rails { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .rails .rail-row { grid-template-columns: minmax(0, 1fr) auto 132px; gap: 20px; }
+  .cadence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 14px; }
+}
+@media (max-width: 700px) {
+  .page { padding: 20px 14px 48px; }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .hero .val { font-size: 42px; }
+  .hero .val .unit { font-size: 24px; }
+  .tiles { grid-template-columns: minmax(0, 1fr); }   /* tile row → one column */
+  .tile .val { font-size: 28px; }
+  .tile .val .unit { font-size: 17px; }
+  /* Rails keep their two-row structure; only the sparkline column drops. */
+  .rail-row { grid-template-columns: 1fr auto; gap: 14px; }
+  .rail-spark { display: none; }
+  .wage-cell .val { font-size: 26px; }
+  .wage-cell .val .unit { font-size: 16px; }
+  .cadence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Drill grid pages ─────────────────────────────────────────────────────
+   One shell, seven datasets. Same tokens as the scorecard. */
+.back {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: var(--brand-1);
+  text-decoration: none; margin-bottom: 14px;
+}
+.back:hover { text-decoration: underline; }
+.grid-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+.grid-head h1 {
+  font-family: var(--vw-font-display);
+  margin: 0; font-size: 20px; font-weight: 700;
+  letter-spacing: -0.015em; color: var(--ink-1);
+}
+.grid-note { font-size: 11px; color: var(--ink-3); margin: 6px 0 0; max-width: 76ch; line-height: 1.5; }
+.btn-export {
+  flex: none; appearance: none; -webkit-appearance: none;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 14px;
+  font: 600 12px/1.3 var(--vw-font-body); color: var(--ink-1);
+  cursor: pointer; box-shadow: var(--shadow-card); white-space: nowrap;
+}
+.btn-export:hover { border-color: var(--border-strong); }
+.btn-export:focus { outline: none; border-color: var(--brand-1); box-shadow: 0 0 0 3px rgba(0,53,149,0.14); }
+
+/* Horizontal scroll rather than a squashed table, per brief §6. */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.grid th {
+  position: sticky; top: 0; z-index: 1; background: var(--bg-card);
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3);
+  text-align: left; white-space: nowrap;
+  padding: 8px 12px; border-bottom: 1px solid var(--border-strong);
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+table.grid th:hover { color: var(--ink-2); }
+table.grid th.num { text-align: right; }
+table.grid th.active { color: var(--brand-1); }
+table.grid th .ind { font-size: 8px; margin-left: 4px; opacity: 0; }
+table.grid th.active .ind { opacity: 1; }
+table.grid td {
+  padding: 9px 12px; border-bottom: 1px dashed var(--border);
+  color: var(--ink-1); vertical-align: baseline;
+}
+table.grid td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+table.grid td.code { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.grid tbody tr:hover td { background: var(--brand-tint); }
+table.grid tbody tr:last-child td { border-bottom: 0; }
+.rowcount {
+  font-size: 11px; color: var(--ink-3); margin-top: 12px;
+  padding-top: 10px; border-top: 1px dashed var(--border);
+}
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <div id="view-scorecard">
+  <header class="dash-head">
+    <h1>Virginia labor market scorecard</h1>
+    <p class="sub">
+      Statewide indicators across six federal programs. Each block carries its own
+      release period and drills to a sortable, exportable detail grid.
+    </p>
+    <span class="stamp">Wireframe · all figures are placeholders</span>
+  </header>
+
+  <main class="stack">
+
+    <!-- ===== 1. HERO — unemployment rate ================================== -->
+    <section class="card" aria-labelledby="hero-lbl">
+      <div class="hero">
+
+        <div>
+          <h2 class="card-title" id="hero-lbl">Unemployment rate</h2>
+          <div class="card-sub">December 2025 · LAUS · seasonally adjusted</div>
+
+          <div class="stat-label" style="margin-top:12px">Virginia</div>
+          <div class="val">3.6<span class="unit">%</span></div>
+          <div class="delta"><span class="arrow">▼</span> 0.1 pt vs Nov</div>
+
+          <div class="hero-cmp">
+            <div class="stat-label">U.S. average</div>
+            <div class="val">4.4<span class="unit">%</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="legend" aria-hidden="true">
+            <span class="legend-item" style="color:#003595"><span class="legend-dot"></span><span style="color:var(--ink-2)">Virginia</span></span>
+            <span class="legend-item dashed" style="color:#8A94A3"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
+          </div>
+          <div id="hero-chart"></div>
+        </div>
+
+      </div>
+
+      <div class="hero-foot">
+        <div>Labor force participation <strong>64.3%</strong> · U.S. <strong>62.4%</strong></div>
+        <a class="drill" href="#/g/unemp-monthly">Monthly detail →</a>
+      </div>
+    </section>
+
+    <!-- ===== 2. TILE ROW ================================================== -->
+    <div class="tiles">
+
+      <article class="card tile">
+        <h2 class="card-title">Nonfarm jobs</h2>
+        <div class="card-sub">December 2025 · CES · seasonally adjusted</div>
+        <div class="val">−4,100</div>
+        <div class="delta">Change vs Nov</div>
+        <div class="tile-spark" id="spark-jobs"></div>
+        <div class="ctx">
+          <div><span class="card-sub">Total jobs</span><b>4.09M</b></div>
+          <div><span class="card-sub">U.S. change</span><b>+125,000</b></div>
+        </div>
+        <div class="block-foot"><a class="drill" href="#/g/jobs-supersector">By supersector →</a></div>
+      </article>
+
+      <article class="card tile">
+        <h2 class="card-title">Real hourly earnings</h2>
+        <div class="card-sub">December 2025 · CES ÷ CPI-U</div>
+        <div class="val"><span class="unit">$</span>31.84</div>
+        <div class="delta"><span class="arrow">▲</span> 1.2% vs Dec 2024</div>
+        <div class="tile-spark" id="spark-earn"></div>
+        <div class="ctx">
+          <div><span class="card-sub">Nominal</span><b>$35.42</b></div>
+          <div><span class="card-sub">Deflator</span><b>National CPI-U</b></div>
+        </div>
+        <div class="block-foot"><a class="drill" href="#/g/earnings-monthly">Monthly detail →</a></div>
+      </article>
+
+      <article class="card tile">
+        <h2 class="card-title">Projected annual openings</h2>
+        <div class="card-sub">2022–2032 · long-term projections</div>
+        <div class="val">480,299</div>
+        <div class="delta">Employment growth +0.44%/yr</div>
+        <div class="tile-spark" id="spark-proj"></div>
+        <div class="ctx">
+          <div><span class="card-sub">Base year jobs</span><b>4.02M</b></div>
+          <div><span class="card-sub">Projected 2032</span><b>4.20M</b></div>
+        </div>
+        <div class="block-foot"><a class="drill" href="#/g/proj-occupation">By occupation →</a></div>
+      </article>
+
+    </div>
+
+    <div class="rails">
+    <!-- ===== 3. CLAIMS RAIL ============================================== -->
+    <section class="card" aria-labelledby="claims-lbl">
+      <div class="block-head">
+        <h2 class="card-title" id="claims-lbl">Unemployment insurance claims</h2>
+        <div class="card-sub">Week ending 02/14/2026 · NSA</div>
+      </div>
+
+      <div class="rail-row">
+        <div class="rail-lbl">Initial claims</div>
+        <div class="rail-fig">
+          <div class="val">2,653</div>
+          <div class="delta"><span class="arrow">▼</span> 8.2% vs same week 2025</div>
+        </div>
+        <div class="rail-spark" id="spark-initial"></div>
+      </div>
+
+      <div class="rail-row">
+        <div class="rail-lbl">Continued claims</div>
+        <div class="rail-fig">
+          <div class="val">21,041</div>
+          <div class="delta"><span class="arrow">▲</span> 3.4% vs same week 2025</div>
+        </div>
+        <div class="rail-spark" id="spark-continued"></div>
+      </div>
+
+      <div class="block-foot"><a class="drill" href="#/g/claims-weekly">Weekly detail →</a></div>
+    </section>
+
+    <!-- ===== 4. QCEW RAIL ================================================ -->
+    <section class="card" aria-labelledby="qcew-lbl">
+      <div class="block-head">
+        <h2 class="card-title" id="qcew-lbl">Covered employment and establishments</h2>
+        <div class="card-sub">Q3 2025 · QCEW</div>
+      </div>
+
+      <div class="rail-row">
+        <div class="rail-lbl">Covered employment</div>
+        <div class="rail-fig">
+          <div class="val">4,143,734</div>
+          <div class="delta"><span class="arrow">▲</span> 0.8% vs Q3 2024</div>
+        </div>
+        <div class="rail-spark" id="spark-emp"></div>
+      </div>
+
+      <div class="rail-row">
+        <div class="rail-lbl">Establishments</div>
+        <div class="rail-fig">
+          <div class="val">316,013</div>
+          <div class="delta"><span class="arrow">▲</span> 1.2% vs Q3 2024</div>
+        </div>
+        <div class="rail-spark" id="spark-est"></div>
+      </div>
+
+      <div class="block-foot"><a class="drill" href="#/g/qcew-industry">By industry →</a></div>
+    </section>
+    </div>
+
+    <!-- ===== 5. WAGE CARD ================================================ -->
+    <section class="card" aria-labelledby="wage-lbl">
+      <div class="block-head">
+        <h2 class="card-title" id="wage-lbl">Annual wages, all occupations</h2>
+        <div class="card-sub">2024 · OEWS</div>
+      </div>
+
+      <div class="wage-pair">
+        <div class="wage-cell">
+          <span class="stat-label">Median</span>
+          <span class="val"><span class="unit">$</span>53,020</span>
+        </div>
+        <div class="wage-divider"></div>
+        <div class="wage-cell">
+          <span class="stat-label">Mean</span>
+          <span class="val"><span class="unit">$</span>72,060</span>
+        </div>
+      </div>
+
+      <p class="wage-note">
+        The mean sits above the median because high earners pull the average up.
+        The median is the midpoint: half of Virginia workers earn less, half earn more.
+      </p>
+
+      <div class="dist">
+        <div id="dist-bar"></div>
+        <div class="dist-scale" id="dist-scale"></div>
+        <div class="dist-key" aria-hidden="true">
+          <span><i style="background:var(--band-outer)"></i>10th–90th percentile</span>
+          <span><i style="background:var(--band-inner)"></i>25th–75th percentile</span>
+          <span><i style="background:var(--band-tick);width:3px;height:13px;border-radius:0"></i>Median</span>
+          <span><i style="background:var(--band-dot);border-radius:50%;box-shadow:0 0 0 1.5px #fff"></i>Mean</span>
+        </div>
+      </div>
+
+      <div class="block-foot"><a class="drill" href="#/g/wage-occupation">By occupation →</a></div>
+    </section>
+
+    <!-- ===== CADENCE FOOTNOTE ============================================ -->
+    <footer class="cadence" aria-labelledby="cad-lbl">
+      <div class="cadence-lbl" id="cad-lbl">
+        Six programs, six release cadences. There is no single “as of” date for this page.
+      </div>
+      <div class="cadence-grid">
+        <div class="cad"><div class="p">LAUS</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
+        <div class="cad"><div class="p">CES</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
+        <div class="cad"><div class="p">CPI-U</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
+        <div class="cad"><div class="p">UI claims</div><div class="f">Weekly</div><div class="d">02/14/2026</div></div>
+        <div class="cad"><div class="p">QCEW</div><div class="f">Quarterly</div><div class="d">Q3 2025</div></div>
+        <div class="cad"><div class="p">Projections</div><div class="f">Biennial</div><div class="d">2022–2032</div></div>
+      </div>
+    </footer>
+
+  </main>
+  </div><!-- /#view-scorecard -->
+
+  <section id="view-grid" hidden></section>
+</div>
+
+<script>
+/* =============================================================================
+   Inline SVG renderers. No chart library.
+   Colours match the shipped front-page app's chart series exactly.
+   Every array is invented placeholder data — see the comment at the top.
+   ============================================================================= */
+
+const BRAND = '#003595',   // Virginia series, positive bars, sparklines
+      USGRY = '#8A94A3',   // U.S. National, dashed (front page uses this hex)
+      DOWN  = '#b75049',   // negative bars — the front page's own --coral
+      INK1  = '#1a1d1f',
+      INK3  = '#8a8c8f',
+      GRIDL = '#f0eee9',
+      SURF  = '#ffffff',
+      FONT  = "'Public Sans',system-ui,-apple-system,sans-serif";
+
+/* ── Tooltip ────────────────────────────────────────────────────────────────
+   One shared element, reusing the shipped front page's .dh-tip markup so the
+   hover chrome matches the rest of the suite. Every chart on the page has a
+   hover layer; hit targets are wider than the marks they cover. */
+const tip = document.createElement('div');
+tip.id = 'tip'; tip.hidden = true;
+document.body.appendChild(tip);
+
+function showTip(html, e){
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY - r.height - 12;
+  if (x + r.width > innerWidth - 8)  x = e.clientX - r.width - 14;
+  if (x < 8) x = 8;
+  if (y < 8) y = e.clientY + 18;
+  tip.style.left = (x + scrollX) + 'px';
+  tip.style.top  = (y + scrollY) + 'px';
+}
+const hideTip = () => { tip.hidden = true; };
+const row = (label, value, colour) =>
+  `<div class="t-row"><span class="lbl">${colour ? `<span class="dot" style="background:${colour}"></span>` : ''}${label}</span><span class="val">${value}</span></div>`;
+
+/* Period labels for the tooltips, generated rather than hardcoded. */
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function monthsBack(n, endY, endM){
+  const out = [];
+  for (let i = n - 1; i >= 0; i--){
+    let m = endM - i, y = endY;
+    while (m < 0){ m += 12; y--; }
+    out.push(MON[m] + ' ' + y);
+  }
+  return out;
+}
+function weeksBack(n, endISO){
+  const out = [], d = new Date(endISO + 'T00:00:00');
+  for (let i = n - 1; i >= 0; i--){
+    const t = new Date(d); t.setDate(d.getDate() - i * 7);
+    out.push(String(t.getMonth() + 1).padStart(2,'0') + '/' + String(t.getDate()).padStart(2,'0') + '/' + t.getFullYear());
+  }
+  return out;
+}
+function quartersBack(n, endY, endQ){
+  const out = [];
+  for (let i = n - 1; i >= 0; i--){
+    let q = endQ - i, y = endY;
+    while (q < 1){ q += 4; y--; }
+    out.push('Q' + q + ' ' + y);
+  }
+  return out;
+}
+const int0 = v => Math.round(v).toLocaleString('en-US');
+const sInt = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US');
+
+/* Attach hover behaviour to the .hit rects a renderer laid down. */
+function bindHits(el, fmt, onMove){
+  el.querySelectorAll('.hit').forEach(h => {
+    const i = +h.dataset.i;
+    h.addEventListener('mousemove', e => { showTip(fmt(i), e); if (onMove) onMove(i); });
+    h.addEventListener('mouseenter', e => { showTip(fmt(i), e); if (onMove) onMove(i); });
+  });
+  el.addEventListener('mouseleave', () => { hideTip(); if (onMove) onMove(-1); });
+}
+
+function scale(vals, w, h, pad){
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const step = vals.length > 1 ? (w - pad * 2) / (vals.length - 1) : 0;
+  return vals.map((v, i) => [pad + i * step, h - pad - ((v - min) / span) * (h - pad * 2)]);
+}
+const toPath = pts => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+
+/* ── Hero: 36-month Virginia vs U.S., crosshair + two-series tooltip ──────── */
+function heroChart(el, va, us, months, labels){
+  const W = 640, H = 176, PAD = 14, LEFT = 34, RIGHT = 64, BOTTOM = 22;
+  const lo = Math.floor(Math.min(...va, ...us) * 2) / 2 - 0.25;
+  const hi = Math.ceil(Math.max(...va, ...us) * 2) / 2 + 0.25;
+  const plotW = W - RIGHT, plotH = H - BOTTOM;
+  const y = v => PAD + (1 - (v - lo) / (hi - lo)) * (plotH - PAD * 2);
+  const x = i => LEFT + (i / (va.length - 1)) * (plotW - LEFT - PAD);
+  const line = a => a.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+
+  let grid = '';
+  for (let v = Math.ceil(lo * 2) / 2; v <= hi; v += 0.5){
+    grid += `<line x1="${LEFT}" y1="${y(v).toFixed(1)}" x2="${(plotW - PAD).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${GRIDL}" stroke-width="1" stroke-dasharray="4 4"/>`
+         +  `<text x="${LEFT - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="500" fill="${INK3}" font-family="${FONT}">${v.toFixed(1)}%</text>`;
+  }
+
+  const lx = x(va.length - 1);
+  const marks =
+    `<circle cx="${lx.toFixed(1)}" cy="${y(us.at(-1)).toFixed(1)}" r="3.5" fill="${USGRY}" stroke="${SURF}" stroke-width="1.5"/>`
+  + `<circle cx="${lx.toFixed(1)}" cy="${y(va.at(-1)).toFixed(1)}" r="3.5" fill="${BRAND}" stroke="${SURF}" stroke-width="1.5"/>`;
+  const labelsSvg =
+    `<text x="${(lx + 8).toFixed(1)}" y="${(y(us.at(-1)) - 7).toFixed(1)}" font-size="11" font-weight="600" fill="${INK3}" font-family="${FONT}">U.S. ${us.at(-1).toFixed(1)}%</text>`
+  + `<text x="${(lx + 8).toFixed(1)}" y="${(y(va.at(-1)) + 13).toFixed(1)}" font-size="11" font-weight="700" fill="${INK1}" font-family="${FONT}">Va. ${va.at(-1).toFixed(1)}%</text>`;
+  const axis =
+    `<text x="${LEFT}" y="${H - 5}" font-size="11" font-weight="500" fill="${INK3}" font-family="${FONT}">${months[0]}</text>`
+  + `<text x="${(plotW - PAD).toFixed(1)}" y="${H - 5}" text-anchor="end" font-size="11" font-weight="500" fill="${INK3}" font-family="${FONT}">${months.at(-1)}</text>`;
+
+  const half = (plotW - LEFT - PAD) / (va.length - 1) / 2;
+  const hits = va.map((_, i) =>
+    `<rect class="hit" data-i="${i}" x="${(x(i) - half).toFixed(1)}" y="${PAD - 8}" width="${(half * 2).toFixed(1)}" height="${(plotH - PAD).toFixed(1)}"/>`).join('');
+
+  el.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Unemployment rate, Virginia versus the United States, ${months[0]} to ${months.at(-1)}. Virginia ends at ${va.at(-1)} percent, the United States at ${us.at(-1)} percent.">`
+    + grid
+    + `<line class="xh" x1="0" y1="${PAD - 8}" x2="0" y2="${(plotH - 8).toFixed(1)}" stroke="rgba(0,53,149,0.18)" stroke-width="1" opacity="0"/>`
+    + `<path d="${line(us)}" fill="none" stroke="${USGRY}" stroke-width="1.8" stroke-dasharray="5 4" stroke-linejoin="round" stroke-linecap="round"/>`
+    + `<path d="${line(va)}" fill="none" stroke="${BRAND}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`
+    + marks + labelsSvg + axis
+    + `<circle class="hv-us" r="4" fill="${USGRY}" stroke="${SURF}" stroke-width="2" opacity="0"/>`
+    + `<circle class="hv-va" r="4" fill="${BRAND}" stroke="${SURF}" stroke-width="2" opacity="0"/>`
+    + hits
+    + `</svg>`;
+
+  const xh = el.querySelector('.xh'), hv1 = el.querySelector('.hv-va'), hv2 = el.querySelector('.hv-us');
+  bindHits(el,
+    i => `<div class="t-name">${labels[i]}</div>`
+       + row('Virginia', va[i].toFixed(1) + '%', BRAND)
+       + row('United States', us[i].toFixed(1) + '%', USGRY)
+       + `<div class="t-foot">Seasonally adjusted</div>`,
+    i => {
+      const on = i >= 0;
+      [xh, hv1, hv2].forEach(n => n.setAttribute('opacity', on ? 1 : 0));
+      if (!on) return;
+      xh.setAttribute('x1', x(i)); xh.setAttribute('x2', x(i));
+      hv1.setAttribute('cx', x(i)); hv1.setAttribute('cy', y(va[i]));
+      hv2.setAttribute('cx', x(i)); hv2.setAttribute('cy', y(us[i]));
+    });
+}
+
+/* ── bars-zero ───────────────────────────────────────────────────────────────
+   Which side of the zero axis a bar sits on is the encoding; colour reinforces
+   it. Navy for gains, --coral for losses. */
+function barsZero(el, vals, labels, w = 260, h = 48){
+  const max = Math.max(...vals.map(Math.abs));
+  const n = vals.length, gap = 2;
+  const bw = Math.max(2, (w - gap * (n - 1)) / n);
+  const zero = h / 2;
+  let bars = '', hits = '';
+  vals.forEach((v, i) => {
+    const bh = Math.max(1, (Math.abs(v) / max) * (h / 2 - 3));
+    const bx = i * (bw + gap);
+    bars += `<rect x="${bx.toFixed(1)}" y="${(v >= 0 ? zero - bh : zero).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="${v >= 0 ? BRAND : DOWN}"/>`;
+    hits += `<rect class="hit" data-i="${i}" x="${(bx - gap / 2).toFixed(1)}" y="0" width="${(bw + gap).toFixed(1)}" height="${h}"/>`;
+  });
+  el.innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Monthly job change over the last ${n} months, as bars above and below a zero line.">`
+    + `<line x1="0" y1="${zero}" x2="${w}" y2="${zero}" stroke="#d8d5cc" stroke-width="1"/>`
+    + `<rect class="hl" x="0" y="0" width="${bw.toFixed(1)}" height="${h}" fill="rgba(0,53,149,0.08)" opacity="0"/>`
+    + bars + hits + `</svg>`;
+
+  const hl = el.querySelector('.hl');
+  bindHits(el,
+    i => `<div class="t-name">${labels[i]}</div>`
+       + row('Change', sInt(vals[i]), vals[i] >= 0 ? BRAND : DOWN)
+       + `<div class="t-foot">Month over month, seasonally adjusted</div>`,
+    i => {
+      if (i < 0){ hl.setAttribute('opacity', 0); return; }
+      hl.setAttribute('opacity', 1);
+      hl.setAttribute('x', (i * (bw + gap) - gap / 2).toFixed(1));
+      hl.setAttribute('width', (bw + gap).toFixed(1));
+    });
+}
+
+/* ── line sparkline ─────────────────────────────────────────────────────────── */
+function sparkLine(el, vals, w, h, label, labels, fmt, foot){
+  const pts = scale(vals, w, h, 5), end = pts.at(-1);
+  const half = (w - 10) / (vals.length - 1) / 2;
+  const hits = vals.map((_, i) =>
+    `<rect class="hit" data-i="${i}" x="${(pts[i][0] - half).toFixed(1)}" y="0" width="${(half * 2).toFixed(1)}" height="${h}"/>`).join('');
+  el.innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="${label}">`
+    + `<path d="${toPath(pts)}" fill="none" stroke="${BRAND}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`
+    + `<circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="3.5" fill="${BRAND}" stroke="${SURF}" stroke-width="1.5"/>`
+    + `<circle class="hv" r="4" fill="${BRAND}" stroke="${SURF}" stroke-width="2" opacity="0"/>`
+    + hits + `</svg>`;
+  const hv = el.querySelector('.hv');
+  bindHits(el,
+    i => `<div class="t-name">${labels[i]}</div>` + row(label.split(',')[0], fmt(vals[i]), BRAND)
+       + (foot ? `<div class="t-foot">${foot}</div>` : ''),
+    i => {
+      if (i < 0){ hv.setAttribute('opacity', 0); return; }
+      hv.setAttribute('opacity', 1);
+      hv.setAttribute('cx', pts[i][0]); hv.setAttribute('cy', pts[i][1]);
+    });
+}
+
+/* ── progress: one rate against a benchmark ─────────────────────────────────── */
+function progress(el, pct, bench, w = 260, h = 48){
+  const ty = 19, th = 8, r = 4;
+  const fill = Math.max(0, Math.min(1, pct)) * w;
+  const bx = Math.max(0, Math.min(1, bench)) * w;
+  el.innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Virginia projected employment growth of 0.44 percent a year, against a United States benchmark of 0.30 percent.">`
+    + `<text x="0" y="${ty - 6}" font-size="11" font-weight="700" fill="${INK1}" font-family="${FONT}">+0.44%/yr</text>`
+    + `<rect x="0" y="${ty}" width="${w}" height="${th}" rx="${r}" fill="${BRAND}" opacity=".14"/>`
+    + `<rect x="0" y="${ty}" width="${fill.toFixed(1)}" height="${th}" rx="${r}" fill="${BRAND}"/>`
+    + `<line x1="${bx.toFixed(1)}" y1="${ty - 4}" x2="${bx.toFixed(1)}" y2="${ty + th + 4}" stroke="${INK1}" stroke-width="1.5"/>`
+    + `<text x="${bx.toFixed(1)}" y="${ty + th + 16}" font-size="11" font-weight="500" fill="${INK3}" text-anchor="middle" font-family="${FONT}">U.S. 0.30%</text>`
+    + `<rect class="hit" data-i="0" x="0" y="${ty - 8}" width="${w}" height="${th + 16}"/></svg>`;
+  bindHits(el, () =>
+      `<div class="t-name">Projected employment growth</div>`
+    + row('Virginia', '+0.44%/yr', BRAND)
+    + row('United States', '+0.30%/yr', INK1)
+    + `<div class="t-foot">2022–2032 projection vintage</div>`);
+}
+
+/* ── percentile distribution — wage-tool bullet-chart styling ────────────────
+   Solid outer/inner bands, a squared ink median tick, and the tool's ringed dot
+   marker. In wage-tool that dot is the user's own salary; here it marks the
+   mean, and the legend says so. */
+function distribution(el, scaleEl, p, mean){
+  const lo = p.p10, hi = p.p90, span = hi - lo;
+  const pc = v => (((v - lo) / span) * 100);
+  const usd = v => '$' + Math.round(v).toLocaleString('en-US');
+  el.innerHTML =
+      `<div class="d-track">`
+    +   `<div class="d-outer"></div>`
+    +   `<div class="d-inner" style="left:${pc(p.p25).toFixed(3)}%;right:${(100 - pc(p.p75)).toFixed(3)}%"></div>`
+    +   `<div class="d-med"   style="left:${pc(p.p50).toFixed(3)}%"></div>`
+    +   `<div class="d-mean"  style="left:${pc(mean).toFixed(3)}%"></div>`
+    + `</div>`;
+
+  const tips = [
+    ['.d-outer', () => `<div class="t-name">10th–90th percentile</div>`
+      + row('10th', usd(p.p10), 'var(--band-outer)') + row('90th', usd(p.p90), 'var(--band-outer)')
+      + `<div class="t-foot">80% of Virginia workers earn in this range</div>`],
+    ['.d-inner', () => `<div class="t-name">25th–75th percentile</div>`
+      + row('25th', usd(p.p25), 'var(--band-inner)') + row('75th', usd(p.p75), 'var(--band-inner)')
+      + `<div class="t-foot">The middle 50% of workers</div>`],
+    ['.d-med', () => `<div class="t-name">Median</div>` + row('50th percentile', usd(p.p50), 'var(--band-tick)')
+      + `<div class="t-foot">Half earn less, half earn more</div>`],
+    ['.d-mean', () => `<div class="t-name">Mean</div>` + row('Average wage', usd(mean), 'var(--band-dot)')
+      + `<div class="t-foot">Above the median: high earners pull it up</div>`]
+  ];
+  tips.forEach(([sel, fmt]) => {
+    const n = el.querySelector(sel);
+    n.addEventListener('mousemove', e => showTip(fmt(), e));
+    n.addEventListener('mouseenter', e => showTip(fmt(), e));
+    n.addEventListener('mouseleave', hideTip);
+  });
+
+  scaleEl.innerHTML = [[p.p10,'10th'],[p.p25,'25th'],[p.p50,'Median'],[p.p75,'75th'],[p.p90,'90th']]
+    .map(([v, lbl]) => {
+      const px = pc(v);
+      const pos = px < 4 ? 'left:0;transform:none'
+                : px > 96 ? 'right:0;left:auto;transform:none'
+                : `left:${px.toFixed(2)}%`;
+      return `<span style="${pos}">${usd(v)}<br><span style="color:var(--ink-4)">${lbl}</span></span>`;
+    }).join('');
+}
+
+/* =============================================================================
+   PLACEHOLDER SERIES — invented, not real Virginia data.
+   ============================================================================= */
+const VA_UNEMP = [3.2,3.1,3.0,2.9,2.9,3.0,3.1,3.0,2.9,2.9,2.8,2.8,
+                  2.8,2.9,2.9,3.0,3.1,3.2,3.3,3.2,3.1,3.0,3.0,3.1,
+                  3.2,3.3,3.4,3.4,3.5,3.6,3.6,3.5,3.5,3.6,3.7,3.6];
+const US_UNEMP = [3.4,3.6,3.5,3.4,3.7,3.6,3.5,3.8,3.8,3.8,3.7,3.7,
+                  3.7,3.9,3.8,3.9,4.0,4.1,4.3,4.2,4.1,4.1,4.2,4.1,
+                  4.0,4.1,4.2,4.2,4.2,4.1,4.2,4.3,4.4,4.4,4.5,4.4];
+const JOBS_CHANGE = [8200,12400,-2100,6800,9400,4200,-5600,11200,7300,2900,-1800,10400,
+                     6100,-3400,8800,5200,9100,-2600,7400,3800,-7200,6300,1900,-4100];
+const REAL_EARN = [30.42,30.51,30.48,30.63,30.71,30.68,30.82,30.94,30.88,31.02,31.15,31.09,
+                   31.21,31.34,31.28,31.41,31.38,31.52,31.60,31.55,31.68,31.74,31.79,31.84];
+const INITIAL = [2890,2760,2680,2610,2740,2830,2950,3120,2980,2870,2790,2710,2650,
+                 2580,2620,2700,2810,2760,2690,2640,2720,2850,2930,3040,3180,3350,
+                 3210,3080,2960,2880,2810,2750,2690,2630,2670,2740,2820,2900,3010,
+                 3240,3580,4120,4890,5240,4610,3970,3480,3120,2940,2820,2710,2653];
+const CONTINUED = [19800,19450,19120,18960,19340,19780,20240,20890,20510,20180,19870,
+                   19560,19280,19040,19310,19680,20120,19940,19620,19380,19710,20230,
+                   20680,21140,21790,22460,22010,21520,21080,20760,20440,20180,19920,
+                   19680,19850,20140,20490,20870,21360,22180,23440,24980,26310,25720,
+                   24380,23190,22340,21860,21490,21260,21120,21041];
+const QCEW_EMP = [4021450,4038200,4052900,4061300,4055800,4072400,
+                  4089100,4098600,4092300,4110800,4128500,4143734];
+const QCEW_EST = [303200,304800,306100,307500,308200,309600,
+                  311000,312100,312900,314100,315200,316013];
+const WAGE_P = { p10:29410, p25:40180, p50:53020, p75:78340, p90:118700 };
+const WAGE_MEAN = 72060;
+
+/* --- Render ---------------------------------------------------------------- */
+const L36 = monthsBack(36, 2025, 11);   // Jan 2023 … Dec 2025
+const L24 = monthsBack(24, 2025, 11);   // Jan 2024 … Dec 2025
+const L52 = weeksBack(52, '2026-02-14');
+const L12Q = quartersBack(12, 2025, 3); // Q4 2022 … Q3 2025
+
+heroChart(document.getElementById('hero-chart'), VA_UNEMP, US_UNEMP, ['Jan 2023','Dec 2025'], L36);
+barsZero(document.getElementById('spark-jobs'), JOBS_CHANGE, L24);
+sparkLine(document.getElementById('spark-earn'), REAL_EARN, 260, 48,
+          'Real hourly earnings, last 24 months', L24, v => '$' + v.toFixed(2), 'Deflated by national CPI-U');
+progress(document.getElementById('spark-proj'), 0.44 / 0.60, 0.30 / 0.60);
+sparkLine(document.getElementById('spark-initial'),   INITIAL,   132, 30,
+          'Initial claims, last 52 weeks', L52, int0, 'Week ending · not seasonally adjusted');
+sparkLine(document.getElementById('spark-continued'), CONTINUED, 132, 30,
+          'Continued claims, last 52 weeks', L52, int0, 'Week ending · not seasonally adjusted');
+sparkLine(document.getElementById('spark-emp'), QCEW_EMP, 132, 30,
+          'Covered employment, last 12 quarters', L12Q, int0, 'QCEW quarterly average');
+sparkLine(document.getElementById('spark-est'), QCEW_EST, 132, 30,
+          'Establishments, last 12 quarters', L12Q, int0, 'QCEW quarterly count');
+distribution(document.getElementById('dist-bar'), document.getElementById('dist-scale'), WAGE_P, WAGE_MEAN);
+
+/* =============================================================================
+   DRILL GRIDS — one shell, seven datasets, hash-routed.
+
+   Kept in this file rather than seven siblings so the whole wireframe is a
+   single double-clickable document with working back/forward. Routes are
+   #/ (scorecard) and #/g/<id>.
+
+   Rows are PLACEHOLDERS like everything else. Where a grid overlaps a
+   scorecard figure the totals were made to reconcile — the supersector MoM
+   column sums to the -4,100 on the tile, and the QCEW columns sum to
+   4,143,734 and 316,013 — so the client can check a total and have it agree.
+   ============================================================================= */
+
+const f = {
+  int:   v => v.toLocaleString('en-US'),
+  d1:    v => v.toFixed(1),
+  pct1:  v => v.toFixed(1) + '%',
+  pts:   v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + ' pt',
+  sInt:  v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US'),
+  sPct:  v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + '%',
+  usd0:  v => '$' + Math.round(v).toLocaleString('en-US'),
+  usd2:  v => '$' + v.toFixed(2),
+  idx:   v => v.toFixed(2)
+};
+
+/* ---- 1. Unemployment, monthly ---------------------------------------------
+   employed / unemployed are derived from labour force x rate so the row is
+   internally consistent, the way the real LAUS artifact is. */
+const UM_M  = ['Dec 2025','Nov 2025','Oct 2025','Sep 2025','Aug 2025','Jul 2025',
+               'Jun 2025','May 2025','Apr 2025','Mar 2025','Feb 2025','Jan 2025'];
+const UM_VA = [3.6,3.7,3.6,3.5,3.5,3.6,3.6,3.5,3.4,3.4,3.3,3.2];
+const UM_US = [4.4,4.5,4.4,4.4,4.3,4.2,4.1,4.2,4.2,4.2,4.1,4.0];
+const UM_LF = [4488781,4497800,4495100,4492400,4489700,4491200,4488900,4486300,4482600,4479100,4475800,4471200];
+const unempRows = UM_M.map((m, i) => {
+  const un = Math.round(UM_LF[i] * UM_VA[i] / 100);
+  return { period:m, va:UM_VA[i], us:UM_US[i], lf:UM_LF[i],
+           emp:UM_LF[i] - un, unemp:un,
+           mom: i < UM_VA.length - 1 ? +(UM_VA[i] - UM_VA[i+1]).toFixed(1) : 0 };
+});
+
+/* ---- 2. Nonfarm jobs by supersector ---------------------------------------
+   The 10 BLS CES private supersectors plus the Government rollup — the row set
+   LMI_APP_BRIEF.md §5.6 describes for the quarterly branch. MoM sums to -4,100. */
+const superRows = [
+  ['Trade, Transportation and Utilities', 718200, -1200,  8400],
+  ['Government',                          748907,   900, 12300],
+  ['Professional and Business Services',  712400, -2100,  5600],
+  ['Education and Health Services',       562800,  1400, 14200],
+  ['Leisure and Hospitality',             402300,  -800,  3100],
+  ['Manufacturing',                       238500, -1400, -3200],
+  ['Construction',                        217900, -1100,  2400],
+  ['Financial Activities',                214600,   200,  1900],
+  ['Other Services',                      186400,   300,  1100],
+  ['Information',                          78200,  -400, -1600],
+  ['Mining and Logging',                    8900,   100,  -200]
+].map(([sector, level, mom, yoy]) => ({ sector, level, mom, yoy }));
+const superTotal = superRows.reduce((a, r) => a + r.level, 0);
+superRows.forEach(r => r.share = +(r.level / superTotal * 100).toFixed(1));
+
+/* ---- 3. Real hourly earnings, monthly -------------------------------------
+   real = nominal deflated by CPI-U (2019 = 100). Dec lands on $31.84. */
+const RE_M   = UM_M;
+const RE_NOM = [35.42,35.36,35.31,35.24,35.19,35.12,35.06,34.99,34.90,34.78,34.71,34.60];
+const RE_CPI = [111.25,111.04,110.83,110.61,110.40,110.18,109.96,109.79,109.58,109.35,109.12,108.90];
+const RE_YOY = [1.2,1.1,1.3,1.0,0.9,1.1,1.2,0.8,1.0,1.3,1.1,0.9];
+const earnRows = RE_M.map((m, i) => ({
+  period:m, nominal:RE_NOM[i], cpi:RE_CPI[i],
+  real:+(RE_NOM[i] / (RE_CPI[i] / 100)).toFixed(2), yoy:RE_YOY[i]
+}));
+
+/* ---- 4. UI claims, weekly -------------------------------------------------- */
+const CW = [
+  ['02/14/2026',2653,21041,-8.2, 3.4],['02/07/2026',2710,21120,-7.4, 3.1],
+  ['01/31/2026',2820,21260,-6.1, 2.8],['01/24/2026',2940,21490,-5.3, 2.6],
+  ['01/17/2026',3120,21860,-4.8, 3.0],['01/10/2026',3480,22340,-3.2, 3.5],
+  ['01/03/2026',3970,23190,-2.1, 4.1],['12/27/2025',4610,24380, 1.4, 4.8],
+  ['12/20/2025',5240,25720, 2.8, 5.2],['12/13/2025',4890,26310, 1.9, 5.6],
+  ['12/06/2025',4120,24980, 0.6, 4.9],['11/29/2025',3580,23440,-1.2, 4.2],
+  ['11/22/2025',3240,22180,-2.4, 3.8]
+].map(([week, initial, continued, iYoy, cYoy]) => ({ week, initial, continued, iYoy, cYoy }));
+
+/* ---- 5. QCEW by NAICS sector ----------------------------------------------
+   Manufacturing / Retail / Transportation carry their WID range-string codes
+   ('31-33','44-45','48-49') — the storage quirk the front-page handover flags.
+   Columns sum to the scorecard's 4,143,734 and 316,013. */
+const qcewRows = [
+  ['92','Public Administration',                             607734,  8900, 1284, 1.9],
+  ['62','Health Care and Social Assistance',                 560400, 34600, 1142, 2.6],
+  ['54','Professional, Scientific, and Technical Services',  512300, 50213, 2384, 1.4],
+  ['44-45','Retail Trade',                                   438900, 32900,  742, 0.3],
+  ['72','Accommodation and Food Services',                   372600, 22800,  486, 1.1],
+  ['56','Administrative and Support and Waste Management',   268400, 21700,  968, 0.7],
+  ['31-33','Manufacturing',                                  238500,  9800, 1418, -1.3],
+  ['23','Construction',                                      217900, 31400, 1326, 1.2],
+  ['61','Educational Services',                              214700,  5100, 1094, 2.1],
+  ['48-49','Transportation and Warehousing',                 168300, 14200, 1108, 0.9],
+  ['52','Finance and Insurance',                             142800, 16400, 2246, 1.8],
+  ['42','Wholesale Trade',                                   114600, 12600, 1672, 0.4],
+  ['81','Other Services',                                    112400, 26300,  824, 0.8],
+  ['51','Information',                                        78200,  5400, 2518, -2.1],
+  ['53','Real Estate and Rental and Leasing',                 62900, 18900, 1394, 1.6],
+  ['22','Utilities',                                          12400,   900, 2162, 0.5],
+  ['11','Agriculture, Forestry, Fishing and Hunting',          11800,  3200,  762, -0.4],
+  ['21','Mining, Quarrying, and Oil and Gas Extraction',        8900,   700, 1596, -1.8]
+].map(([naics, sector, emp, est, wage, yoy]) => ({ naics, sector, emp, est, wage, yoy }));
+
+/* ---- 6 & 7. Occupations ---------------------------------------------------- */
+const OCC = [
+  ['29-1141','Registered Nurses',                                 68420,  84600,  92140, 61200, 71800,  98600, 116400],
+  ['15-1252','Software Developers',                               52180, 128400, 136900, 79600,101200, 158300, 189700],
+  ['41-2031','Retail Salespersons',                               84300,  33100,  37400, 24800, 27900,  42600,  56200],
+  ['43-4051','Customer Service Representatives',                  61700,  41900,  44800, 30100, 34700,  51300,  62800],
+  ['53-3032','Heavy and Tractor-Trailer Truck Drivers',           42900,  52600,  55300, 36400, 43100,  63800,  76400],
+  ['35-3023','Fast Food and Counter Workers',                     58200,  29800,  31600, 24100, 26200,  33900,  39700],
+  ['25-2021','Elementary School Teachers, Except Special Ed.',    34600,  71200,  73900, 51400, 59800,  84600,  98200],
+  ['11-1021','General and Operations Managers',                   48100,  98700, 128400, 54300, 71600, 143800, 208900],
+  ['13-2011','Accountants and Auditors',                          31400,  82300,  91600, 54800, 65200, 106400, 138700],
+  ['47-2031','Carpenters',                                        18900,  51400,  54800, 36200, 42100,  63700,  78300],
+  ['31-1131','Nursing Assistants',                                26800,  38600,  40200, 30400, 33900,  44100,  51600],
+  ['33-3051',"Police and Sheriff's Patrol Officers",              17200,  64800,  67300, 44600, 53200,  79400,  93800],
+  ['49-9071','Maintenance and Repair Workers, General',           29600,  47900,  50600, 32800, 38700,  59200,  72400],
+  ['43-6014','Secretaries and Administrative Assistants',         37800,  44200,  46700, 32100, 37400,  53800,  64900],
+  ['15-1212','Information Security Analysts',                     14300, 121600, 129800, 78400, 96300, 152700, 184200]
+];
+const wageRows = OCC.map(([soc,title,emp,p50,mean,p10,p25,p75,p90]) =>
+  ({ soc, title, emp, p50, mean, p10, p25, p75, p90 }));
+
+const PROJ = [
+  ['29-1141','Registered Nurses',                                 68420, 76800, 5210],
+  ['15-1252','Software Developers',                               52180, 63400, 4680],
+  ['41-2031','Retail Salespersons',                               84300, 81900, 9840],
+  ['43-4051','Customer Service Representatives',                  61700, 58200, 6720],
+  ['53-3032','Heavy and Tractor-Trailer Truck Drivers',           42900, 45600, 4390],
+  ['35-3023','Fast Food and Counter Workers',                     58200, 61400, 11260],
+  ['25-2021','Elementary School Teachers, Except Special Ed.',    34600, 35900, 2740],
+  ['11-1021','General and Operations Managers',                   48100, 51700, 4120],
+  ['13-2011','Accountants and Auditors',                          31400, 33200, 2680],
+  ['47-2031','Carpenters',                                        18900, 19800, 1920],
+  ['31-1131','Nursing Assistants',                                26800, 29400, 3480],
+  ['33-3051',"Police and Sheriff's Patrol Officers",              17200, 17900, 1340],
+  ['49-9071','Maintenance and Repair Workers, General',           29600, 31200, 2810],
+  ['43-6014','Secretaries and Administrative Assistants',         37800, 35100, 3620],
+  ['15-1212','Information Security Analysts',                     14300, 18900, 1580]
+];
+const projRows = PROJ.map(([soc, title, base, proj, openings], i) => ({
+  soc, title, base, proj,
+  growth: +(((proj - base) / base) * 100).toFixed(1),
+  openings, wage: OCC[i][3]
+}));
+
+/* ---- Grid definitions ------------------------------------------------------ */
+const GRIDS = {
+  'unemp-monthly': {
+    title: 'Unemployment rate — monthly detail',
+    period: 'December 2025 · LAUS · seasonally adjusted',
+    note: 'Virginia and U.S. rates are seasonally adjusted. Month-over-month change is in percentage points, not percent. Employed and unemployed are derived from the labour force and the rate.',
+    rows: unempRows,
+    cols: [
+      { k:'period', l:'Period' },
+      { k:'va',     l:'VA rate',      n:1, f:f.pct1 },
+      { k:'us',     l:'U.S. rate',    n:1, f:f.pct1 },
+      { k:'lf',     l:'Labor force',  n:1, f:f.int },
+      { k:'emp',    l:'Employed',     n:1, f:f.int },
+      { k:'unemp',  l:'Unemployed',   n:1, f:f.int },
+      { k:'mom',    l:'MoM change',   n:1, f:f.pts }
+    ]
+  },
+  'jobs-supersector': {
+    title: 'Nonfarm jobs — by supersector',
+    period: 'December 2025 · CES · seasonally adjusted',
+    note: 'The ten BLS CES private supersectors plus the Government rollup. Government is a derived total (Fed, state and local across all industries), not a single published supersector row, so its label is a literal rather than a dimension value. Month-over-month changes sum to the −4,100 on the scorecard.',
+    rows: superRows,
+    cols: [
+      { k:'sector', l:'Supersector' },
+      { k:'level',  l:'Jobs',           n:1, f:f.int },
+      { k:'mom',    l:'MoM change',     n:1, f:f.sInt },
+      { k:'yoy',    l:'YoY change',     n:1, f:f.sInt },
+      { k:'share',  l:'Share of total', n:1, f:f.pct1 }
+    ]
+  },
+  'earnings-monthly': {
+    title: 'Real hourly earnings — monthly detail',
+    period: 'December 2025 · CES ÷ CPI-U',
+    note: 'Real earnings are nominal average hourly earnings deflated by the national CPI-U (2019 = 100). CPI-U is not published for Virginia, so the national index is used; this is the standard practice and is stated here rather than hidden. Year-over-year is on the real series.',
+    rows: earnRows,
+    cols: [
+      { k:'period',  l:'Period' },
+      { k:'nominal', l:'Nominal',     n:1, f:f.usd2 },
+      { k:'cpi',     l:'CPI-U index', n:1, f:f.idx },
+      { k:'real',    l:'Real',        n:1, f:f.usd2 },
+      { k:'yoy',     l:'YoY (real)',  n:1, f:f.sPct }
+    ]
+  },
+  'claims-weekly': {
+    title: 'Unemployment insurance claims — weekly detail',
+    period: 'Week ending 02/14/2026 · not seasonally adjusted',
+    note: 'Claims are not seasonally adjusted, so both change columns compare with the same week of the prior year rather than the prior week. A week-over-week reading would mostly show the seasonal pattern.',
+    rows: CW,
+    cols: [
+      { k:'week',      l:'Week ending' },
+      { k:'initial',   l:'Initial',        n:1, f:f.int },
+      { k:'iYoy',      l:'Initial YoY',    n:1, f:f.sPct },
+      { k:'continued', l:'Continued',      n:1, f:f.int },
+      { k:'cYoy',      l:'Continued YoY',  n:1, f:f.sPct }
+    ]
+  },
+  'qcew-industry': {
+    title: 'Covered employment and establishments — by industry',
+    period: 'Q3 2025 · QCEW · not seasonally adjusted',
+    note: 'NAICS sectors at total covered ownership. Average weekly wage is total wages divided by average employment — a computed mean, not a median. Manufacturing, retail trade and transportation carry range-string NAICS codes in the source. Employment and establishments sum to the scorecard totals.',
+    rows: qcewRows,
+    cols: [
+      { k:'naics',  l:'NAICS', c:1 },
+      { k:'sector', l:'Sector' },
+      { k:'emp',    l:'Employment',      n:1, f:f.int },
+      { k:'est',    l:'Establishments',  n:1, f:f.int },
+      { k:'wage',   l:'Avg weekly wage', n:1, f:f.usd0 },
+      { k:'yoy',    l:'YoY employment',  n:1, f:f.sPct }
+    ]
+  },
+  'wage-occupation': {
+    title: 'Annual wages — by occupation',
+    period: '2024 · OEWS',
+    note: 'Annual wages by detailed SOC occupation. The mean sits above the median wherever high earners pull the average up. A representative subset of occupations is shown; the production grid will carry the full published set.',
+    subset: true,
+    rows: wageRows,
+    cols: [
+      { k:'soc',   l:'SOC', c:1 },
+      { k:'title', l:'Occupation' },
+      { k:'emp',   l:'Employment', n:1, f:f.int },
+      { k:'p50',   l:'Median',     n:1, f:f.usd0 },
+      { k:'mean',  l:'Mean',       n:1, f:f.usd0 },
+      { k:'p10',   l:'10th',       n:1, f:f.usd0 },
+      { k:'p25',   l:'25th',       n:1, f:f.usd0 },
+      { k:'p75',   l:'75th',       n:1, f:f.usd0 },
+      { k:'p90',   l:'90th',       n:1, f:f.usd0 }
+    ]
+  },
+  'proj-occupation': {
+    title: 'Projected employment and openings — by occupation',
+    period: '2022–2032 · long-term projections',
+    note: 'Growth is total change across the projection period, not annualised. Annual openings include growth, transfers and exits, so an occupation can shed jobs and still post openings. A representative subset is shown; the production grid will carry the full matrix.',
+    subset: true,
+    rows: projRows,
+    cols: [
+      { k:'soc',      l:'SOC', c:1 },
+      { k:'title',    l:'Occupation' },
+      { k:'base',     l:'Base employment', n:1, f:f.int },
+      { k:'proj',     l:'Projected 2032',  n:1, f:f.int },
+      { k:'growth',   l:'Growth',          n:1, f:f.sPct },
+      { k:'openings', l:'Annual openings', n:1, f:f.int },
+      { k:'wage',     l:'Median wage',     n:1, f:f.usd0 }
+    ]
+  }
+};
+
+/* ---- Grid shell ------------------------------------------------------------ */
+let sortKey = null, sortDir = 1, currentId = null;
+
+function renderGrid(id){
+  const g = GRIDS[id];
+  currentId = id;
+  const rows = sortKey ? [...g.rows].sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * sortDir;
+  }) : g.rows;
+
+  const head = g.cols.map(c =>
+    `<th class="${c.n ? 'num' : ''}${sortKey === c.k ? ' active' : ''}" data-k="${c.k}">${c.l}` +
+    `<span class="ind">${sortKey === c.k ? (sortDir === 1 ? '▲' : '▼') : '▲'}</span></th>`).join('');
+
+  const body = rows.map(r => '<tr>' + g.cols.map(c => {
+    const cls = c.n ? 'num' : c.c ? 'code' : '';
+    const v = r[c.k];
+    return `<td class="${cls}">${c.f ? c.f(v) : v}</td>`;
+  }).join('') + '</tr>').join('');
+
+  document.getElementById('view-grid').innerHTML =
+      `<a class="back" href="#/">← Back to scorecard</a>`
+    + `<div class="card">`
+    +   `<div class="grid-head">`
+    +     `<div>`
+    +       `<h1>${g.title}</h1>`
+    +       `<div class="card-sub" style="margin-top:5px">${g.period}</div>`
+    +       `<p class="grid-note">${g.note}</p>`
+    +     `</div>`
+    +     `<button class="btn-export" id="btn-csv">Export CSV</button>`
+    +   `</div>`
+    +   `<div class="tbl-wrap"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+    +   `<div class="rowcount">${rows.length} rows${g.subset ? ' · representative subset, not the full result set' : ''}</div>`
+    + `</div>`;
+
+  document.querySelectorAll('#view-grid th').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    renderGrid(id);
+  }));
+
+  /* Functional rather than a dead button — it costs nothing and lets the client
+     confirm the export actually carries the columns they expect. */
+  document.getElementById('btn-csv').addEventListener('click', () => {
+    const esc = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v;
+    const csv = [g.cols.map(c => esc(c.l)).join(',')]
+      .concat(rows.map(r => g.cols.map(c => esc(r[c.k])).join(',')))
+      .join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: id + '-placeholder.csv' });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
+
+function route(){
+  const m = location.hash.match(/^#\/g\/(.+)$/);
+  const sc = document.getElementById('view-scorecard');
+  const gv = document.getElementById('view-grid');
+  if (m && GRIDS[m[1]]) {
+    if (m[1] !== currentId) { sortKey = null; sortDir = 1; }
+    renderGrid(m[1]);
+    sc.hidden = true; gv.hidden = false;
+  } else {
+    currentId = null;
+    gv.hidden = true; sc.hidden = false;
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
