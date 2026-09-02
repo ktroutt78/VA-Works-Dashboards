@@ -240,7 +240,10 @@ class Component {
     this.C = { cobalt:'#002A76', blue:'#003595', blueBright:'#3D7CC9', green:'#2A7050', greenDark:'#1F5A3E',
                orange:'#EE7623', orangeLight:'#FFB259', orangeDark:'#933B00', maroon:'#9F2842',
                greenLight:'#6FA088', grey:'#B3B3B3', slate:'#5A6472', line:'#E2E0D8', ink:'#1A1A1A' };
-    this.PALETTE = ['#1B4DB1','#2A7050','#5BA3D0','#EE7623','#9B6FB5','#9F2842','#7A8794'];
+    // Categorical ramp, consumed largest-first by the apprenticeships-by-industry
+    // donut. Slot 2 is the brand light blue #3D7CC9 and slot 4 the brand light green
+    // #6FA088, which replaces the off-brand purple.
+    this.PALETTE = ['#1B4DB1','#2A7050','#3D7CC9','#EE7623','#6FA088','#9F2842','#7A8794'];
     // Fonts: chart text and dynamically-built markup need a resolved string (canvas
     // can't read CSS vars), so read the two --vw-font-* tokens from :root ONCE here at
     // init and cache them. this.FONT = body (aliased as F in render methods);
@@ -1138,18 +1141,24 @@ class Component {
           itemStyle:{borderColor:'#fff',borderWidth:2,gapWidth:2},
           levels:[{itemStyle:{borderWidth:0,gapWidth:3}},{itemStyle:{gapWidth:2}}],
           data:[
+            // Four VA Works brand colors across the four visible rectangles: Private
+            // green, then the government children in blue / light blue / orange. The
+            // Government parent shares Federal's blue — only the gap between children
+            // ever paints with it.
             {name:'Private', value:o.privatePct, itemStyle:{color:'#2A7050'}},
-            {name:'Government', value:o.govPct, itemStyle:{color:'#0A2463'}, children:[
-              {name:'Federal', value:o.federalPct, itemStyle:{color:'#1B4DB1'}},
-              {name:'State', value:o.statePct, itemStyle:{color:'#5BA3D0'}},
-              {name:'Local', value:o.localPct, itemStyle:{color:'#E8A33D'}} ]}
+            {name:'Government', value:o.govPct, itemStyle:{color:'#003595'}, children:[
+              {name:'Federal', value:o.federalPct, itemStyle:{color:'#003595'}},
+              {name:'State', value:o.statePct, itemStyle:{color:'#3D7CC9'}},
+              {name:'Local', value:o.localPct, itemStyle:{color:'#EE7623'}} ]}
           ] }] }); }
     // one-line fact
     const fEl=document.getElementById('f-emp-ownership');
     if(fEl) fEl.innerHTML=`<b style="color:#0A2463">In ${locName}, ${o.privatePct}% of jobs are private sector</b> and ${o.govPct}% are government (Federal ${o.federalPct}%, State ${o.statePct}%, Local ${o.localPct}%).`;
     // Employers by size — donut bucketed into small / medium / large (center = total employers).
     const cSize=this.mk('c-emp-size');
-    if(cSize){ const sd=d.employers.sizeDist, tot=sd.reduce((a,r)=>a+r.value,0), COL=['#9DC0F2','#2E6BD6','#0A2463'];
+    // sizeDist is ordered small -> medium -> large, and small is always the biggest
+    // slice, so the ramp runs dark -> light: the LARGEST segment is the darkest blue.
+    if(cSize){ const sd=d.employers.sizeDist, tot=sd.reduce((a,r)=>a+r.value,0), COL=['#0A2463','#2E6BD6','#9DC0F2'];
       cSize.setOption({
         title:{text:this.fmt(tot),subtext:'employers',left:'50%',top:'35%',textAlign:'center',itemGap:3,
           textStyle:{fontFamily:this.FONT_DISPLAY,fontWeight:800,fontSize:22,color:'#0A2463'},subtextStyle:{fontFamily:F,fontSize:11,color:C.slate}},
@@ -1173,7 +1182,9 @@ class Component {
       (!f.size || r.size===f.size));
     const val=(r,k)=> k==='Size'?(sizeRank[r.size]||0) : k==='Employer'?r.name.toLowerCase() : k==='Industry'?r.industry.toLowerCase() : k==='Ownership'?r.ownership.toLowerCase() : r.rank;
     rows=rows.slice().sort((a,b)=>{ const av=val(a,s.col), bv=val(b,s.col); return av<bv?-s.dir : av>bv?s.dir : 0; });
-    const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9DB4D6;padding:.5rem .7rem;border-bottom:2px solid #E2E0D8';
+    // Column headers were #9DB4D6 (about 2.2:1 on white) and read as disabled text.
+    // #0A2463 is the page's heading navy and matches the active sort arrow.
+    const th='font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0A2463;padding:.5rem .7rem;border-bottom:2px solid #E2E0D8';
     const arr=c=> s.col===c ? `<span style="color:#0A2463"> ${s.dir>0?'▲':'▼'}</span>` : '<span style="color:#C4CEDB"> ⇅</span>';
     const head='<thead><tr>'+cols.map(c=>`<th data-col="${c.label}" title="Sort by ${c.label}" style="cursor:pointer;user-select:none;white-space:nowrap;text-align:${c.align};${th}">${c.label}${arr(c.label)}</th>`).join('')+'</tr></thead>';
     const body='<tbody>'+(rows.length?rows.map((r,i)=>`<tr style="background:${i%2?'#fff':'#F8FAFD'}">`+
@@ -1343,20 +1354,20 @@ class Component {
     setTxt('k-hhsize', A.avgHHSize.toFixed(2));
     const dev=Math.abs(A.avgHHSize-A.vaHHSize)<0.15?'little deviation':(A.avgHHSize>A.vaHHSize?'above VA':'below VA');
     setHtml('k-hhsize-va', 'VA '+A.vaHHSize.toFixed(2)+' <span style="color:#9DB4D6">· '+dev+'</span>');
-    // Own vs Rent — one 10×10 waffle (each cell = 1%): green cells are owners, blue are renters.
+    // Own vs Rent — one 10×10 waffle (each cell = 1%): blue cells are owners, orange are renters.
     // It lives in its own card, so the grid is large with room to breathe; percentages sit
     // beside it in their series colors, no raw counts.
     { const GCW=this.FONT_DISPLAY;
       // 10×10 waffle sized to match the rent-trend chart height, with light gaps between cells.
-      // Fill bottom-up: rent (grey) takes the top rows, own (green) forms the base. The own share
-      // is overlaid inside the green region in a light Own-green tint; rent gets no label.
-      let sq=''; for(let i=0;i<100;i++) sq+=`<span style="border-radius:2px;background:${i<A.rentPct?'#7A8794':'#2A7050'}"></span>`;
+      // Fill bottom-up: rent (orange) takes the top rows, own (blue) forms the base. The own
+      // share is overlaid inside the blue region; rent gets no label.
+      let sq=''; for(let i=0;i<100;i++) sq+=`<span style="border-radius:2px;background:${i<A.rentPct?'#EE7623':'#003595'}"></span>`;
       setHtml('ownrent-waffle', `<div style="position:relative;width:200px;height:200px">
         <div style="display:grid;grid-template-columns:repeat(10,1fr);grid-auto-rows:1fr;gap:1px;width:200px;height:200px">${sq}</div>
         <div style="position:absolute;left:0;right:0;top:${A.rentPct}%;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
           <div style="display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.82);padding:.5rem 1.15rem;border-radius:10px">
-            <div style="font-family:var(--vw-font-display);font-weight:800;font-size:2.5rem;color:#2A7050;line-height:1">${A.ownPct}<span style="font-size:1.2rem">%</span></div>
-            <div style="font-size:.68rem;color:#2A7050;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-top:.15rem">Own</div>
+            <div style="font-family:var(--vw-font-display);font-weight:800;font-size:2.5rem;color:#003595;line-height:1">${A.ownPct}<span style="font-size:1.2rem">%</span></div>
+            <div style="font-size:.68rem;color:#003595;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-top:.15rem">Own</div>
           </div>
         </div>
       </div>`);
@@ -1364,7 +1375,9 @@ class Component {
     // Median Home Value is a big-number card now (not a trend line): value + YoY ticker.
     setHtml('k-home-val', '$'+(A.homeNow/1000).toFixed(0)+'k');
     setHtml('k-home-yoy', '<span style="color:#2A7050">&#9650; '+A.homeYoY+'%/yr</span>');
-    // Median Rent stays a trend line (grey, matching the waffle). The current value + YoY ticker
+    // Median Rent stays a trend line, matching the waffle's rent color (now orange,
+    // was grey — the line follows the waffle so "rent" reads as one color in the card).
+    // The current value + YoY ticker
     // sit as plain text directly above the last point (no bubble), with y-axis headroom so it clears.
     const ayrs=['2018','2019','2020','2021','2022','2023','2024','2025'];
     { const cc=this.mk('c-rent');
@@ -1378,8 +1391,8 @@ class Component {
       if(cc) cc.setOption({ grid:{left:6,right:58,top:16,bottom:10,containLabel:true}, tooltip:{trigger:'axis',valueFormatter:v=>'$'+fmt(v)},
         xAxis:{type:'category',data:ayrs,boundaryGap:false,...ax}, yAxis:{type:'value',min:rMin,max:rMax,interval:200,axisLabel:{...ax.axisLabel,formatter:v=>'$'+(v/1000).toFixed(1)+'k'},splitLine:ax.splitLine},
         series:[{type:'line',data:A.rentTrend.map((v,i)=> i===A.rentTrend.length-1 ? {value:v,symbolSize:8,label:rentLbl} : v),
-          smooth:false,symbol:'circle',symbolSize:5,lineStyle:{width:3,color:'#7A8794'},itemStyle:{color:'#7A8794'},
-          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#7A879466'},{offset:1,color:'#7A87940D'}])}}] }); }
+          smooth:false,symbol:'circle',symbolSize:5,lineStyle:{width:3,color:C.orange},itemStyle:{color:C.orange},
+          areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(C.orange,.4)},{offset:1,color:this.rgba(C.orange,.05)}])}}] }); }
     // Group B — housing cost burden vs Virginia (grouped bar + 30% threshold)
     c=this.mk('c-burden'); if(c) c.setOption({
       legend:{data:['This region','Virginia'],bottom:0,left:'center',textStyle:{fontFamily:F,color:C.slate},itemWidth:16,itemHeight:8},
