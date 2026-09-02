@@ -37,7 +37,7 @@ This is a single scrolling page with three stacked zones: **Header/Hero**, **Sti
 - Right nav (uppercase, `.82rem`, weight 600, `#5A6472`): About, Locations, Newsroom, Events, **LMI** (active, `#1B4DB1`), Contact.
 
 ### 3. Hero — region picker & map  `[data-screen-label="Hero — region picker & map"]`
-- Background: `linear-gradient(120deg,#0A2463 0%,#1B4DB1 58%,#2E6BD6 128%)`, white text, `overflow:hidden`. A decorative `340px` circle outline sits top-right at low opacity.
+- Background: flat `#032364` (sampled from the host page's hero, which this sits directly beneath), white text, `overflow:hidden`. A decorative `340px` circle outline sits top-right at low opacity.
 - Inner grid: `max-width:1240px`, two columns `minmax(0,0.62fr) minmax(0,1.38fr)`, `gap:1rem`, vertically centered, `padding:2.8rem 1.5rem 2.4rem`.
 - **Left column:**
   - Eyebrow "Labor Market Information" (`.82rem`, weight 700, letter-spacing `.16em`, `#9DC0F2`).
