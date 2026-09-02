@@ -2274,13 +2274,52 @@ class Component {
     }
   }
 
+  /* Spine highlight + the on-scroll reveal.
+
+     These used to share one IntersectionObserver, at threshold .18 inside a band
+     that rootMargin '-8% 0px -45% 0px' shrank to roughly the top 47% of the
+     viewport. intersectionRatio is measured against the SECTION's own height, so
+     a section taller than about 2.5 viewports can never reach .18 — at most ~47vh
+     of it is ever inside the band. Largest Employers is exactly that: a treemap, a
+     donut, and a 50-row table, several thousand pixels tall.
+
+     That single fact produced both reported defects. Its spine node never lit
+     while scrolling, because its entry never fired. And clicking it scrolled to
+     the right place but left Apprenticeships lit, because Apprenticeships was
+     simply the last section that HAD managed to fire — not an off-by-one in the
+     mapping, which is why nothing looked wrong in the node list.
+
+     The highlight is now scroll-driven: the active section is the last one whose
+     top has crossed an activation line. That is independent of section height, so
+     a section of any length behaves the same. The observer keeps the reveal and
+     the chart resize, at threshold 0 so tall sections still trigger it. */
   wireScroll(){
-    const io=new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting){ e.target.style.opacity='1'; e.target.style.transform='none';
-      const id=e.target.id; const activeTheme=e.target.dataset.theme;
+    const io=new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting){
+      e.target.style.opacity='1'; e.target.style.transform='none';
+      requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize())); } }); },
+      {threshold:0,rootMargin:'0px 0px -10% 0px'});
+    this.scenes.forEach(s=>io.observe(s));
+
+    const LINE=140;   // just below the sticky bar, in step with scroll-margin-top:96px
+    const paint=()=>{
+      this._railTick=false;
+      if(!this.scenes||!this.scenes.length||!this.railItems) return;
+      let active=this.scenes[0];
+      this.scenes.forEach(s=>{ if(s.getBoundingClientRect().top<=LINE) active=s; });
+      // At the document's end the last section can no longer be scrolled up to the
+      // line, so pin it. Without this the final section is unreachable by scrolling
+      // whenever it is shorter than the remaining viewport.
+      if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2) active=this.scenes[this.scenes.length-1];
+      if(this._railActive===active.id) return;
+      this._railActive=active.id;
+      const id=active.id, activeTheme=active.dataset.theme;
       this.railItems.forEach(li=>{ const on=li.dataset.target===id; li.style.color=on?'#0A2463':'#5A6472'; li.style.fontWeight=on?'700':'400'; li.style.background=on?'#EAF3E4':'transparent'; const dot=li.querySelector('[data-dot]'); if(dot){ dot.style.background=on?'#2A7050':'#fff'; dot.style.borderColor=on?'#2A7050':'#C4CEDB'; dot.style.boxShadow=on?'0 0 0 3px #EAF3E4':'0 0 0 3px #fff'; } });
       if(this.themeHeads) this.themeHeads.forEach(h=>{ const on=h.dataset.themeHead===activeTheme; const lab=h.querySelector('[data-theme-label]'); if(lab) lab.style.color=on?'#2A7050':'#0A2463'; const nd=h.querySelector('[data-theme-node-dot]'); if(nd){ nd.style.background=on?'#2A7050':'#0A2463'; nd.style.boxShadow=on?'0 0 0 2px #2A7050':'0 0 0 2px #0A2463'; } });
-      requestAnimationFrame(()=>Object.values(this.charts).forEach(c=>c&&c.resize())); } }); },{threshold:.18,rootMargin:'-8% 0px -45% 0px'});
-    this.scenes.forEach(s=>io.observe(s));
+    };
+    const onScroll=()=>{ if(!this._railTick){ this._railTick=true; requestAnimationFrame(paint); } };
+    window.addEventListener('scroll',onScroll,{passive:true});
+    window.addEventListener('resize',onScroll);
+    paint();
   }
 
   renderVals(){ return {}; }
