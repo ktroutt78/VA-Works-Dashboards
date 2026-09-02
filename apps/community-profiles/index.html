@@ -1487,7 +1487,10 @@ class Component {
             // sitting on the grid boundary from being cut.
             {type:'scatter',z:3,silent:true,clip:false,legendHoverLink:false,tooltip:{show:false},symbolSize:0,
              data:rows.map(r=>({value:[xMin,r.name],
-               label:{show:true,position:[0,-27],formatter:r.name,color:C.blue,
+               // -40 clears the 34pt bar: the anchor is the bar's CENTER, so the text
+               // box has to start above center minus half the bar height minus its own
+               // line box, or descenders land on the bar's top edge.
+               label:{show:true,position:[0,-40],formatter:r.name,color:C.blue,
                  fontFamily:this.FONT_DISPLAY,fontSize:13,fontWeight:800}}))}
           ] }); } }
     // apprenticeships (RAPIDS) — RAPIDS BAN strip + top-occupations bars + industry
