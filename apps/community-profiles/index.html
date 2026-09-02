@@ -1447,13 +1447,43 @@ class Component {
         series:[{type:'line',data:f,smooth:false,symbol:'circle',symbolSize:6,lineStyle:{width:3,color:C.blue},itemStyle:{color:C.blue},
           areaStyle:{color:new this.ec.graphic.LinearGradient(0,0,0,1,[{offset:0,color:this.rgba(C.blue,.2)},{offset:1,color:this.rgba(C.blue,0)}])},
           label:{show:true,position:'top',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:10}}] });
-      // Card 2 chart: top 5 industries by % growth in new-business formations (not raw counts).
+      // Card 2 chart: top 5 industries by % growth in new-business formations (not raw
+      // counts). Restructured to the client's reference mockup: thick VA Works Blue
+      // bars, the percentage inside the bar end in white, and the industry name set
+      // ABOVE its own bar rather than in a left-hand axis gutter. Both axes are hidden
+      // — the in-bar labels carry every number the chart needs.
+      //
+      // Sort order is preserved: rows is ascending by growth and an ECharts category
+      // axis draws index 0 at the bottom, so the fastest-growing sector stays on top.
       c=this.mk('c-business-industry'); if(c){ const rows=[...b.byIndustry].filter(r=>r.value>0).sort((a2,b2)=>a2.growth-b2.growth).slice(-5);
-        c.setOption({ grid:{...grid,left:8,right:56}, tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p[0];return `${r.axisValue}<br/><b>${r.data.value>=0?'+':''}${r.data.value}%</b> growth in new businesses<br/><span style="opacity:.65">${fmt(r.data.count)} new in ${b.lastYear}</span>`;}},
-          xAxis:{type:'value',...ax,axisTick:{show:false},axisLabel:{...ax.axisLabel,fontSize:10,formatter:v=>v+'%'},splitLine:{show:true,lineStyle:{color:'#F0EEE7'}}},
-          yAxis:{type:'category',data:rows.map(r=>r.name),...ax,axisTick:{show:false},axisLine:{show:false},axisLabel:{...ax.axisLabel,fontSize:11,width:190,overflow:'truncate'}},
-          series:[{type:'bar',barMaxWidth:17,data:rows.map(r=>({value:r.growth,count:r.value,itemStyle:{color:r.growth>=0?C.green:'#9F2842',borderRadius:[0,4,4,0]}})),
-            label:{show:true,position:'right',formatter:p=>(p.value>=0?'+':'')+p.value+'%',color:C.slate,fontFamily:F,fontSize:10,fontWeight:700}}] }); } }
+        // Headroom on both sides so an in-bar label never touches the plot edge. Titles
+        // all anchor at xMin, which keeps them in one left-aligned column even if a
+        // sector ever posts negative growth and its bar runs the other way.
+        const gv=rows.map(r=>r.growth), gmax=Math.max(...gv,0), gmin=Math.min(...gv,0);
+        const xMin=gmin<0?gmin*1.2:0, xMax=gmax>0?gmax*1.2:1;
+        c.setOption({ grid:{left:8,right:16,top:26,bottom:6,containLabel:true},
+          tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>{const r=p.find(x=>x.seriesType==='bar')||p[0]; if(!r||!r.data) return ''; return `${r.axisValue}<br/><b>${r.data.value>=0?'+':''}${r.data.value}%</b> growth in new businesses<br/><span style="opacity:.65">${fmt(r.data.count)} new in ${b.lastYear}</span>`;}},
+          xAxis:{type:'value',show:false,min:xMin,max:xMax},
+          yAxis:{type:'category',data:rows.map(r=>r.name),axisTick:{show:false},axisLine:{show:false},axisLabel:{show:false},splitLine:{show:false}},
+          series:[
+            {type:'bar',barWidth:34,z:2,
+             data:rows.map(r=>({value:r.growth,count:r.value,
+               itemStyle:{color:r.growth>=0?C.blue:C.maroon,borderRadius:r.growth>=0?[0,4,4,0]:[4,0,0,4]},
+               // white inside the bar where there is room; outside and maroon when the
+               // bar runs negative and there is no dark fill to sit on.
+               label:{position:r.growth>=0?'insideRight':'right',color:r.growth>=0?'#fff':C.maroon}})),
+             label:{show:true,distance:12,formatter:p=>(p.value>=0?'+':'')+p.value+'%',
+               fontFamily:this.FONT_DISPLAY,fontSize:15,fontWeight:800}},
+            // Industry name above its own bar. A bar series carries only one label, so
+            // an invisible scatter at the axis minimum carries the second. The pixel
+            // position [x,y] anchors the text left at the bar's start instead of
+            // centering it the way a named position would; clip:false keeps a title
+            // sitting on the grid boundary from being cut.
+            {type:'scatter',z:3,silent:true,clip:false,legendHoverLink:false,tooltip:{show:false},symbolSize:0,
+             data:rows.map(r=>({value:[xMin,r.name],
+               label:{show:true,position:[0,-27],formatter:r.name,color:C.blue,
+                 fontFamily:this.FONT_DISPLAY,fontSize:13,fontWeight:800}}))}
+          ] }); } }
     // apprenticeships (RAPIDS) — RAPIDS BAN strip + top-occupations bars + industry
     // donut (center BAN = total active) + sponsor-directory callout. All counts are
     // apprentices, so the byIndustry total reconciles to the donut center.
@@ -1493,10 +1523,15 @@ class Component {
         cc.setOption({ textStyle:{fontFamily:F},
           tooltip:{trigger:'item',formatter:p=>`${p.name}<br/><b>${fmt(p.value)}</b> apprentices · ${p.percent}%`},
           legend:{bottom:2,left:'center',icon:'circle',itemWidth:9,itemHeight:9,itemGap:12,textStyle:{fontFamily:F,fontSize:11,color:C.slate},data:ord.map(r=>r.name)},
-          title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'37%',textAlign:'center',itemGap:4,
-            textStyle:{fontFamily:"var(--vw-font-display)",fontSize:27,fontWeight:800,color:C.cobalt},
-            subtextStyle:{fontFamily:F,fontSize:11,fontWeight:600,color:C.slate}},
-          series:[{type:'pie',radius:['50%','66%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
+          // Center KPI: the font family has to be a RESOLVED stack. It was
+          // "var(--vw-font-display)", which canvas cannot read, so the number was
+          // silently falling back to the ECharts default — this.FONT_DISPLAY is the
+          // token resolved once at init for exactly this reason. Size and weight are
+          // up per the review; the ring is thicker (26pt of radius, was 16).
+          title:{text:fmt(totalActive),subtext:'active',left:'50%',top:'34%',textAlign:'center',itemGap:4,
+            textStyle:{fontFamily:this.FONT_DISPLAY,fontSize:36,fontWeight:800,color:C.cobalt},
+            subtextStyle:{fontFamily:F,fontSize:12,fontWeight:700,color:C.slate}},
+          series:[{type:'pie',radius:['42%','68%'],center:['50%','43%'],avoidLabelOverlap:true,minAngle:8,
             itemStyle:{borderColor:C.line,borderWidth:2},
             label:{show:true,position:'outside',formatter:p=>fmt(p.value),color:C.slate,fontFamily:F,fontSize:11,fontWeight:700},
             labelLine:{show:true,length:7,length2:6,lineStyle:{color:C.line}},
@@ -1998,7 +2033,7 @@ class Component {
         <div style="${ct}">Chart 2 · Fastest-growing sectors</div>
         <div style="${ch}">Top 5 Industries by New Business Growth</div>
         <p style="${cs}">The five industries where new-business formation grew the most, by percentage change rather than raw count. This surfaces fast-rising sectors even when their totals are still small.</p>
-        <div id="c-business-industry" style="width:100%;height:300px"></div>
+        <div id="c-business-industry" style="width:100%;height:390px"></div>
       </div>`;
   }
 
