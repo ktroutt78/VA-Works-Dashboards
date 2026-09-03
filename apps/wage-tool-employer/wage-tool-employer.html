@@ -16,9 +16,13 @@
   <style>
     :root {
       /* Design tokens — ported from docs/employer-wage-tool/employer-data.jsx T object. */
-      --header-bg:    #00246B;
-      --header-sub:   #aab3c4;
-      --paper:        #f3f0e9;
+      /* 2026-09-03 client review, matching apps/wage-tool:
+         banner is the pale brand tint with VA Works Blue type; the app is white,
+         so --paper and --faint carry no warm tint; the pay-band ranges are the
+         brand blues. See the --median note below before touching --range-dk. */
+      --header-bg:    #CEDEF2;
+      --header-sub:   #003595;
+      --paper:        #ffffff;
       --shell:        #ffffff;
       --card-line:    #dfe2e8;
       --field-line:   #d2d7df;
@@ -26,9 +30,12 @@
       --body:         #27303f;
       --muted:        #6b7280;
       --label:        #727a89;
-      --faint:        #edeae1;
-      --range-lt:     #aab9d6;
-      --range-dk:     #34537d;
+      --faint:        #e7e9ee;
+      --range-lt:     #CEDEF2;
+      --range-dk:     #003595;
+      /* Near-black on #003595 is about 1.5:1, so the median tick is drawn over a
+         white casing in the bar renderer. Keep the casing if you change either
+         range color. */
       --median:       #11151c;
       --you:          #b5392b;
       --accent:       #b5392b;
@@ -48,7 +55,7 @@
       --frame-w: 760px;
     }
 
-    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--vw-font-body); color: var(--ink); }
+    html, body { margin: 0; padding: 0; background: #ffffff; font-family: var(--vw-font-body); color: var(--ink); }
     .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
     .frame {
       width: var(--frame-w);
@@ -65,19 +72,19 @@
       padding: 15px 20px;
       display: flex; justify-content: space-between; align-items: flex-start;
     }
-    .header-title { font-family: var(--vw-font-display); font-weight: 600; font-size: 20px; color: #fff; letter-spacing: 0.2px; }
+    .header-title { font-family: var(--vw-font-display); font-weight: 600; font-size: 20px; color: #003595; letter-spacing: 0.2px; }
     .header-sub   { font-size: 12px; color: var(--header-sub); margin-top: 3px; }
     .header-guide {
       display: flex; align-items: center; gap: 6px;
-      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
-      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      border: 1px solid rgba(0,53,149,0.35); border-radius: 16px;
+      padding: 5px 12px; color: #003595; font-size: 11px;
       letter-spacing: 1.2px; text-transform: uppercase;
       cursor: pointer;
       background: transparent; font-family: inherit;
       transition: background .12s, color .12s, border-color .12s;
     }
-    .header-guide:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
-    .header-guide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .header-guide:hover { background: rgba(0,53,149,0.12); color: #003595; border-color: rgba(0,53,149,0.55); }
+    .header-guide:focus-visible { outline: 2px solid #003595; outline-offset: 2px; }
     .header-guide .q {
       font-family: var(--vw-font-body); font-size: 14px; font-weight: 700;
       line-height: 1;
@@ -85,14 +92,14 @@
     .header-actions { display: flex; align-items: center; gap: 8px; }
     .header-reset {
       display: inline-flex; align-items: center; gap: 6px;
-      border: 1px solid rgba(255,255,255,0.32); border-radius: 16px;
-      padding: 5px 12px; color: #dfe4ec; font-size: 11px;
+      border: 1px solid rgba(0,53,149,0.35); border-radius: 16px;
+      padding: 5px 12px; color: #003595; font-size: 11px;
       letter-spacing: 1.2px; text-transform: uppercase; cursor: pointer;
       background: transparent; font-family: inherit;
       transition: background .12s, color .12s, border-color .12s;
     }
-    .header-reset:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.5); }
-    .header-reset:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .header-reset:hover { background: rgba(0,53,149,0.12); color: #003595; border-color: rgba(0,53,149,0.55); }
+    .header-reset:focus-visible { outline: 2px solid #003595; outline-offset: 2px; }
     .header-reset .ic { font-size: 14px; line-height: 1; }
 
     /* ─── Guide modal ────────────────────────────────────────────────── */
@@ -399,7 +406,6 @@
       border-radius: 8px;
       margin: 0 16px 16px;
       padding: 16px;
-      border-left: 4px solid var(--accent);
     }
 
     .family-header {
@@ -517,19 +523,21 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     .section:last-child { margin-bottom: 0; }
-    .section-industry { border-left: 4px solid #34537d; }     /* QCEW blue */
-    .section-payband  { border-left: 4px solid var(--accent); } /* OEWS red  */
+    /* No left accent stripe on either section. The eyebrow already names and
+       colors each one (INDUSTRY SUMMARY in blue, PAY BANDS in red), so the
+       stripe was pure decoration. Removed with the equivalent .row-card
+       stripes in apps/wage-tool — do not reintroduce. */
     .section-head {
       display: flex; align-items: baseline; justify-content: space-between;
       gap: 12px; padding: 11px 16px;
       border-bottom: 1px solid var(--faint);
-      background: #fcfbf9;
+      background: #ffffff;
     }
     .section-eyebrow {
       font-size: 11px; font-weight: 700; letter-spacing: 1.1px;
       text-transform: uppercase;
     }
-    .section-industry .section-eyebrow { color: #34537d; }
+    .section-industry .section-eyebrow { color: #003595; }
     .section-payband  .section-eyebrow { color: var(--accent); }
     .section-source { font-size: 11px; color: var(--muted); }
     .section-region { font-weight: 600; color: #46506a; }
@@ -538,7 +546,7 @@
     /* Pay-band content lives directly in its section now — strip the old
        inner card chrome so we don't double-box. */
     .section-payband .card {
-      border: none; border-left: none; border-radius: 0;
+      border: none; border-radius: 0;
       margin: 0; padding: 14px 0 0; background: transparent;
     }
     .section-industry .industry-band { margin: 12px 0 0; }
@@ -773,8 +781,8 @@
               <div class="payband-empty-icon" aria-hidden="true">
                 <svg viewBox="0 0 44 44" width="44" height="44">
                   <circle cx="22" cy="22" r="20" fill="none" stroke="#b5392b" stroke-width="1.5"/>
-                  <line x1="8" y1="22" x2="36" y2="22" stroke="#aab9d6" stroke-width="6" stroke-linecap="round"/>
-                  <line x1="16" y1="22" x2="28" y2="22" stroke="#34537d" stroke-width="6" stroke-linecap="round"/>
+                  <line x1="8" y1="22" x2="36" y2="22" stroke="#CEDEF2" stroke-width="6" stroke-linecap="round"/>
+                  <line x1="16" y1="22" x2="28" y2="22" stroke="#003595" stroke-width="6" stroke-linecap="round"/>
                   <polygon points="24,16 30,22 24,28 18,22" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
                 </svg>
               </div>
@@ -859,8 +867,10 @@
           <text x="14" y="76" font-family="-apple-system, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#11151c">Library Technicians</text>
           <text x="14" y="89" font-family="-apple-system, system-ui, sans-serif" font-size="10.5" fill="#6b7280">2,580 jobs · Virginia</text>
           <g transform="translate(170, 58)">
-            <rect x="0"   y="6" width="340" height="20" rx="3" fill="#aab9d6"/>
-            <rect x="85"  y="9" width="170" height="14" rx="2" fill="#34537d"/>
+            <rect x="0"   y="6" width="340" height="20" rx="3" fill="#CEDEF2"/>
+            <rect x="85"  y="9" width="170" height="14" rx="2" fill="#003595"/>
+            <!-- white casing under the tick, same as the live chart -->
+            <line x1="145" y1="0" x2="145" y2="32" stroke="#ffffff" stroke-width="6" stroke-linecap="square"/>
             <line x1="145" y1="0" x2="145" y2="32" stroke="#11151c" stroke-width="2.5" stroke-linecap="square"/>
             <polygon points="204,9 212,16 204,23 196,16" fill="#b5392b" stroke="#fff" stroke-width="1.5"/>
           </g>
@@ -882,8 +892,8 @@
         </svg>
 
         <ul class="help-bullets">
-          <li><span class="swatch" style="background:#aab9d6"></span><div><b>Outer light blue band</b>: 10th to 90th percentile. Entry-level through senior.</div></li>
-          <li><span class="swatch" style="background:#34537d"></span><div><b>Inner dark blue band</b>: 25th to 75th percentile. The middle 50% of workers.</div></li>
+          <li><span class="swatch" style="background:#CEDEF2"></span><div><b>Outer light blue band</b>: 10th to 90th percentile. Entry-level through senior.</div></li>
+          <li><span class="swatch" style="background:#003595"></span><div><b>Inner dark blue band</b>: 25th to 75th percentile. The middle 50% of workers.</div></li>
           <li><span class="swatch tick" style="background:#11151c"></span><div><b>Black tick</b>: median. Half earn less, half more.</div></li>
           <li><span class="swatch diamond" style="background:#b5392b"></span><div><b>Red diamond</b>: your target percentile. Hover a row for values.</div></li>
         </ul>
@@ -1331,8 +1341,8 @@
 
       const tokens = getComputedStyle(document.documentElement);
       const C = {
-        ranLt: tokens.getPropertyValue('--range-lt').trim() || '#aab9d6',
-        ranDk: tokens.getPropertyValue('--range-dk').trim() || '#34537d',
+        ranLt: tokens.getPropertyValue('--range-lt').trim() || '#CEDEF2',
+        ranDk: tokens.getPropertyValue('--range-dk').trim() || '#003595',
         med:   tokens.getPropertyValue('--median').trim()   || '#11151c',
         you:   tokens.getPropertyValue('--you').trim()      || '#b5392b',
         muted: tokens.getPropertyValue('--muted').trim()    || '#6b7280',
@@ -1487,7 +1497,13 @@
                 { type: 'rect',
                   shape: { x: xP25, y: yc - halfBar, width: Math.max(0, xP75 - xP25), height: 15, r: 2 },
                   style: { fill: C.ranDk } },
-                /* Median tick */
+                /* Median tick — 2px ink over a 6px white casing. The dark range is
+                   #003595 now, where near-black ink alone is about 1.5:1 and the
+                   tick vanishes into the band. The casing is invisible against the
+                   white card, so this still reads as one black mark. */
+                { type: 'line',
+                  shape: { x1: xP50, y1: yc - halfBar - 3, x2: xP50, y2: yc + halfBar + 3 },
+                  style: { stroke: '#ffffff', lineWidth: 6 } },
                 { type: 'line',
                   shape: { x1: xP50, y1: yc - halfBar - 3, x2: xP50, y2: yc + halfBar + 3 },
                   style: { stroke: C.med, lineWidth: 2 } },
