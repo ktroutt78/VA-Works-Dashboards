@@ -21,11 +21,17 @@
       --faint:  #eceadf;
       --hi:     #b03a2e;
       --accent: #2a4470;
-      /* Bullet-chart palette — outer band darker than before (4.4:1 against white),
-         inner band lighter than accent so the median tick (ink) reads on top with
-         clear separation. Median tick uses --ink + 3px for strong target signal. */
-      --band-outer: #8aa0c4;
-      --band-inner: #3a5a8a;
+      /* Bullet-chart palette — VA Works brand blues as of the 2026-09-03 review.
+         Inner is the brand primary #003595, outer the brand light blue #3D7CC9
+         (4.3:1 against white, and 2.8:1 against the inner band so the two stay
+         clearly separable).
+         NOTE the median tick can no longer rely on the band being light: ink on
+         #003595 is about 1.4:1. It is drawn as a 3px ink line over a 7px WHITE
+         casing, which is invisible where the tick overhangs onto the white card
+         and shows as a thin outline where it crosses the navy band. Keep the
+         casing if you change either band color. */
+      --band-outer: #3D7CC9;
+      --band-inner: #003595;
       /* Retired the lone serif face for the site-canonical blocky Greycliff Demi Bold;
          falls back to a blocky sans where the licensed face is not bundled. */
       --serif:  "Greycliff CF", "Greycliff", "Public Sans", system-ui, -apple-system, sans-serif;
@@ -661,8 +667,10 @@
         <svg class="help-illustration" viewBox="0 0 480 170" role="img" aria-label="Annotated example of a percentile bar">
           <!-- Bar -->
           <g transform="translate(40, 65)">
-            <rect x="0"   y="6" width="400" height="28" rx="3" fill="#8aa0c4"/>
-            <rect x="100" y="9" width="200" height="22" rx="2" fill="#3a5a8a"/>
+            <rect x="0"   y="6" width="400" height="28" rx="3" fill="#3D7CC9"/>
+            <rect x="100" y="9" width="200" height="22" rx="2" fill="#003595"/>
+            <!-- white casing under the tick, same as the live chart -->
+            <line x1="180" y1="0" x2="180" y2="40" stroke="#ffffff" stroke-width="7" stroke-linecap="square"/>
             <line x1="180" y1="0" x2="180" y2="40" stroke="#1a1f2c" stroke-width="3" stroke-linecap="square"/>
             <circle cx="260" cy="20" r="7" fill="#b03a2e" stroke="#fff" stroke-width="2"/>
           </g>
@@ -1426,7 +1434,14 @@
         { type: 'rect',
           shape: { x: xPx(p25), y: yPx - barH/2 + 1.5, width: xPx(p75) - xPx(p25), height: barH - 3, r: 1.5 },
           style: { fill: COL.bandInner } },
-        // Median tick — 3px wide, extends 4px past the bar on each side for emphasis
+        // Median tick — 3px ink over a 7px white casing, extending 4px past the bar
+        // on each side. The casing is load-bearing now that the inner band is
+        // #003595: ink alone sits at about 1.4:1 on it and the tick disappears
+        // exactly where it matters most. Over the white card the casing is
+        // invisible, so this still reads as one solid black mark.
+        { type: 'line',
+          shape: { x1: xPx(p50), y1: yPx - barH/2 - 4, x2: xPx(p50), y2: yPx + barH/2 + 4 },
+          style: { stroke: '#ffffff', lineWidth: 7, lineCap: 'square' } },
         { type: 'line',
           shape: { x1: xPx(p50), y1: yPx - barH/2 - 4, x2: xPx(p50), y2: yPx + barH/2 + 4 },
           style: { stroke: COL.ink, lineWidth: 3, lineCap: 'square' } },
