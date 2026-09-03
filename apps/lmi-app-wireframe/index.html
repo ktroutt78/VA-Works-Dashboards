@@ -79,11 +79,13 @@
   --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  /* Percentile-band palette, lifted from apps/wage-tool/wage-tool.html.
-     Solid fills, not tints: the outer band clears 4.4:1 on white and the inner
-     band is dark enough that the ink median tick reads on top of it. */
-  --band-outer: #8aa0c4;
-  --band-inner: #3a5a8a;
+  /* Percentile-band palette, tracking apps/wage-tool/wage-tool.html as of the
+     2026-09-03 client review. The old note here said the inner band was kept
+     light enough for the ink median tick to read on top of it — that is no
+     longer true at #003595 (about 1.5:1), so .d-med carries a white casing.
+     Keep the casing if either band value changes. */
+  --band-outer: #CEDEF2;
+  --band-inner: #003595;
   --band-tick:  #1a1f2c;
   --band-dot:   #b03a2e;
 
@@ -233,7 +235,8 @@ body {
 .d-track { position: relative; height: 40px; }
 .d-outer { position: absolute; left: 0; right: 0; top: 6px; height: 28px; border-radius: 3px; background: var(--band-outer); }
 .d-inner { position: absolute; top: 9px; height: 22px; border-radius: 2px; background: var(--band-inner); }
-.d-med   { position: absolute; top: 0; height: 40px; width: 3px; background: var(--band-tick); transform: translateX(-1.5px); }
+.d-med   { position: absolute; top: 0; height: 40px; width: 3px; background: var(--band-tick); transform: translateX(-1.5px);
+           box-shadow: 0 0 0 2px #fff; }   /* casing: invisible on the white card, a thin outline across the navy band */
 .d-mean  { position: absolute; top: 6px; width: 14px; height: 14px; margin-top: 7px; border-radius: 50%;
            background: var(--band-dot); box-shadow: 0 0 0 2px #fff; transform: translateX(-7px); }
 .d-outer, .d-inner, .d-med, .d-mean { cursor: default; }
