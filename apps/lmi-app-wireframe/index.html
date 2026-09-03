@@ -217,9 +217,15 @@ body {
    most of the card is the gap between label and value. Pairing them also stops
    two structurally identical blocks running consecutively, which is the
    rhythm rule in brief §3. */
-/* The .rails pair (claims | QCEW) is gone with the claims card. QCEW is now a
-   full-width card on the base .rail-row sizing, so the half-scale sparkline and
-   label overrides that lived here are gone too. */
+/* Two-up row. Was .rails when it held claims | QCEW; it now holds QCEW | wages,
+   so the name describes the layout rather than the contents. The .rail-* rules
+   below still belong to the QCEW card's internals. */
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.pair > .card { display: flex; flex-direction: column; }
+.pair .block-foot { margin-top: auto; }
+/* Sparkline gives up a little width at half scale; the value keeps its size. */
+.pair .rail-row { grid-template-columns: minmax(0, 1fr) auto 104px; gap: 14px; }
+.pair .rail-lbl { font-size: 12.5px; }
 
 /* ── 5. Wage card ────────────────────────────────────────────────────────── */
 .wage-pair { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: stretch; gap: 14px; max-width: 460px; }
@@ -240,8 +246,13 @@ body {
 .d-mean  { position: absolute; top: 6px; width: 14px; height: 14px; margin-top: 7px; border-radius: 50%;
            background: var(--band-dot); box-shadow: 0 0 0 2px #fff; transform: translateX(-7px); }
 .d-outer, .d-inner, .d-med, .d-mean { cursor: default; }
-.dist-scale { position: relative; height: 28px; margin-top: 6px; font-size: 10.5px; color: var(--ink-3); }
-.dist-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
+.dist-scale { position: relative; height: 64px; margin-top: 6px; font-size: 10.5px; color: var(--ink-3); }
+.dist-scale > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
+/* Quartile labels drop to a second tier. At full width all five fit on one line,
+   but this card is half width now and the 10th and 25th labels overlapped by
+   ~8px — the p10-to-p25 span is only about 12% of the axis. Staggering keeps
+   every value visible instead of dropping or abbreviating any. */
+.dist-scale > span.tier2 { top: 34px; }   /* each label is two lines (~28px), so tier 2 has to clear that */
 .dist-key { display: flex; gap: 16px; font-size: 11px; color: var(--ink-2); margin-top: 6px; flex-wrap: wrap; }
 .dist-key span { display: inline-flex; align-items: center; gap: 6px; }
 .dist-key i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; flex: none; }
@@ -279,10 +290,10 @@ svg text { font-variant-numeric: tabular-nums; }
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
   .page { padding: 24px 18px 56px; }
-  /* Below this the two-up rails crowd the value column, so they stack. Each
-     still keeps its own two-row structure. */
-  .rails { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .rails .rail-row { grid-template-columns: minmax(0, 1fr) auto 132px; gap: 20px; }
+  /* Below this the two-up row crowds the value column and the wage scale, so
+     it stacks. The QCEW card keeps its own two-row structure. */
+  .pair { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .pair .rail-row { grid-template-columns: minmax(0, 1fr) auto 132px; gap: 20px; }
   .cadence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 14px; }
 }
 @media (max-width: 700px) {
@@ -454,6 +465,7 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
 
     </div>
 
+    <div class="pair">
     <!-- ===== 3. QCEW RAIL ================================================ -->
     <section class="card" aria-labelledby="qcew-lbl">
       <div class="block-head">
@@ -519,11 +531,12 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
 
       <div class="block-foot"><a class="drill" href="#/g/wage-occupation">By occupation →</a></div>
     </section>
+    </div>
 
     <!-- ===== CADENCE FOOTNOTE ============================================ -->
     <footer class="cadence" aria-labelledby="cad-lbl">
       <div class="cadence-lbl" id="cad-lbl">
-        Six programs, six release cadences. There is no single “as of” date for this page.
+        Five programs, five release cadences. There is no single “as of” date for this page.
       </div>
       <div class="cadence-grid">
         <div class="cad"><div class="p">LAUS</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
@@ -789,13 +802,13 @@ function distribution(el, scaleEl, p, mean){
     n.addEventListener('mouseleave', hideTip);
   });
 
-  scaleEl.innerHTML = [[p.p10,'10th'],[p.p25,'25th'],[p.p50,'Median'],[p.p75,'75th'],[p.p90,'90th']]
-    .map(([v, lbl]) => {
+  scaleEl.innerHTML = [[p.p10,'10th',0],[p.p25,'25th',1],[p.p50,'Median',0],[p.p75,'75th',1],[p.p90,'90th',0]]
+    .map(([v, lbl, tier]) => {
       const px = pc(v);
       const pos = px < 4 ? 'left:0;transform:none'
                 : px > 96 ? 'right:0;left:auto;transform:none'
                 : `left:${px.toFixed(2)}%`;
-      return `<span style="${pos}">${usd(v)}<br><span style="color:var(--ink-4)">${lbl}</span></span>`;
+      return `<span class="${tier ? 'tier2' : ''}" style="${pos}">${usd(v)}<br><span style="color:var(--ink-4)">${lbl}</span></span>`;
     }).join('');
 }
 
