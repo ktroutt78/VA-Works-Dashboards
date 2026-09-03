@@ -336,16 +336,15 @@
     .slider-track-wrap { flex: 1; position: relative; height: 14px; display: flex; align-items: center; }
 
     /* ─── Industry summary band (cool tint) ──────────────────────────── */
-    /* Was a tinted, bordered, rounded box — the innermost container in the
-       nesting the client flagged. Now a plain stat row under a hairline, so it
-       groups without boxing. */
+    /* Shading is back at the client's request — they liked the light grey behind
+       the KPIs. The BORDER is not: fill alone groups the stats without drawing
+       another box, which is what made the old version read as nested. */
     .industry-band {
       margin: 0 20px 14px;
-      background: transparent;
+      background: var(--industry-bg);
       border: none;
-      border-top: 1px solid var(--card-line);
-      border-radius: 0;
-      padding: 12px 0 0;
+      border-radius: 6px;
+      padding: 12px 14px;
       display: grid;
       /* Equal-weight stat columns. The NAICS chip stays `auto` so it doesn't
          steal space; the three QCEW stats divide the remaining width evenly. */
@@ -541,15 +540,17 @@
       gap: 12px; padding: 13px 20px 0;
       background: #ffffff;
     }
+    /* 14px, up from 11px — these are the page's section headers, and at 11px they
+       sat below their own metadata line in visual weight. */
     .section-eyebrow {
-      font-size: 11px; font-weight: 700; letter-spacing: 1.1px;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.9px;
       text-transform: uppercase;
     }
     .section-industry .section-eyebrow { color: #003595; }
     .section-payband  .section-eyebrow { color: var(--accent); }
     .section-source { font-size: 11px; color: var(--muted); }
     .section-region { font-weight: 600; color: #46506a; }
-    .section-body { padding: 12px 20px 18px; }
+    .section-body { padding: 12px 20px 22px; }
 
     /* Pay-band content lives directly in its section now — strip the old
        inner card chrome so we don't double-box. */
@@ -557,7 +558,9 @@
       border: none; border-radius: 0;
       margin: 0; padding: 14px 0 0; background: transparent;
     }
-    .section-industry .industry-band { margin: 12px 0 0; }
+    /* Extra bottom margin so the shaded KPI row does not run into the hairline
+       and the PAY BANDS header directly beneath it. */
+    .section-industry .industry-band { margin: 14px 0 6px; }
 
     /* ─── Empty / hint states ─────────────────────────────────────────── */
     .industry-empty {
