@@ -48,10 +48,11 @@
     .frame { width: 760px; background: var(--shell); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
     /* Agency header */
-    .header { background: #CEDEF2; color: #000; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
+    /* Banner: pale brand blue ground, VA Works Blue type (8.8:1 on #CEDEF2). */
+    .header { background: #CEDEF2; color: #003595; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
     .header-title { font-family: var(--vw-font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
-    .header-sub   { font-size: 11px; color: #000; margin-top: 2px; letter-spacing: 0.4px; }
-    .header-brand { font-size: 10px; color: #000; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; letter-spacing: 0.6px; text-transform: uppercase; }
+    .header-sub   { font-size: 11px; color: #003595; margin-top: 2px; letter-spacing: 0.4px; }
+    .header-brand { font-size: 10px; color: #003595; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; letter-spacing: 0.6px; text-transform: uppercase; }
 
     /* Controls */
     .controls { padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -377,11 +378,11 @@
     .help-btn {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
-      background: rgba(0,0,0,0.04); color: #000;
-      border: 1px solid rgba(0,0,0,0.28); border-radius: 4px;
+      background: rgba(0,53,149,0.05); color: #003595;
+      border: 1px solid rgba(0,53,149,0.35); border-radius: 4px;
       padding: 5px 10px; cursor: pointer; transition: background .12s, color .12s;
     }
-    .help-btn:hover { background: rgba(0,0,0,0.10); color: #000; }
+    .help-btn:hover { background: rgba(0,53,149,0.12); color: #003595; }
     .help-btn svg { flex: 0 0 auto; }
 
     /* Modal */
