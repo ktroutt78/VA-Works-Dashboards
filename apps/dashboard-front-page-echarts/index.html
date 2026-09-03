@@ -36,6 +36,7 @@
   --accent-soft: #f4e8c6;
   --coral:   #b75049;
   --success: #2f7a4a;
+  --maroon:  #9F2842;
 
   /* Fonts — two roles only. Default to a Public Sans / system stack; the client
      overrides these two variables in fonts.css to drop in their own webfont.
@@ -180,10 +181,17 @@ body {
 .kpi-value .unit { font-size: 18px; font-weight: 600; color: var(--ink-2); }
 .kpi-delta {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px; font-weight: 600; color: var(--success);
+  font-size: 12px; font-weight: 600; color: var(--ink-1);
   font-variant-numeric: tabular-nums; margin-top: 2px;
 }
-.kpi-delta.down { color: var(--coral); }
+/* 2026-09-03 review. Deltas are ink by default; ONLY a decrease is colored.
+   The .down class now tracks the GLYPH — it is set when the arrow is a down
+   arrow, i.e. delta < 0 — so the class name and what you see agree. It used
+   to mean the opposite (set when delta > 0, "up = more unemployment = bad")
+   and paired green var(--success) against coral var(--coral) as a traffic
+   light. Both of those are retired here; --success still colors the
+   "Updated" pill dot, --coral is now unused on this page. */
+.kpi-delta.down { color: var(--maroon); }
 .kpi-delta .arrow { font-size: 9px; line-height: 1; }
 .kpi-sub { font-size: 11px; color: var(--ink-3); }
 
@@ -551,6 +559,18 @@ function disambiguateCountyNames() {
 }
 
 // ------- 3. KPIs -------
+// One renderer for all three delta indicators (county, Virginia, U.S.). This was
+// duplicated inline for the county at the bottom of the file, which meant a change
+// to the arrow or color rule silently applied to two of the three. Do not re-inline it.
+function setDelta(id, delta) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const sign = delta > 0 ? '+' : '';
+  const arrow = delta >= 0 ? '\u25B2' : '\u25BC';
+  el.innerHTML = '<span class="arrow">' + arrow + '</span>' + sign + delta.toFixed(1) + ' pts';
+  el.classList.toggle('down', delta < 0);   // matches the glyph: down arrow -> maroon
+}
+
 function renderKpis(locality) {
   const unVa = locality.kpi.virginia.value;
   const unUs = locality.kpi.us_average.value;
@@ -560,13 +580,6 @@ function renderKpis(locality) {
   document.getElementById('kpi-va-value').innerHTML = unVa.toFixed(1) + '<span class="unit">%</span>';
   document.getElementById('kpi-us-value').innerHTML = unUs.toFixed(1) + '<span class="unit">%</span>';
 
-  const setDelta = (id, delta) => {
-    const el = document.getElementById(id);
-    const sign = delta > 0 ? '+' : '';
-    const arrow = delta >= 0 ? '▲' : '▼';
-    el.innerHTML = '<span class="arrow">' + arrow + '</span>' + sign + delta.toFixed(1) + ' pts';
-    el.classList.toggle('down', delta > 0);  // up = more unemployment = bad
-  };
   setDelta('kpi-va-delta', deltaVa);
   setDelta('kpi-us-delta', deltaUs);
 
@@ -627,7 +640,10 @@ function buildMapData(counties) {
       value: rate,                          // displayed in tooltip + visualMap if used
       itemStyle: { areaColor: color, borderColor: borderColor, borderWidth: 0.5 },
       emphasis: { itemStyle: { areaColor: color, borderColor: BRAND_PRIMARY, borderWidth: 1 } },
-      select:   { itemStyle: { areaColor: BRAND_ACCENT, borderColor: BRAND_PRIMARY, borderWidth: 1.2 } },
+      // Selected locality carries NO special border — same white hairline as every
+      // other county. The orange already separates it from the blue ramp, and the
+      // blue ring that used to sit around it read as a second, competing highlight.
+      select:   { itemStyle: { areaColor: BRAND_ACCENT, borderColor: '#ffffff', borderWidth: 0.5 } },
       // Attached metadata — read in tooltip + selectchanged handlers via params.data
       fips: c.fips,
       countyName: c.areaname,
@@ -669,7 +685,7 @@ function mapChartOptions(seriesData) {
       top: 0, bottom: 0, left: 0, right: 0,
       itemStyle: { areaColor: '#f2f1ec', borderColor: '#ffffff', borderWidth: 0.5 },
       emphasis: { label: { show: false }, itemStyle: { borderColor: BRAND_PRIMARY, borderWidth: 1 } },
-      select:   { label: { show: false }, itemStyle: { areaColor: BRAND_ACCENT, borderColor: BRAND_PRIMARY, borderWidth: 1.2 } },
+      select:   { label: { show: false }, itemStyle: { areaColor: BRAND_ACCENT, borderColor: '#ffffff', borderWidth: 0.5 } },
       label: { show: false },
       animationDuration: 240,
       animationDurationUpdate: 240,
@@ -1011,11 +1027,7 @@ function applyFilter() {
     document.getElementById('kpi-county-label').textContent = STATE.selectedCounty.name;
     document.getElementById('kpi-county-value').innerHTML =
       countyUn.toFixed(1) + '<span class="unit">%</span>';
-    const deltaEl = document.getElementById('kpi-county-delta');
-    const sign = deltaVsVa > 0 ? '+' : '';
-    const arrow = deltaVsVa >= 0 ? '▲' : '▼';
-    deltaEl.innerHTML = '<span class="arrow">' + arrow + '</span>' + sign + deltaVsVa.toFixed(1) + ' pts';
-    deltaEl.classList.toggle('down', deltaVsVa > 0);
+    setDelta('kpi-county-delta', deltaVsVa);
   } else {
     bar.classList.add('empty');
     document.body.classList.remove('has-county-selected');
