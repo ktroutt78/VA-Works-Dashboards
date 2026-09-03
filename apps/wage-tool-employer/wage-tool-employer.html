@@ -182,11 +182,15 @@
        directly under the header — visually OUTSIDE and ABOVE the two section
        cards. The distinct slate fill + the 2px divider make it read as
        page-level chrome, not as the first field of the section below. */
+    /* White, separated by a hairline — same shape as .controls in
+       apps/wage-tool. It used to be #e6eaf2 over a 2px #c4ccda rule, which put a
+       second, slightly different light blue directly under the #CEDEF2 banner;
+       two near-identical blues stacked read as a mistake rather than a choice. */
     .region-bar {
       display: flex; align-items: center; gap: 18px;
       padding: 13px 20px;
-      background: #e6eaf2;
-      border-bottom: 2px solid #c4ccda;
+      background: #ffffff;
+      border-bottom: 1px solid var(--card-line);
     }
     .region-field { width: 340px; }
     .region-bar-label { gap: 5px; color: #46506a; }
