@@ -18,9 +18,13 @@
       --ink:    #1a1f2c;
       --muted:  #5a6376;
       --line:   #cdd3df;
-      --paper:  #fbfaf6;
+      /* --paper was the warm off-white surface (#fbfaf6) behind the controls strip,
+         the empty state, the dropdown group headers and the help illustration. The
+         client asked for a white app, so it is white; keep it that way. --faint was
+         a cream hairline (#eceadf) and is now a neutral, so no warm tint survives. */
+      --paper:  #ffffff;
       --shell:  #ffffff;
-      --faint:  #eceadf;
+      --faint:  #e7e9ee;
       --hi:     #b03a2e;
       --accent: #2a4470;
       /* Bullet-chart palette — VA Works brand blues as of the 2026-09-03 review.
@@ -231,16 +235,14 @@
       background: var(--shell);
       border: 1px solid var(--line);
       border-radius: 6px;
-      padding: 12px 14px 12px 17px;
+      /* Left padding is a plain 14px now. It used to be 17px to clear a 3px
+         ::before accent stripe on the card edge — red for the current role, navy
+         for a comparison row. Removed at the client's request. The role is already
+         named in the card ("YOUR ROLE" in --hi), so the stripe was decoration. */
+      padding: 12px 14px;
       margin-bottom: 10px;
       overflow: hidden;
     }
-    .row-card::before {
-      content: '';
-      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    }
-    .row-card.you::before { background: var(--hi); }
-    .row-card.cmp::before { background: var(--accent); }
     .row-card:last-of-type { margin-bottom: 0; }
 
     /* Top row: occupation block, two stat callouts, two sparkline blocks, × gutter.
@@ -332,7 +334,6 @@
       padding: 28px 20px;
       text-align: center;
     }
-    .empty-card::before { display: none; }
     .empty-arrow {
       font-size: 22px; color: var(--muted);
       line-height: 1; margin-bottom: 6px;
@@ -407,7 +408,7 @@
       background: transparent; border: none; cursor: pointer; color: var(--muted);
       width: 28px; height: 28px; font-size: 20px; line-height: 1; border-radius: 4px;
     }
-    .modal-close:hover { background: var(--paper); color: var(--ink); }
+    .modal-close:hover { background: #eef1f5; color: var(--ink); }
     .modal-body { padding: 8px 24px 22px; font-size: 13px; line-height: 1.55; color: var(--ink); }
     .modal-body p { margin: 0 0 10px; color: #3a4153; }
     .help-illustration {
