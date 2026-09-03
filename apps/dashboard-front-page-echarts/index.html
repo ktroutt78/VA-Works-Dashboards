@@ -466,6 +466,10 @@ const BRAND_PRIMARY = '#003595';
 // benchmark. Here the map is a picker over a blue choropleth ramp, so the selection has
 // to contrast with the ramp rather than join it.
 const BRAND_ACCENT  = '#EE7623';
+// Job LOSS on "Jobs Added by Industry". Maroon carries the same meaning it does in
+// community-profiles (below the benchmark / the negative end of a scale). It replaces
+// #9FB4D8, a tint of the choropleth ramp that read as "no data" rather than "declining".
+const BRAND_NEGATIVE = '#9F2842';
 const INK_3 = '#8a8c8f';
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -822,7 +826,7 @@ function barChartOptions(industry, regionKey) {
     value: d.jobs_added,
     name: d.sector,
     itemStyle: {
-      color: d.jobs_added < 0 ? '#9FB4D8' : BRAND_PRIMARY,
+      color: d.jobs_added < 0 ? BRAND_NEGATIVE : BRAND_PRIMARY,
       // round the outer (away-from-zero) end, flat against the zero axis:
       // negatives extend left → round left corners; positives extend right → round right corners
       borderRadius: d.jobs_added < 0 ? [4, 0, 0, 4] : [0, 4, 4, 0]
