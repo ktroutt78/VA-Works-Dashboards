@@ -15,7 +15,7 @@
   Static wireframe for client layout sign-off. No query, no data pipeline, no
   build step. Every figure was invented to be plausible and to exercise the
   layout: the rates, the 36-month series, the job change, the earnings, the
-  projections, the claims, the QCEW counts, the wage percentiles, and every
+  projections, the QCEW counts, the wage percentiles, and every
   period and as-of date. Do not cite or circulate any figure here as a
   Virginia statistic. Real values come from the WID once Step 0 verification
   and the metric queries in LMI_APP_BRIEF.md sections 2 and 5 are complete.
@@ -215,12 +215,9 @@ body {
    most of the card is the gap between label and value. Pairing them also stops
    two structurally identical blocks running consecutively, which is the
    rhythm rule in brief §3. */
-.rails { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
-.rails > .card { display: flex; flex-direction: column; }
-.rails .block-foot { margin-top: auto; }
-/* Sparkline gives up a little width at half scale; the value keeps its size. */
-.rails .rail-row { grid-template-columns: minmax(0, 1fr) auto 104px; gap: 14px; }
-.rails .rail-lbl { font-size: 12.5px; }
+/* The .rails pair (claims | QCEW) is gone with the claims card. QCEW is now a
+   full-width card on the base .rail-row sizing, so the half-scale sparkline and
+   label overrides that lived here are gone too. */
 
 /* ── 5. Wage card ────────────────────────────────────────────────────────── */
 .wage-pair { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: stretch; gap: 14px; max-width: 460px; }
@@ -364,7 +361,7 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
   <header class="dash-head">
     <h1>Virginia labor market scorecard</h1>
     <p class="sub">
-      Statewide indicators across six federal programs. Each block carries its own
+      Statewide indicators across five federal programs. Each block carries its own
       release period and drills to a sortable, exportable detail grid.
     </p>
     <span class="stamp">Wireframe · all figures are placeholders</span>
@@ -412,11 +409,15 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
       <article class="card tile">
         <h2 class="card-title">Nonfarm jobs</h2>
         <div class="card-sub">December 2025 · CES · seasonally adjusted</div>
-        <div class="val">−4,100</div>
-        <div class="delta">Change vs Nov</div>
+        <!-- Headline is the LEVEL (total jobs), not the month's change. The change
+             moves down into .ctx, taking the slot the level used to occupy. The
+             bar sparkline still plots the monthly change series, which now reads
+             as momentum under the level rather than a chart of the headline. -->
+        <div class="val">4.09M</div>
+        <div class="delta">Total jobs</div>
         <div class="tile-spark" id="spark-jobs"></div>
         <div class="ctx">
-          <div><span class="card-sub">Total jobs</span><b>4.09M</b></div>
+          <div><span class="card-sub">Change vs Nov</span><b>−4,100</b></div>
           <div><span class="card-sub">U.S. change</span><b>+125,000</b></div>
         </div>
         <div class="block-foot"><a class="drill" href="#/g/jobs-supersector">By supersector →</a></div>
@@ -450,36 +451,7 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
 
     </div>
 
-    <div class="rails">
-    <!-- ===== 3. CLAIMS RAIL ============================================== -->
-    <section class="card" aria-labelledby="claims-lbl">
-      <div class="block-head">
-        <h2 class="card-title" id="claims-lbl">Unemployment insurance claims</h2>
-        <div class="card-sub">Week ending 02/14/2026 · NSA</div>
-      </div>
-
-      <div class="rail-row">
-        <div class="rail-lbl">Initial claims</div>
-        <div class="rail-fig">
-          <div class="val">2,653</div>
-          <div class="delta"><span class="arrow">▼</span> 8.2% vs same week 2025</div>
-        </div>
-        <div class="rail-spark" id="spark-initial"></div>
-      </div>
-
-      <div class="rail-row">
-        <div class="rail-lbl">Continued claims</div>
-        <div class="rail-fig">
-          <div class="val">21,041</div>
-          <div class="delta"><span class="arrow">▲</span> 3.4% vs same week 2025</div>
-        </div>
-        <div class="rail-spark" id="spark-continued"></div>
-      </div>
-
-      <div class="block-foot"><a class="drill" href="#/g/claims-weekly">Weekly detail →</a></div>
-    </section>
-
-    <!-- ===== 4. QCEW RAIL ================================================ -->
+    <!-- ===== 3. QCEW RAIL ================================================ -->
     <section class="card" aria-labelledby="qcew-lbl">
       <div class="block-head">
         <h2 class="card-title" id="qcew-lbl">Covered employment and establishments</h2>
@@ -506,9 +478,8 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
 
       <div class="block-foot"><a class="drill" href="#/g/qcew-industry">By industry →</a></div>
     </section>
-    </div>
 
-    <!-- ===== 5. WAGE CARD ================================================ -->
+    <!-- ===== 4. WAGE CARD ================================================ -->
     <section class="card" aria-labelledby="wage-lbl">
       <div class="block-head">
         <h2 class="card-title" id="wage-lbl">Annual wages, all occupations</h2>
@@ -555,7 +526,6 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
         <div class="cad"><div class="p">LAUS</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
         <div class="cad"><div class="p">CES</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
         <div class="cad"><div class="p">CPI-U</div><div class="f">Monthly</div><div class="d">Dec 2025</div></div>
-        <div class="cad"><div class="p">UI claims</div><div class="f">Weekly</div><div class="d">02/14/2026</div></div>
         <div class="cad"><div class="p">QCEW</div><div class="f">Quarterly</div><div class="d">Q3 2025</div></div>
         <div class="cad"><div class="p">Projections</div><div class="f">Biennial</div><div class="d">2022–2032</div></div>
       </div>
@@ -613,14 +583,6 @@ function monthsBack(n, endY, endM){
     let m = endM - i, y = endY;
     while (m < 0){ m += 12; y--; }
     out.push(MON[m] + ' ' + y);
-  }
-  return out;
-}
-function weeksBack(n, endISO){
-  const out = [], d = new Date(endISO + 'T00:00:00');
-  for (let i = n - 1; i >= 0; i--){
-    const t = new Date(d); t.setDate(d.getDate() - i * 7);
-    out.push(String(t.getMonth() + 1).padStart(2,'0') + '/' + String(t.getDate()).padStart(2,'0') + '/' + t.getFullYear());
   }
   return out;
 }
@@ -847,15 +809,6 @@ const JOBS_CHANGE = [8200,12400,-2100,6800,9400,4200,-5600,11200,7300,2900,-1800
                      6100,-3400,8800,5200,9100,-2600,7400,3800,-7200,6300,1900,-4100];
 const REAL_EARN = [30.42,30.51,30.48,30.63,30.71,30.68,30.82,30.94,30.88,31.02,31.15,31.09,
                    31.21,31.34,31.28,31.41,31.38,31.52,31.60,31.55,31.68,31.74,31.79,31.84];
-const INITIAL = [2890,2760,2680,2610,2740,2830,2950,3120,2980,2870,2790,2710,2650,
-                 2580,2620,2700,2810,2760,2690,2640,2720,2850,2930,3040,3180,3350,
-                 3210,3080,2960,2880,2810,2750,2690,2630,2670,2740,2820,2900,3010,
-                 3240,3580,4120,4890,5240,4610,3970,3480,3120,2940,2820,2710,2653];
-const CONTINUED = [19800,19450,19120,18960,19340,19780,20240,20890,20510,20180,19870,
-                   19560,19280,19040,19310,19680,20120,19940,19620,19380,19710,20230,
-                   20680,21140,21790,22460,22010,21520,21080,20760,20440,20180,19920,
-                   19680,19850,20140,20490,20870,21360,22180,23440,24980,26310,25720,
-                   24380,23190,22340,21860,21490,21260,21120,21041];
 const QCEW_EMP = [4021450,4038200,4052900,4061300,4055800,4072400,
                   4089100,4098600,4092300,4110800,4128500,4143734];
 const QCEW_EST = [303200,304800,306100,307500,308200,309600,
@@ -866,7 +819,6 @@ const WAGE_MEAN = 72060;
 /* --- Render ---------------------------------------------------------------- */
 const L36 = monthsBack(36, 2025, 11);   // Jan 2023 … Dec 2025
 const L24 = monthsBack(24, 2025, 11);   // Jan 2024 … Dec 2025
-const L52 = weeksBack(52, '2026-02-14');
 const L12Q = quartersBack(12, 2025, 3); // Q4 2022 … Q3 2025
 
 heroChart(document.getElementById('hero-chart'), VA_UNEMP, US_UNEMP, ['Jan 2023','Dec 2025'], L36);
@@ -874,10 +826,6 @@ barsZero(document.getElementById('spark-jobs'), JOBS_CHANGE, L24);
 sparkLine(document.getElementById('spark-earn'), REAL_EARN, 260, 48,
           'Real hourly earnings, last 24 months', L24, v => '$' + v.toFixed(2), 'Deflated by national CPI-U');
 progress(document.getElementById('spark-proj'), 0.44 / 0.60, 0.30 / 0.60);
-sparkLine(document.getElementById('spark-initial'),   INITIAL,   132, 30,
-          'Initial claims, last 52 weeks', L52, int0, 'Week ending · not seasonally adjusted');
-sparkLine(document.getElementById('spark-continued'), CONTINUED, 132, 30,
-          'Continued claims, last 52 weeks', L52, int0, 'Week ending · not seasonally adjusted');
 sparkLine(document.getElementById('spark-emp'), QCEW_EMP, 132, 30,
           'Covered employment, last 12 quarters', L12Q, int0, 'QCEW quarterly average');
 sparkLine(document.getElementById('spark-est'), QCEW_EST, 132, 30,
@@ -953,17 +901,6 @@ const earnRows = RE_M.map((m, i) => ({
   period:m, nominal:RE_NOM[i], cpi:RE_CPI[i],
   real:+(RE_NOM[i] / (RE_CPI[i] / 100)).toFixed(2), yoy:RE_YOY[i]
 }));
-
-/* ---- 4. UI claims, weekly -------------------------------------------------- */
-const CW = [
-  ['02/14/2026',2653,21041,-8.2, 3.4],['02/07/2026',2710,21120,-7.4, 3.1],
-  ['01/31/2026',2820,21260,-6.1, 2.8],['01/24/2026',2940,21490,-5.3, 2.6],
-  ['01/17/2026',3120,21860,-4.8, 3.0],['01/10/2026',3480,22340,-3.2, 3.5],
-  ['01/03/2026',3970,23190,-2.1, 4.1],['12/27/2025',4610,24380, 1.4, 4.8],
-  ['12/20/2025',5240,25720, 2.8, 5.2],['12/13/2025',4890,26310, 1.9, 5.6],
-  ['12/06/2025',4120,24980, 0.6, 4.9],['11/29/2025',3580,23440,-1.2, 4.2],
-  ['11/22/2025',3240,22180,-2.4, 3.8]
-].map(([week, initial, continued, iYoy, cYoy]) => ({ week, initial, continued, iYoy, cYoy }));
 
 /* ---- 5. QCEW by NAICS sector ----------------------------------------------
    Manufacturing / Retail / Transportation carry their WID range-string codes
@@ -1075,19 +1012,6 @@ const GRIDS = {
       { k:'cpi',     l:'CPI-U index', n:1, f:f.idx },
       { k:'real',    l:'Real',        n:1, f:f.usd2 },
       { k:'yoy',     l:'YoY (real)',  n:1, f:f.sPct }
-    ]
-  },
-  'claims-weekly': {
-    title: 'Unemployment insurance claims — weekly detail',
-    period: 'Week ending 02/14/2026 · not seasonally adjusted',
-    note: 'Claims are not seasonally adjusted, so both change columns compare with the same week of the prior year rather than the prior week. A week-over-week reading would mostly show the seasonal pattern.',
-    rows: CW,
-    cols: [
-      { k:'week',      l:'Week ending' },
-      { k:'initial',   l:'Initial',        n:1, f:f.int },
-      { k:'iYoy',      l:'Initial YoY',    n:1, f:f.sPct },
-      { k:'continued', l:'Continued',      n:1, f:f.int },
-      { k:'cYoy',      l:'Continued YoY',  n:1, f:f.sPct }
     ]
   },
   'qcew-industry': {

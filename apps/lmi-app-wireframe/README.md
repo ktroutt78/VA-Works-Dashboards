@@ -14,10 +14,10 @@ and the metric queries in `LMI_APP_BRIEF.md` §2 and §5 are complete.
 One self-contained `index.html`. No build step, no dependencies, no external
 requests — inline SVG charts, no chart library, no webfont.
 
-- **Scorecard** at `#/` — hero unemployment block, three-tile row, paired
-  claims and QCEW rails, full-width wage card, cadence footnote.
-- **Seven drill grids** at `#/g/<id>` — one reusable shell (sortable columns,
-  CSV export, row count, back link) over seven datasets. Hash-routed so the
+- **Scorecard** at `#/` — hero unemployment block, three-tile row, full-width
+  QCEW rail, full-width wage card, cadence footnote.
+- **Six drill grids** at `#/g/<id>` — one reusable shell (sortable columns,
+  CSV export, row count, back link) over six datasets. Hash-routed so the
   whole thing stays a single double-clickable file.
 
 ## Styling
@@ -36,3 +36,8 @@ The front page colours its KPI deltas green up / coral down. This page does not,
 per the standing "no valence colouring on a government site" rule — direction is
 carried by the arrow and the named comparison basis. The nonfarm jobs bars are
 the one exception, and they use the front page's own `--coral`.
+
+The unemployment insurance claims block was removed at the client's request
+(2026-09-03), along with its weekly drill grid, its two series, the week-axis
+helper, and its cadence row. `#/g/claims-weekly` now falls through to the
+scorecard, which is what the router already does for any unknown id.
