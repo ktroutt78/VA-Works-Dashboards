@@ -24,15 +24,16 @@
       --hi:     #b03a2e;
       --accent: #2a4470;
       /* Bullet-chart palette — VA Works brand blues as of the 2026-09-03 review.
-         Inner is the brand primary #003595, outer the brand light blue #3D7CC9
-         (4.3:1 against white, and 2.8:1 against the inner band so the two stay
-         clearly separable).
+         Inner is the brand primary #003595; outer is #CEDEF2, a pale tint chosen
+         by the client and shared with the banner. It sits at only ~1.25:1 against
+         the white card, which is deliberate: the outer band is a soft range
+         backdrop, and the inner band plus the median tick carry the reading.
          NOTE the median tick can no longer rely on the band being light: ink on
          #003595 is about 1.4:1. It is drawn as a 3px ink line over a 7px WHITE
          casing, which is invisible where the tick overhangs onto the white card
          and shows as a thin outline where it crosses the navy band. Keep the
          casing if you change either band color. */
-      --band-outer: #3D7CC9;
+      --band-outer: #CEDEF2;
       --band-inner: #003595;
       /* Fonts — two roles only. Default to a Public Sans / system stack; the client
          overrides these two variables in fonts.css to drop in their own webfont.
@@ -42,15 +43,15 @@
       --vw-font-display: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       --vw-font-body:    "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: var(--vw-font-body); color: var(--ink); }
+    html, body { margin: 0; padding: 0; background: #ffffff; font-family: var(--vw-font-body); color: var(--ink); }
     .page-wrap { display: flex; justify-content: center; padding: 32px 16px; }
     .frame { width: 760px; background: var(--shell); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
     /* Agency header */
-    .header { background: #00246B; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
+    .header { background: #CEDEF2; color: #000; padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; }
     .header-title { font-family: var(--vw-font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.2px; }
-    .header-sub   { font-size: 11px; color: #c8cdd9; margin-top: 2px; letter-spacing: 0.4px; }
-    .header-brand { font-size: 10px; color: #9ea6b8; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; letter-spacing: 0.6px; text-transform: uppercase; }
+    .header-sub   { font-size: 11px; color: #000; margin-top: 2px; letter-spacing: 0.4px; }
+    .header-brand { font-size: 10px; color: #000; font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; letter-spacing: 0.6px; text-transform: uppercase; }
 
     /* Controls */
     .controls { padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -376,11 +377,11 @@
     .help-btn {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: var(--vw-font-display); font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
-      background: rgba(255,255,255,0.08); color: #d6dbe6;
-      border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+      background: rgba(0,0,0,0.04); color: #000;
+      border: 1px solid rgba(0,0,0,0.28); border-radius: 4px;
       padding: 5px 10px; cursor: pointer; transition: background .12s, color .12s;
     }
-    .help-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .help-btn:hover { background: rgba(0,0,0,0.10); color: #000; }
     .help-btn svg { flex: 0 0 auto; }
 
     /* Modal */
