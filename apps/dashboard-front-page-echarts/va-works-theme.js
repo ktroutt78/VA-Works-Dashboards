@@ -31,7 +31,7 @@
   // Default sequence for series that do NOT set an explicit color.
   // Navy / green / gray are the workhorses; maroon is the calm accent;
   // orange is demoted to last (rare categorical use only).
-  var COLORS = ['#003595', '#2A7050', '#9F2842', '#9FB4D8', '#00246B', '#8A94A3', '#EE7625'];
+  var COLORS = ['#003595', '#2A7050', '#9F2842', '#9FB4D8', '#00246B', '#8A94A3', '#EE7623'];
 
   var categoryAxis = {
     axisLine:  { show: false },

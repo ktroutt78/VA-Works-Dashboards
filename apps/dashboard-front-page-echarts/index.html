@@ -409,8 +409,11 @@ body {
         </div>
       </div>
       <div class="legend">
-        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot" style="background:#2A7050"></span><span id="legend-region-name"></span></span>
-        <span class="legend-item"><span class="legend-dot" id="leg-va-dot" style="background:#003595"></span><span>Virginia</span></span>
+        <!-- Dot colors are assigned from BRAND_ACCENT / BRAND_PRIMARY in JS. They used to
+             be hardcoded here, which meant this legend silently kept the old green after
+             the series color changed. Do not put a literal hex back. -->
+        <span class="legend-item" id="legend-region"><span class="legend-dot" id="leg-reg-dot"></span><span id="legend-region-name"></span></span>
+        <span class="legend-item"><span class="legend-dot" id="leg-va-dot"></span><span>Virginia</span></span>
         <span class="legend-item dashed" style="color:#8A94A3"><span class="legend-dot"></span><span style="color:var(--ink-2)">U.S. National</span></span>
       </div>
       <div class="chart-wrap" id="line-cell"><div class="loading">Loading trend…</div></div>
@@ -453,7 +456,16 @@ const VWFONT = (function () {
 // Same near-white → brand-blue ramp the original uses for the choropleth.
 const MAP_RAMP = ['#eaf1f9', '#bbcbe5', '#8ca6d1', '#5e80bd', '#2f5ba9', '#003595'];
 const BRAND_PRIMARY = '#003595';
-const BRAND_ACCENT  = '#2A7050';
+// BRAND_ACCENT means "the locality you selected", and it drives that in TWO linked
+// places: the selected county's fill on the choropleth AND that same county's line in
+// the trend chart. They have to stay the same value or clicking a county tints the map
+// one color and draws its line in another. VA Works Orange (Pantone 158) as of the
+// 2026-09-03 review; it was #2A7050 green, which now survives only as a delta color.
+// Note this page and community-profiles deliberately differ: CP marks the selected
+// geography blue, because there the locality is always being read against a Virginia
+// benchmark. Here the map is a picker over a blue choropleth ramp, so the selection has
+// to contrast with the ramp rather than join it.
+const BRAND_ACCENT  = '#EE7623';
 const INK_3 = '#8a8c8f';
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -683,11 +695,14 @@ function lineChartOptions(trend, selectedCounty) {
   // Per-county series only when a county is selected. trend.counties is
   // indexed by fips in STATE.trendCountyMap.
   let countySeries = null;
+  // Virginia's legend dot is always shown, so assign it unconditionally.
+  document.getElementById('leg-va-dot').style.background = BRAND_PRIMARY;
   if (selectedCounty) {
     const countyArr = STATE.trendCountyMap[selectedCounty.fips];
     const sliced = countyArr ? countyArr.slice(Math.max(0, countyArr.length - STATE.periodMonths)) : null;
     countySeries = { label: selectedCounty.name, data: sliced };
     document.getElementById('legend-region-name').textContent = countySeries.label;
+    document.getElementById('leg-reg-dot').style.background = BRAND_ACCENT;
   }
 
   // Thin x-labels in the 36-month window (Jan/Jul markers), show every month
