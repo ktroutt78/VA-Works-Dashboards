@@ -336,12 +336,16 @@
     .slider-track-wrap { flex: 1; position: relative; height: 14px; display: flex; align-items: center; }
 
     /* ─── Industry summary band (cool tint) ──────────────────────────── */
+    /* Was a tinted, bordered, rounded box — the innermost container in the
+       nesting the client flagged. Now a plain stat row under a hairline, so it
+       groups without boxing. */
     .industry-band {
       margin: 0 20px 14px;
-      background: var(--industry-bg);
-      border: 1px solid var(--industry-line);
-      border-radius: 6px;
-      padding: 10px 14px;
+      background: transparent;
+      border: none;
+      border-top: 1px solid var(--card-line);
+      border-radius: 0;
+      padding: 12px 0 0;
       display: grid;
       /* Equal-weight stat columns. The NAICS chip stays `auto` so it doesn't
          steal space; the three QCEW stats divide the remaining width evenly. */
@@ -511,30 +515,30 @@
     /* ─── Loading state ──────────────────────────────────────────────── */
     .frame.loading .section { opacity: 0.45; pointer-events: none; }
 
-    /* ─── Section cards (two boxed reports under the global region bar) ── */
-    /* Each "report" is its own visually-contained card. With the region bar
-       sitting full-width ABOVE both, the spanning relationship is structural:
-       one control on top, two boxes beneath = region governs both. The two
-       cards carry different accent colors (slate=QCEW, red=OEWS) so they read
-       as two distinct datasets, not one continuous form. */
-    .page-content { padding: 16px 20px 20px; }
+    /* ─── Sections (flat bands, not cards) ───────────────────────────── */
+    /* These used to be boxed cards: border, 8px radius, shadow, inset in a
+       padded .page-content. Nested inside the .frame that already boxes the
+       whole app, that read as an app within an app. They are now flat
+       full-bleed bands separated by a hairline — the same treatment as
+       .region-bar above them, which is the look the client asked for. The two
+       datasets are still told apart by their eyebrow color (QCEW blue, OEWS
+       red), which is what was doing that work anyway. Do not re-add a border,
+       radius or shadow here. */
+    .page-content { padding: 0; }
     .section {
       background: #fff;
-      border: 1px solid var(--card-line);
-      border-radius: 8px;
-      margin: 0 0 14px;
-      overflow: hidden;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      border-bottom: 1px solid var(--card-line);
     }
-    .section:last-child { margin-bottom: 0; }
+    .section:last-child { border-bottom: none; }
     /* No left accent stripe on either section. The eyebrow already names and
        colors each one (INDUSTRY SUMMARY in blue, PAY BANDS in red), so the
        stripe was pure decoration. Removed with the equivalent .row-card
        stripes in apps/wage-tool — do not reintroduce. */
+    /* Label row, not a card header — no rule under it, and on the same 20px
+       gutter as .region-bar so every band's edges line up. */
     .section-head {
       display: flex; align-items: baseline; justify-content: space-between;
-      gap: 12px; padding: 11px 16px;
-      border-bottom: 1px solid var(--faint);
+      gap: 12px; padding: 13px 20px 0;
       background: #ffffff;
     }
     .section-eyebrow {
@@ -545,7 +549,7 @@
     .section-payband  .section-eyebrow { color: var(--accent); }
     .section-source { font-size: 11px; color: var(--muted); }
     .section-region { font-weight: 600; color: #46506a; }
-    .section-body { padding: 14px 16px 16px; }
+    .section-body { padding: 12px 20px 18px; }
 
     /* Pay-band content lives directly in its section now — strip the old
        inner card chrome so we don't double-box. */
