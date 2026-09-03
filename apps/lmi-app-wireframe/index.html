@@ -173,9 +173,16 @@ body {
 }
 
 /* ── 1. Hero ─────────────────────────────────────────────────────────────── */
-.hero { display: grid; grid-template-columns: minmax(230px, 290px) 1fr; gap: 28px; align-items: start; }
-.hero .val { font-size: 52px; margin: 8px 0 6px; }
-.hero .val .unit { font-size: 30px; }
+/* Stats column widened from minmax(230px,290px) to carry two headline KPIs
+   side by side instead of one. */
+.hero { display: grid; grid-template-columns: minmax(330px, 400px) 1fr; gap: 28px; align-items: start; }
+.hero-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 12px; }
+.hero-kpis > div { display: flex; flex-direction: column; }
+/* Pins both U.S. comparison blocks to the same baseline even though only the
+   unemployment column has a change line above it. */
+.hero-kpis .hero-cmp { margin-top: auto; }
+.hero .val { font-size: 44px; margin: 8px 0 6px; }
+.hero .val .unit { font-size: 26px; }
 .hero-cmp { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .hero-cmp .val { font-size: 22px; margin-top: 2px; }
 .hero-cmp .val .unit { font-size: 14px; }
@@ -248,10 +255,10 @@ body {
 .d-outer, .d-inner, .d-med, .d-mean { cursor: default; }
 .dist-scale { position: relative; height: 64px; margin-top: 6px; font-size: 10.5px; color: var(--ink-3); }
 .dist-scale > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; line-height: 1.35; }
-/* Quartile labels drop to a second tier. At full width all five fit on one line,
-   but this card is half width now and the 10th and 25th labels overlapped by
-   ~8px — the p10-to-p25 span is only about 12% of the axis. Staggering keeps
-   every value visible instead of dropping or abbreviating any. */
+/* Quartile labels drop to a second tier. At full width all five fit on one
+   line, but this card is half width now and the 10th and 25th labels overlap
+   by ~8px — the p10-to-p25 span is only about 12% of the axis. Staggering
+   keeps every value visible instead of dropping or abbreviating any. */
 .dist-scale > span.tier2 { top: 34px; }   /* each label is two lines (~28px), so tier 2 has to clear that */
 .dist-key { display: flex; gap: 16px; font-size: 11px; color: var(--ink-2); margin-top: 6px; flex-wrap: wrap; }
 .dist-key span { display: inline-flex; align-items: center; gap: 6px; }
@@ -299,6 +306,7 @@ svg text { font-variant-numeric: tabular-nums; }
 @media (max-width: 700px) {
   .page { padding: 20px 14px 48px; }
   .hero { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .hero-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .hero .val { font-size: 42px; }
   .hero .val .unit { font-size: 24px; }
   .tiles { grid-template-columns: minmax(0, 1fr); }   /* tile row → one column */
@@ -391,13 +399,30 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
           <h2 class="card-title" id="hero-lbl">Unemployment rate</h2>
           <div class="card-sub">December 2025 · LAUS · seasonally adjusted</div>
 
-          <div class="stat-label" style="margin-top:12px">Virginia</div>
-          <div class="val">3.6<span class="unit">%</span></div>
-          <div class="delta"><span class="arrow">▼</span> 0.1 pt vs Nov</div>
-
-          <div class="hero-cmp">
-            <div class="stat-label">U.S. average</div>
-            <div class="val">4.4<span class="unit">%</span></div>
+          <!-- Two headline KPIs side by side, each naming its own metric since the
+               card title only covers the first. Labor force participation was
+               previously a line in .hero-foot; both its figures move up here, so
+               nothing was invented to fill the second column. LFPR carries no
+               change line because the page has no prior-month value for it — the
+               .hero-cmp blocks are bottom-aligned so the columns still line up. -->
+          <div class="hero-kpis">
+            <div>
+              <div class="stat-label">Unemployment rate · Virginia</div>
+              <div class="val">3.6<span class="unit">%</span></div>
+              <div class="delta"><span class="arrow">▼</span> 0.1 pt vs Nov</div>
+              <div class="hero-cmp">
+                <div class="stat-label">U.S. average</div>
+                <div class="val">4.4<span class="unit">%</span></div>
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Labor force participation · Virginia</div>
+              <div class="val">64.3<span class="unit">%</span></div>
+              <div class="hero-cmp">
+                <div class="stat-label">U.S. average</div>
+                <div class="val">62.4<span class="unit">%</span></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -412,7 +437,6 @@ table.grid tbody tr:last-child td { border-bottom: 0; }
       </div>
 
       <div class="hero-foot">
-        <div>Labor force participation <strong>64.3%</strong> · U.S. <strong>62.4%</strong></div>
         <a class="drill" href="#/g/unemp-monthly">Monthly detail →</a>
       </div>
     </section>
